@@ -44,5 +44,11 @@
   "UnsavedMessage": "Devam etmeden önce '{0}' üzerindeki değişiklikler kaydedilsin mi?",
   "UnsavedSave": "Kaydet",
   "UnsavedDiscard": "Vazgeç",
-  "UnsavedCancel": "İptal"
+  "UnsavedCancel": "İptal",
+  "TextHistory": "Geçmiş",
+  "TextHistorySubtitle": "Bu cihazdaki son istekler",
+  "TextHistoryPrivacy": "Yanıt gövdeleri ve hassas değerler saklanmaz.",
+  "HistoryResponseNotStored": "Yanıt gövdeleri geçmişte saklanmaz. Yanıtı incelemek için isteği yeniden gönderin.",
+  "StatusOpenedHistory": "Geçmiş kaydı açıldı",
+  "StatusHistoryUnavailable": "İstek tamamlandı; geçmiş kaydedilemedi"
 }

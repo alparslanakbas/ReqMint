@@ -44,5 +44,11 @@
   "UnsavedMessage": "Save changes to '{0}' before continuing?",
   "UnsavedSave": "Save",
   "UnsavedDiscard": "Discard",
-  "UnsavedCancel": "Cancel"
+  "UnsavedCancel": "Cancel",
+  "TextHistory": "History",
+  "TextHistorySubtitle": "Recent requests on this device",
+  "TextHistoryPrivacy": "Response bodies and sensitive values are not stored.",
+  "HistoryResponseNotStored": "Response bodies are not stored in history. Send the request again to inspect its response.",
+  "StatusOpenedHistory": "Opened history entry",
+  "StatusHistoryUnavailable": "Request completed; history could not be saved"
 }

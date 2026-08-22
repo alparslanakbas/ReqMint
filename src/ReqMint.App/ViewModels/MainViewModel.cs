@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
+using System.Text;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ReqMint.App.Services;
+using ReqMint.Core.History;
 using ReqMint.Core.Requests;
 using ReqMint.Core.Security;
 using ReqMint.Core.Templates;
@@ -31,6 +33,8 @@ public partial class MainViewModel : ViewModelBase
     ];
 
     public ObservableCollection<CollectionItemViewModel> Collections { get; } = [];
+
+    public ObservableCollection<RequestHistoryItemViewModel> History { get; } = [];
 
     public ObservableCollection<string> EnvironmentNames { get; } = ["No environment"];
 
@@ -88,6 +92,12 @@ public partial class MainViewModel : ViewModelBase
     public partial bool HasResponse { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCollectionsVisible))]
+    public partial bool IsHistoryVisible { get; set; }
+
+    public bool IsCollectionsVisible => !IsHistoryVisible;
+
+    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendCommand))]
     [NotifyCanExecuteChangedFor(nameof(CreateWorkspaceCommand))]
     [NotifyCanExecuteChangedFor(nameof(OpenWorkspaceCommand))]
@@ -119,6 +129,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly RequestTemplateResolver _templateResolver;
     private readonly ISecretVault _secretVault;
     private readonly IUnsavedChangesPrompt _unsavedChangesPrompt;
+    private readonly IRequestHistoryStore _historyStore;
     private WorkspaceSnapshot? _workspaceSnapshot;
     private string? _workspaceDirectory;
     private Guid? _selectedRequestId;
@@ -136,7 +147,8 @@ public partial class MainViewModel : ViewModelBase
         RequestTemplateResolver templateResolver,
         ISecretVault secretVault,
         LocalizationService localization,
-        IUnsavedChangesPrompt unsavedChangesPrompt)
+        IUnsavedChangesPrompt unsavedChangesPrompt,
+        IRequestHistoryStore historyStore)
     {
         _requestExecutor = requestExecutor;
         _workspaceStore = workspaceStore;
@@ -145,6 +157,7 @@ public partial class MainViewModel : ViewModelBase
         _secretVault = secretVault;
         Localization = localization;
         _unsavedChangesPrompt = unsavedChangesPrompt;
+        _historyStore = historyStore;
         _cleanRequestDraft = CaptureRequestDraft();
     }
 
@@ -240,6 +253,7 @@ public partial class MainViewModel : ViewModelBase
             {
                 var existingSnapshot = await _workspaceStore.LoadAsync(directory, cancellationToken);
                 ApplyWorkspace(existingSnapshot, directory);
+                await LoadHistoryAsync(existingSnapshot.Workspace.Id, cancellationToken);
                 ResetRequestDraft();
                 WorkspaceStatus = "Existing workspace opened";
                 return;
@@ -268,6 +282,7 @@ public partial class MainViewModel : ViewModelBase
 
             await _workspaceStore.SaveAsync(directory, snapshot, cancellationToken);
             ApplyWorkspace(snapshot, directory);
+            await LoadHistoryAsync(snapshot.Workspace.Id, cancellationToken);
             ResetRequestDraft();
             WorkspaceStatus = Localize("StatusWorkspaceCreated", "Workspace created");
         }
@@ -308,6 +323,7 @@ public partial class MainViewModel : ViewModelBase
             WorkspaceStatus = "Opening workspace...";
             var snapshot = await _workspaceStore.LoadAsync(directory, cancellationToken);
             ApplyWorkspace(snapshot, directory);
+            await LoadHistoryAsync(snapshot.Workspace.Id, cancellationToken);
             ResetRequestDraft();
             WorkspaceStatus = Localize("StatusWorkspaceOpened", "Workspace opened");
         }
@@ -406,11 +422,12 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanSend), IncludeCancelCommand = true)]
     private async Task SendAsync(CancellationToken cancellationToken)
     {
+        RequestDocument requestDocument;
         ApiRequest request;
 
         try
         {
-            var requestDocument = CreateCurrentRequestDocument(
+            requestDocument = CreateCurrentRequestDocument(
                 _selectedRequestId ?? Guid.NewGuid());
             request = await _templateResolver.ResolveAsync(
                 _workspaceSnapshot?.Workspace.Id ?? Guid.Empty,
@@ -458,24 +475,28 @@ public partial class MainViewModel : ViewModelBase
             }
 
             HasResponse = true;
+            await RecordHistoryAsync(requestDocument, response, "completed");
         }
         catch (OperationCanceledException)
         {
             ResponseStatus = Localize("StatusCancelled", "Cancelled");
             ResponseBody = "The request was cancelled.";
             HasResponse = true;
+            await RecordHistoryAsync(requestDocument, response: null, "cancelled");
         }
         catch (TimeoutException exception)
         {
             ResponseStatus = Localize("StatusTimedOut", "Timed out");
             ResponseBody = exception.Message;
             HasResponse = true;
+            await RecordHistoryAsync(requestDocument, response: null, "timed-out");
         }
         catch (HttpRequestException exception)
         {
             ResponseStatus = Localize("StatusConnectionFailed", "Connection failed");
             ResponseBody = exception.Message;
             HasResponse = true;
+            await RecordHistoryAsync(requestDocument, response: null, "failed");
         }
         finally
         {
@@ -626,6 +647,16 @@ public partial class MainViewModel : ViewModelBase
         _selectedRequestId = request.Id;
         _selectedCollectionId = collectionId;
 
+        LoadRequestDraft(request);
+        ResponseStatus = "Ready";
+        ResponseTime = "—";
+        ResponseBody = "Send the saved request to inspect its response.";
+        WorkspaceStatus = Localize("StatusOpenedItem", "Opened {0}", request.Name);
+        MarkRequestClean();
+    }
+
+    private void LoadRequestDraft(RequestDocument request)
+    {
         RequestName = request.Name;
         SelectedMethod = request.Method;
         Url = request.Url;
@@ -645,11 +676,42 @@ public partial class MainViewModel : ViewModelBase
 
         SelectedBodyType = GetBodyType(request.Body?.ContentType);
         RequestBody = request.Body?.Content ?? string.Empty;
-        ResponseStatus = "Ready";
-        ResponseTime = "—";
-        ResponseBody = "Send the saved request to inspect its response.";
-        WorkspaceStatus = Localize("StatusOpenedItem", "Opened {0}", request.Name);
-        MarkRequestClean();
+    }
+
+    private async Task RecordHistoryAsync(
+        RequestDocument request,
+        ApiResponse? response,
+        string outcome)
+    {
+        var workspaceId = _workspaceSnapshot?.Workspace.Id ?? Guid.Empty;
+        var entry = new RequestHistoryEntry
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = workspaceId,
+            SentAtUtc = DateTimeOffset.UtcNow,
+            Request = RequestHistoryPrivacy.CreateSafeSnapshot(request),
+            Outcome = outcome,
+            StatusCode = response?.StatusCode,
+            ReasonPhrase = response?.ReasonPhrase,
+            DurationMilliseconds = response?.Duration.TotalMilliseconds,
+            ContentType = response?.ContentType,
+            ResponseBytes = response is null ? null : Encoding.UTF8.GetByteCount(response.Body),
+        };
+
+        try
+        {
+            await _historyStore.AddAsync(entry, cancellationToken: CancellationToken.None);
+            History.Insert(0, new RequestHistoryItemViewModel(entry, OpenHistoryEntryAsync));
+            while (History.Count > 100)
+            {
+                History.RemoveAt(History.Count - 1);
+            }
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            WorkspaceStatus = Localize("StatusHistoryUnavailable", "Request completed; history could not be saved");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
     }
 
     private async Task<bool> ConfirmNavigationAsync(CancellationToken cancellationToken)

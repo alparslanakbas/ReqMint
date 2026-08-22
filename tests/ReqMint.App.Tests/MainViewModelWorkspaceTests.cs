@@ -1,5 +1,6 @@
 using ReqMint.App.Services;
 using ReqMint.App.ViewModels;
+using ReqMint.Core.History;
 using ReqMint.Core.Requests;
 using ReqMint.Core.Security;
 using ReqMint.Core.Templates;
@@ -167,6 +168,62 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task SendCommand_StoresAPrivateBoundedHistorySnapshot()
+    {
+        var historyStore = new RecordingHistoryStore();
+        var executor = new RecordingRequestExecutor();
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            executor,
+            historyStore: historyStore);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        viewModel.Headers.Add(new RequestFieldViewModel("Authorization", "Bearer secret-token"));
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        var entry = Assert.Single(historyStore.Entries);
+        Assert.Equal("completed", entry.Outcome);
+        Assert.Equal(200, entry.StatusCode);
+        Assert.Null(entry.Request.Body);
+        Assert.Contains(
+            entry.Request.Headers,
+            header => header.Name == "Authorization" &&
+                header.Value == RequestHistoryPrivacy.RedactedValue);
+    }
+
+    [Fact]
+    public async Task OpeningHistoryEntry_LoadsANewRequestDraft()
+    {
+        var snapshot = CreateSnapshot();
+        var entry = new RequestHistoryEntry
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = snapshot.Workspace.Id,
+            SentAtUtc = DateTimeOffset.UtcNow,
+            Request = snapshot.Collections[0].Requests[0],
+            Outcome = "completed",
+            StatusCode = 201,
+            ReasonPhrase = "Created",
+            DurationMilliseconds = 24,
+        };
+        var historyStore = new RecordingHistoryStore([entry]);
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = snapshot },
+            CreateWorkspacePath(),
+            historyStore: historyStore);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        await viewModel.ShowHistoryCommand.ExecuteAsync(null);
+        await viewModel.History[0].OpenCommand.ExecuteAsync(null);
+
+        Assert.Equal("Create order", viewModel.RequestName);
+        Assert.Equal("201 Created", viewModel.ResponseStatus);
+        Assert.Equal("24 ms", viewModel.ResponseTime);
+    }
+
+    [Fact]
     public async Task CollectionCommands_CreateSelectAndRenameACollection()
     {
         var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
@@ -228,7 +285,8 @@ public sealed class MainViewModelWorkspaceTests
         string directory,
         IRequestExecutor? executor = null,
         RecordingSecretVault? vault = null,
-        StubUnsavedChangesPrompt? prompt = null)
+        StubUnsavedChangesPrompt? prompt = null,
+        RecordingHistoryStore? historyStore = null)
     {
         vault ??= new RecordingSecretVault();
         return new MainViewModel(
@@ -238,7 +296,8 @@ public sealed class MainViewModelWorkspaceTests
             new RequestTemplateResolver(vault),
             vault,
             localization: null!,
-            prompt ?? new StubUnsavedChangesPrompt());
+            prompt ?? new StubUnsavedChangesPrompt(),
+            historyStore ?? new RecordingHistoryStore());
     }
 
     private static string CreateWorkspacePath() => Path.Combine(
@@ -371,6 +430,34 @@ public sealed class MainViewModelWorkspaceTests
                 "application/json",
                 TimeSpan.FromMilliseconds(12),
                 IsBodyTruncated: false));
+        }
+    }
+
+    private sealed class RecordingHistoryStore(
+        IEnumerable<RequestHistoryEntry>? initialEntries = null) : IRequestHistoryStore
+    {
+        public List<RequestHistoryEntry> Entries { get; } = initialEntries?.ToList() ?? [];
+
+        public Task AddAsync(
+            RequestHistoryEntry entry,
+            int retentionLimit = 200,
+            CancellationToken cancellationToken = default)
+        {
+            Entries.Insert(0, entry);
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<RequestHistoryEntry>> ListAsync(
+            Guid workspaceId,
+            int take = 100,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<RequestHistoryEntry>>(
+                Entries.Where(entry => entry.WorkspaceId == workspaceId).Take(take).ToArray());
+
+        public Task ClearAsync(Guid workspaceId, CancellationToken cancellationToken = default)
+        {
+            Entries.RemoveAll(entry => entry.WorkspaceId == workspaceId);
+            return Task.CompletedTask;
         }
     }
 }
