@@ -39,6 +39,11 @@ public partial class LocalizationService : ObservableObject
         SaveLanguage(value.Code);
     }
 
+    public string? GetString(string key) =>
+        Application.Current?.Resources.TryGetResource(key, theme: null, out var value) == true
+            ? value as string
+            : null;
+
     private string? ReadSavedLanguage()
     {
         try

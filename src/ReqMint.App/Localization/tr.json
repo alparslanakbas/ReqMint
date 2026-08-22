@@ -18,5 +18,20 @@
   "TextSaveEnvironment": "Ortamı kaydet",
   "TextLanguage": "Dil",
   "TextRequestTimeout": "İstek zaman aşımı",
-  "TextSeconds": "saniye"
+  "TextSeconds": "saniye",
+  "StatusReady": "Hazır",
+  "StatusSending": "Gönderiliyor...",
+  "StatusCancelled": "İptal edildi",
+  "StatusTimedOut": "Zaman aşımına uğradı",
+  "StatusConnectionFailed": "Bağlantı kurulamadı",
+  "StatusInvalidRequest": "Geçersiz istek",
+  "StatusMissingVariables": "Eksik değişkenler",
+  "StatusSecretVaultUnavailable": "Güvenli kasa kullanılamıyor",
+  "StatusNewRequest": "Yeni istek",
+  "StatusSavingRequest": "İstek kaydediliyor...",
+  "StatusSaveCancelled": "Kaydetme iptal edildi",
+  "StatusSavedItem": "{0} kaydedildi",
+  "StatusOpenedItem": "{0} açıldı",
+  "StatusWorkspaceCreated": "Çalışma alanı oluşturuldu",
+  "StatusWorkspaceOpened": "Çalışma alanı açıldı"
 }

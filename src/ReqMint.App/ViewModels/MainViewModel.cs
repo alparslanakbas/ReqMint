@@ -153,6 +153,12 @@ public partial class MainViewModel : ViewModelBase
     private bool CanEditEnvironment() =>
         !IsWorkspaceBusy && !IsSending && _workspaceSnapshot is not null;
 
+    private string Localize(string key, string fallback) =>
+        Localization?.GetString(key) ?? fallback;
+
+    private string Localize(string key, string fallback, object value) =>
+        string.Format(Localize(key, fallback), value);
+
     [RelayCommand]
     private void AddQueryParameter() => QueryParameters.Add(new RequestFieldViewModel());
 
@@ -178,7 +184,7 @@ public partial class MainViewModel : ViewModelBase
         ResponseStatus = "Ready";
         ResponseTime = "—";
         ResponseBody = "Compose and send a new request.";
-        WorkspaceStatus = "New request";
+        WorkspaceStatus = Localize("StatusNewRequest", "New request");
     }
 
     [RelayCommand(CanExecute = nameof(CanManageWorkspace))]
@@ -230,7 +236,7 @@ public partial class MainViewModel : ViewModelBase
 
             await _workspaceStore.SaveAsync(directory, snapshot, cancellationToken);
             ApplyWorkspace(snapshot, directory);
-            WorkspaceStatus = "Workspace created";
+            WorkspaceStatus = Localize("StatusWorkspaceCreated", "Workspace created");
         }
         catch (OperationCanceledException)
         {
@@ -264,7 +270,7 @@ public partial class MainViewModel : ViewModelBase
             WorkspaceStatus = "Opening workspace...";
             var snapshot = await _workspaceStore.LoadAsync(directory, cancellationToken);
             ApplyWorkspace(snapshot, directory);
-            WorkspaceStatus = "Workspace opened";
+            WorkspaceStatus = Localize("StatusWorkspaceOpened", "Workspace opened");
         }
         catch (OperationCanceledException)
         {
@@ -289,7 +295,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         IsWorkspaceBusy = true;
-        WorkspaceStatus = "Saving request...";
+        WorkspaceStatus = Localize("StatusSavingRequest", "Saving request...");
 
         try
         {
@@ -341,11 +347,11 @@ public partial class MainViewModel : ViewModelBase
 
             await _workspaceStore.SaveAsync(_workspaceDirectory, updatedSnapshot, cancellationToken);
             ApplyWorkspace(updatedSnapshot, _workspaceDirectory, document.Id, collection.Id);
-            WorkspaceStatus = $"Saved {document.Name}";
+            WorkspaceStatus = Localize("StatusSavedItem", "Saved {0}", document.Name);
         }
         catch (OperationCanceledException)
         {
-            WorkspaceStatus = "Save cancelled";
+            WorkspaceStatus = Localize("StatusSaveCancelled", "Save cancelled");
         }
         catch (Exception exception)
         {
@@ -374,28 +380,28 @@ public partial class MainViewModel : ViewModelBase
         }
         catch (ArgumentException exception)
         {
-            ResponseStatus = "Invalid request";
+            ResponseStatus = Localize("StatusInvalidRequest", "Invalid request");
             ResponseBody = exception.Message;
             HasResponse = true;
             return;
         }
         catch (RequestTemplateResolutionException exception)
         {
-            ResponseStatus = "Missing variables";
+            ResponseStatus = Localize("StatusMissingVariables", "Missing variables");
             ResponseBody = exception.Message;
             HasResponse = true;
             return;
         }
         catch (SecretVaultUnavailableException exception)
         {
-            ResponseStatus = "Secret vault unavailable";
+            ResponseStatus = Localize("StatusSecretVaultUnavailable", "Secret vault unavailable");
             ResponseBody = exception.Message;
             HasResponse = true;
             return;
         }
 
         IsSending = true;
-        ResponseStatus = "Sending...";
+        ResponseStatus = Localize("StatusSending", "Sending...");
         ResponseTime = "—";
 
         try
@@ -415,19 +421,19 @@ public partial class MainViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            ResponseStatus = "Cancelled";
+            ResponseStatus = Localize("StatusCancelled", "Cancelled");
             ResponseBody = "The request was cancelled.";
             HasResponse = true;
         }
         catch (TimeoutException exception)
         {
-            ResponseStatus = "Timed out";
+            ResponseStatus = Localize("StatusTimedOut", "Timed out");
             ResponseBody = exception.Message;
             HasResponse = true;
         }
         catch (HttpRequestException exception)
         {
-            ResponseStatus = "Connection failed";
+            ResponseStatus = Localize("StatusConnectionFailed", "Connection failed");
             ResponseBody = exception.Message;
             HasResponse = true;
         }
@@ -573,7 +579,7 @@ public partial class MainViewModel : ViewModelBase
         ResponseStatus = "Ready";
         ResponseTime = "—";
         ResponseBody = "Send the saved request to inspect its response.";
-        WorkspaceStatus = $"Opened {request.Name}";
+        WorkspaceStatus = Localize("StatusOpenedItem", "Opened {0}", request.Name);
     }
 
     private void ShowWorkspaceError(string title, Exception exception)

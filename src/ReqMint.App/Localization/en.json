@@ -18,5 +18,20 @@
   "TextSaveEnvironment": "Save environment",
   "TextLanguage": "Language",
   "TextRequestTimeout": "Request timeout",
-  "TextSeconds": "seconds"
+  "TextSeconds": "seconds",
+  "StatusReady": "Ready",
+  "StatusSending": "Sending...",
+  "StatusCancelled": "Cancelled",
+  "StatusTimedOut": "Timed out",
+  "StatusConnectionFailed": "Connection failed",
+  "StatusInvalidRequest": "Invalid request",
+  "StatusMissingVariables": "Missing variables",
+  "StatusSecretVaultUnavailable": "Secret vault unavailable",
+  "StatusNewRequest": "New request",
+  "StatusSavingRequest": "Saving request...",
+  "StatusSaveCancelled": "Save cancelled",
+  "StatusSavedItem": "Saved {0}",
+  "StatusOpenedItem": "Opened {0}",
+  "StatusWorkspaceCreated": "Workspace created",
+  "StatusWorkspaceOpened": "Workspace opened"
 }

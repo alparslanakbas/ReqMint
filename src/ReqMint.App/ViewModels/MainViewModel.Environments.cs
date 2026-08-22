@@ -13,7 +13,7 @@ public partial class MainViewModel
         EnvironmentDraftName = "New environment";
         EnvironmentVariables.Clear();
         EnvironmentVariables.Add(new EnvironmentVariableViewModel("BASE_URL"));
-        WorkspaceStatus = "New environment";
+        WorkspaceStatus = Localize("TextNewEnvironment", "New environment");
     }
 
     [RelayCommand(CanExecute = nameof(CanEditEnvironment))]
@@ -110,7 +110,7 @@ public partial class MainViewModel
                 _selectedRequestId,
                 _selectedCollectionId,
                 environment.Id);
-            WorkspaceStatus = $"Saved {environment.Name}";
+            WorkspaceStatus = Localize("StatusSavedItem", "Saved {0}", environment.Name);
         }
         catch (OperationCanceledException)
         {
