@@ -61,5 +61,8 @@
   "StatusHistoryClearFailed": "Request history could not be cleared",
   "TextHistoryRetention": "History retention",
   "TextHistoryRetentionHelp": "Keep between 25 and 2,000 request summaries per workspace.",
-  "TextRefreshHistory": "Refresh history"
+  "TextRefreshHistory": "Refresh history",
+  "TextResponsePreviewLimit": "Response preview limit",
+  "TextResponsePreviewLimitHelp": "Read at most 1–20 MB into memory for each response preview.",
+  "ResponsePreviewLimited": "\n\n— Preview limited to {0} MB —"
 }

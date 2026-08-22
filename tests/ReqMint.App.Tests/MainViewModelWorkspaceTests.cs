@@ -296,6 +296,30 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task ResponsePreviewLimit_PersistsAndFlowsToHttpExecution()
+    {
+        var settings = new StubAppSettingsService();
+        var executor = new RecordingRequestExecutor { IsBodyTruncated = true };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            executor: executor,
+            appSettings: settings);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+
+        viewModel.ResponsePreviewLimitMegabytes = 50;
+        Assert.Equal(JsonAppSettingsService.MaximumResponsePreviewLimitMegabytes, viewModel.ResponsePreviewLimitMegabytes);
+
+        viewModel.ResponsePreviewLimitMegabytes = 5;
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.Equal(5, settings.Current.ResponsePreviewLimitMegabytes);
+        Assert.Equal(5 * 1024 * 1024, executor.Request?.ResponsePreviewLimitBytes);
+        Assert.Contains("Preview limited to 5 MB", viewModel.ResponseBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task CollectionCommands_CreateSelectAndRenameACollection()
     {
         var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
@@ -534,6 +558,8 @@ public sealed class MainViewModelWorkspaceTests
     {
         public ApiRequest? Request { get; private set; }
 
+        public bool IsBodyTruncated { get; init; }
+
         public Task<ApiResponse> ExecuteAsync(
             ApiRequest request,
             CancellationToken cancellationToken = default)
@@ -546,7 +572,7 @@ public sealed class MainViewModelWorkspaceTests
                 "{}",
                 "application/json",
                 TimeSpan.FromMilliseconds(12),
-                IsBodyTruncated: false));
+                IsBodyTruncated));
         }
     }
 

@@ -8,26 +8,16 @@ namespace ReqMint.Http;
 
 public sealed class HttpRequestExecutor : IRequestExecutor, IDisposable
 {
-    public const int DefaultPreviewLimitBytes = 2 * 1024 * 1024;
-
     private readonly HttpClient _client;
-    private readonly int _previewLimitBytes;
 
-    public HttpRequestExecutor(int previewLimitBytes = DefaultPreviewLimitBytes)
-        : this(CreateDefaultHandler(), previewLimitBytes)
+    public HttpRequestExecutor()
+        : this(CreateDefaultHandler())
     {
     }
 
-    public HttpRequestExecutor(HttpMessageHandler handler, int previewLimitBytes = DefaultPreviewLimitBytes)
+    public HttpRequestExecutor(HttpMessageHandler handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
-
-        if (previewLimitBytes <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(previewLimitBytes));
-        }
-
-        _previewLimitBytes = previewLimitBytes;
         _client = new HttpClient(handler, disposeHandler: true)
         {
             Timeout = Timeout.InfiniteTimeSpan,
@@ -45,6 +35,13 @@ public sealed class HttpRequestExecutor : IRequestExecutor, IDisposable
             throw new ArgumentOutOfRangeException(nameof(request), "Request timeout must be greater than zero.");
         }
 
+        if (request.ResponsePreviewLimitBytes <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(request),
+                "Response preview limit must be greater than zero.");
+        }
+
         using var message = CreateMessage(request);
         using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutSource.CancelAfter(request.Timeout);
@@ -57,7 +54,10 @@ public sealed class HttpRequestExecutor : IRequestExecutor, IDisposable
                 HttpCompletionOption.ResponseHeadersRead,
                 timeoutSource.Token);
 
-            var (body, isTruncated) = await ReadPreviewAsync(response.Content, timeoutSource.Token);
+            var (body, isTruncated) = await ReadPreviewAsync(
+                response.Content,
+                request.ResponsePreviewLimitBytes,
+                timeoutSource.Token);
             stopwatch.Stop();
             var headers = MergeHeaders(response);
 
@@ -150,17 +150,18 @@ public sealed class HttpRequestExecutor : IRequestExecutor, IDisposable
 
     private async Task<(string Body, bool IsTruncated)> ReadPreviewAsync(
         HttpContent content,
+        int previewLimitBytes,
         CancellationToken cancellationToken)
     {
         await using var stream = await content.ReadAsStreamAsync(cancellationToken);
-        using var buffer = new MemoryStream(Math.Min(_previewLimitBytes, 64 * 1024));
+        using var buffer = new MemoryStream(Math.Min(previewLimitBytes, 64 * 1024));
         var chunk = new byte[16 * 1024];
-        var remaining = _previewLimitBytes + 1;
+        var remaining = (long)previewLimitBytes + 1;
 
         while (remaining > 0)
         {
             var read = await stream.ReadAsync(
-                chunk.AsMemory(0, Math.Min(chunk.Length, remaining)),
+                chunk.AsMemory(0, (int)Math.Min(chunk.Length, remaining)),
                 cancellationToken);
 
             if (read == 0)
@@ -173,8 +174,8 @@ public sealed class HttpRequestExecutor : IRequestExecutor, IDisposable
         }
 
         var bytes = buffer.ToArray();
-        var isTruncated = bytes.Length > _previewLimitBytes;
-        var visibleLength = Math.Min(bytes.Length, _previewLimitBytes);
+        var isTruncated = bytes.Length > previewLimitBytes;
+        var visibleLength = Math.Min(bytes.Length, previewLimitBytes);
         var encoding = ResolveEncoding(content.Headers.ContentType);
 
         return (encoding.GetString(bytes, 0, visibleLength), isTruncated);

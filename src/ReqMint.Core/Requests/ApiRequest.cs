@@ -2,6 +2,8 @@ namespace ReqMint.Core.Requests;
 
 public sealed record ApiRequest
 {
+    public const int DefaultResponsePreviewLimitBytes = 2 * 1024 * 1024;
+
     public required string Method { get; init; }
 
     public required Uri Url { get; init; }
@@ -13,6 +15,8 @@ public sealed record ApiRequest
     public ApiRequestBody? Body { get; init; }
 
     public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(30);
+
+    public int ResponsePreviewLimitBytes { get; init; } = DefaultResponsePreviewLimitBytes;
 
     public static ApiRequest Create(string method, string url)
     {

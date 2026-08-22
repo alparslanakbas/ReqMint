@@ -41,17 +41,32 @@ public class HttpRequestExecutorTests
     [Fact]
     public async Task ExecuteAsync_TruncatesPreviewAtConfiguredLimit()
     {
-        using var executor = new HttpRequestExecutor(
-            new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent("1234567890"),
-            }),
-            previewLimitBytes: 5);
+        using var executor = new HttpRequestExecutor(new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("1234567890"),
+        }));
+        var request = ApiRequest.Create("GET", "https://example.com/large") with
+        {
+            ResponsePreviewLimitBytes = 5,
+        };
 
-        var response = await executor.ExecuteAsync(ApiRequest.Create("GET", "https://example.com/large"));
+        var response = await executor.ExecuteAsync(request);
 
         Assert.Equal("12345", response.Body);
         Assert.True(response.IsBodyTruncated);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_RejectsInvalidResponsePreviewLimit()
+    {
+        using var executor = new HttpRequestExecutor(new StubHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK)));
+        var request = ApiRequest.Create("GET", "https://example.com/large") with
+        {
+            ResponsePreviewLimitBytes = 0,
+        };
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => executor.ExecuteAsync(request));
     }
 
     [Fact]

@@ -61,5 +61,8 @@
   "StatusHistoryClearFailed": "İstek geçmişi temizlenemedi",
   "TextHistoryRetention": "Geçmiş saklama sınırı",
   "TextHistoryRetentionHelp": "Her çalışma alanı için 25 ile 2.000 arasında istek özeti sakla.",
-  "TextRefreshHistory": "Geçmişi yenile"
+  "TextRefreshHistory": "Geçmişi yenile",
+  "TextResponsePreviewLimit": "Yanıt önizleme sınırı",
+  "TextResponsePreviewLimitHelp": "Her yanıt önizlemesi için belleğe en fazla 1–20 MB oku.",
+  "ResponsePreviewLimited": "\n\n— Önizleme {0} MB ile sınırlandırıldı —"
 }

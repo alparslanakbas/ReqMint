@@ -11,11 +11,17 @@ public sealed class JsonAppSettingsServiceTests
         using var directory = new TemporaryDirectory();
         var store = new JsonAppSettingsService(directory.Path);
 
-        store.Update(new AppSettings { Language = "tr", HistoryRetentionLimit = 350 });
+        store.Update(new AppSettings
+        {
+            Language = "tr",
+            HistoryRetentionLimit = 350,
+            ResponsePreviewLimitMegabytes = 7,
+        });
         var reloaded = new JsonAppSettingsService(directory.Path);
 
         Assert.Equal("tr", reloaded.Current.Language);
         Assert.Equal(350, reloaded.Current.HistoryRetentionLimit);
+        Assert.Equal(7, reloaded.Current.ResponsePreviewLimitMegabytes);
     }
 
     [Theory]
@@ -34,6 +40,23 @@ public sealed class JsonAppSettingsServiceTests
         var store = new JsonAppSettingsService(directory.Path);
 
         Assert.Equal(expected, store.Current.HistoryRetentionLimit);
+    }
+
+    [Theory]
+    [InlineData(0, JsonAppSettingsService.MinimumResponsePreviewLimitMegabytes)]
+    [InlineData(50, JsonAppSettingsService.MaximumResponsePreviewLimitMegabytes)]
+    public void LoadingSettings_ClampsInvalidResponsePreviewLimit(int value, int expected)
+    {
+        using var directory = new TemporaryDirectory();
+        var path = System.IO.Path.Combine(directory.Path, "ui-settings.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new AppSettings
+        {
+            ResponsePreviewLimitMegabytes = value,
+        }));
+
+        var store = new JsonAppSettingsService(directory.Path);
+
+        Assert.Equal(expected, store.Current.ResponsePreviewLimitMegabytes);
     }
 
     private sealed class TemporaryDirectory : IDisposable

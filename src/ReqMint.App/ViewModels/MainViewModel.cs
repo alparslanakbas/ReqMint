@@ -80,6 +80,9 @@ public partial class MainViewModel : ViewModelBase
     public partial decimal TimeoutSeconds { get; set; } = 30;
 
     [ObservableProperty]
+    public partial decimal ResponsePreviewLimitMegabytes { get; set; } = 2;
+
+    [ObservableProperty]
     public partial string ResponseBody { get; set; } = "Send a request to inspect its response.";
 
     [ObservableProperty]
@@ -165,7 +168,26 @@ public partial class MainViewModel : ViewModelBase
         _historyClearPrompt = historyClearPrompt;
         _appSettings = appSettings;
         HistoryRetentionLimit = appSettings.Current.HistoryRetentionLimit;
+        ResponsePreviewLimitMegabytes = appSettings.Current.ResponsePreviewLimitMegabytes;
         _cleanRequestDraft = CaptureRequestDraft();
+    }
+
+    partial void OnResponsePreviewLimitMegabytesChanged(decimal value)
+    {
+        var limit = (int)Math.Clamp(
+            value,
+            JsonAppSettingsService.MinimumResponsePreviewLimitMegabytes,
+            JsonAppSettingsService.MaximumResponsePreviewLimitMegabytes);
+        if (value != limit)
+        {
+            ResponsePreviewLimitMegabytes = limit;
+            return;
+        }
+
+        if (_appSettings is not null && _appSettings.Current.ResponsePreviewLimitMegabytes != limit)
+        {
+            _appSettings.Update(_appSettings.Current with { ResponsePreviewLimitMegabytes = limit });
+        }
     }
 
     partial void OnEnvironmentNameChanged(string value)
@@ -441,6 +463,11 @@ public partial class MainViewModel : ViewModelBase
                 _activeEnvironment,
                 requestDocument,
                 cancellationToken);
+            request = request with
+            {
+                ResponsePreviewLimitBytes = checked(
+                    (int)ResponsePreviewLimitMegabytes * 1024 * 1024),
+            };
         }
         catch (ArgumentException exception)
         {
@@ -478,7 +505,10 @@ public partial class MainViewModel : ViewModelBase
 
             if (response.IsBodyTruncated)
             {
-                ResponseBody += "\n\n— Preview limited to 2 MB —";
+                ResponseBody += Localize(
+                    "ResponsePreviewLimited",
+                    "\n\n— Preview limited to {0} MB —",
+                    ResponsePreviewLimitMegabytes);
             }
 
             HasResponse = true;

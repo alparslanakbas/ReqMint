@@ -6,6 +6,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 {
     public const int MinimumHistoryRetentionLimit = 25;
     public const int MaximumHistoryRetentionLimit = 2000;
+    public const int MinimumResponsePreviewLimitMegabytes = 1;
+    public const int MaximumResponsePreviewLimitMegabytes = 20;
 
     private readonly string _settingsPath;
 
@@ -73,6 +75,10 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             settings.HistoryRetentionLimit,
             MinimumHistoryRetentionLimit,
             MaximumHistoryRetentionLimit),
+        ResponsePreviewLimitMegabytes = Math.Clamp(
+            settings.ResponsePreviewLimitMegabytes,
+            MinimumResponsePreviewLimitMegabytes,
+            MaximumResponsePreviewLimitMegabytes),
     };
 
     private static void TryDeleteTemporaryFile(string path)
