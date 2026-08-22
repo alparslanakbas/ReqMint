@@ -7,6 +7,7 @@ namespace ReqMint.Platform.Git;
 public sealed class SystemGitService : IGitService
 {
     private static readonly TimeSpan CommandTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan NetworkCommandTimeout = TimeSpan.FromSeconds(60);
     private const int MaximumStatusCharacters = 4 * 1024 * 1024;
     private const int MaximumSnapshotCharacters = 2 * 1024 * 1024;
     private const int MaximumDiffCharacters = 256 * 1024;
@@ -312,6 +313,116 @@ public sealed class SystemGitService : IGitService
         };
     }
 
+    public async Task<GitRemotePreflight> GetRemotePreflightAsync(
+        string workspaceDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workspaceDirectory);
+        var fullPath = Path.GetFullPath(workspaceDirectory);
+        var status = await GetStatusAsync(fullPath, cancellationToken);
+        if (status is null)
+        {
+            return new GitRemotePreflight();
+        }
+
+        if (status.IsDetached)
+        {
+            return new GitRemotePreflight
+            {
+                State = GitRemotePreflightState.DetachedHead,
+            };
+        }
+
+        var remote = await RunAsync(
+            ["-C", fullPath, "config", "--get", $"branch.{status.Branch}.remote"],
+            cancellationToken,
+            maximumOutputCharacters: 1024);
+        var merge = await RunAsync(
+            ["-C", fullPath, "config", "--get", $"branch.{status.Branch}.merge"],
+            cancellationToken,
+            maximumOutputCharacters: 4096);
+        if (remote.ExitCode != 0 || merge.ExitCode != 0)
+        {
+            return new GitRemotePreflight
+            {
+                State = GitRemotePreflightState.NoUpstream,
+                Branch = status.Branch,
+                AheadBy = status.AheadBy,
+                BehindBy = status.BehindBy,
+            };
+        }
+
+        var remoteName = remote.StandardOutput.Trim();
+        var mergeReference = merge.StandardOutput.Trim();
+        if (!IsSafeRemoteName(remoteName)
+            || !mergeReference.StartsWith("refs/heads/", StringComparison.Ordinal)
+            || mergeReference.Length == "refs/heads/".Length)
+        {
+            return new GitRemotePreflight
+            {
+                State = GitRemotePreflightState.UnsupportedRemote,
+                Branch = status.Branch,
+                AheadBy = status.AheadBy,
+                BehindBy = status.BehindBy,
+            };
+        }
+
+        return new GitRemotePreflight
+        {
+            State = GitRemotePreflightState.Ready,
+            RemoteName = remoteName,
+            Branch = mergeReference["refs/heads/".Length..],
+            AheadBy = status.AheadBy,
+            BehindBy = status.BehindBy,
+        };
+    }
+
+    public async Task<GitFetchResult> FetchAsync(
+        string workspaceDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workspaceDirectory);
+        var fullPath = Path.GetFullPath(workspaceDirectory);
+        var preflight = await GetRemotePreflightAsync(fullPath, cancellationToken);
+        if (!preflight.IsReady)
+        {
+            return new GitFetchResult
+            {
+                State = GitFetchResultState.PreflightBlocked,
+                Preflight = preflight,
+            };
+        }
+
+        var fetch = await RunAsync(
+            [
+                "-C", fullPath,
+                "fetch", "--no-tags", "--no-recurse-submodules", "--", preflight.RemoteName,
+            ],
+            cancellationToken,
+            maximumOutputCharacters: 64 * 1024,
+            commandTimeout: NetworkCommandTimeout);
+        if (fetch.ExitCode != 0)
+        {
+            throw new GitCommandException("The remote check could not be completed.");
+        }
+
+        var status = await GetStatusAsync(fullPath, cancellationToken);
+        return new GitFetchResult
+        {
+            State = GitFetchResultState.Fetched,
+            Preflight = preflight,
+            AheadBy = status?.AheadBy ?? 0,
+            BehindBy = status?.BehindBy ?? 0,
+        };
+    }
+
+    private static bool IsSafeRemoteName(string remoteName) =>
+        remoteName.Length is > 0 and <= 128
+        && remoteName[0] != '-'
+        && remoteName != "."
+        && remoteName.All(character =>
+            char.IsAsciiLetterOrDigit(character) || character is '.' or '_' or '-');
+
     private static void TryDeleteDirectory(string path)
     {
         try
@@ -458,7 +569,8 @@ public sealed class SystemGitService : IGitService
     private static async Task<GitCommandResult> RunAsync(
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken,
-        int maximumOutputCharacters = 16 * 1024)
+        int maximumOutputCharacters = 16 * 1024,
+        TimeSpan? commandTimeout = null)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -475,6 +587,8 @@ public sealed class SystemGitService : IGitService
 
         startInfo.Environment["GIT_OPTIONAL_LOCKS"] = "0";
         startInfo.Environment["GIT_TERMINAL_PROMPT"] = "0";
+        startInfo.Environment["GCM_INTERACTIVE"] = "Never";
+        startInfo.Environment["SSH_ASKPASS_REQUIRE"] = "never";
         startInfo.Environment["GIT_PAGER"] = "cat";
         startInfo.Environment["PAGER"] = "cat";
         startInfo.Environment["LC_ALL"] = "C";
@@ -490,7 +604,7 @@ public sealed class SystemGitService : IGitService
         }
 
         using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutSource.CancelAfter(CommandTimeout);
+        timeoutSource.CancelAfter(commandTimeout ?? CommandTimeout);
         var standardOutput = ReadBoundedAsync(
             process.StandardOutput,
             maximumOutputCharacters,

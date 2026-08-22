@@ -621,6 +621,82 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task FetchingRemoteUpdates_RequiresReviewAndExplicitConfirmation()
+    {
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = "C:/repos/commerce",
+                Branch = "main",
+            },
+            RemotePreflight = new GitRemotePreflight
+            {
+                State = GitRemotePreflightState.Ready,
+                RemoteName = "origin",
+                Branch = "main",
+            },
+            FetchResult = new GitFetchResult
+            {
+                State = GitFetchResultState.Fetched,
+                AheadBy = 1,
+                BehindBy = 2,
+            },
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: git);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        Assert.True(viewModel.IsGitRemoteReviewAvailable);
+
+        await viewModel.ReviewGitRemoteCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsGitRemoteVisible);
+        Assert.Equal("origin", viewModel.GitRemoteName);
+        Assert.Equal("main", viewModel.GitRemoteBranch);
+        Assert.Equal(1, git.RemotePreflightCallCount);
+        Assert.Equal(0, git.FetchCallCount);
+
+        await viewModel.ConfirmGitFetchCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, git.FetchCallCount);
+        Assert.Equal("Remote check complete · behind 2 · ahead 1", viewModel.WorkspaceStatus);
+        Assert.False(viewModel.IsGitRemoteVisible);
+    }
+
+    [Fact]
+    public async Task RemoteReview_ExplainsMissingUpstreamWithoutNetworkAccess()
+    {
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = "C:/repos/local-only",
+                Branch = "main",
+            },
+            RemotePreflight = new GitRemotePreflight
+            {
+                State = GitRemotePreflightState.NoUpstream,
+                Branch = "main",
+            },
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: git);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.ReviewGitRemoteCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.IsGitRemoteVisible);
+        Assert.Equal("The current branch has no upstream remote", viewModel.WorkspaceStatus);
+        Assert.Equal(1, git.RemotePreflightCallCount);
+        Assert.Equal(0, git.FetchCallCount);
+    }
+
+    [Fact]
     public async Task OpeningWorkspace_DoesNotListChangesOutsideReqMintScope()
     {
         var git = new StubGitService
@@ -879,6 +955,14 @@ public sealed class MainViewModelWorkspaceTests
 
         public string? LastCommitMessage { get; private set; }
 
+        public GitRemotePreflight RemotePreflight { get; init; } = new();
+
+        public GitFetchResult FetchResult { get; init; } = new();
+
+        public int RemotePreflightCallCount { get; private set; }
+
+        public int FetchCallCount { get; private set; }
+
         public Task<GitRepositoryStatus?> GetStatusAsync(
             string workspaceDirectory,
             CancellationToken cancellationToken = default)
@@ -935,6 +1019,22 @@ public sealed class MainViewModelWorkspaceTests
             CommitCallCount++;
             LastCommitMessage = message;
             return Task.FromResult(CommitResult);
+        }
+
+        public Task<GitRemotePreflight> GetRemotePreflightAsync(
+            string workspaceDirectory,
+            CancellationToken cancellationToken = default)
+        {
+            RemotePreflightCallCount++;
+            return Task.FromResult(RemotePreflight);
+        }
+
+        public Task<GitFetchResult> FetchAsync(
+            string workspaceDirectory,
+            CancellationToken cancellationToken = default)
+        {
+            FetchCallCount++;
+            return Task.FromResult(FetchResult);
         }
     }
 

@@ -38,4 +38,10 @@ The commit action appears only when at least one ReqMint file is staged, no merg
 
 Confirmation reruns the full preflight immediately before `git commit`. Any newly introduced conflict, non-ReqMint staged file, secret finding, or unscannable index snapshot blocks the operation. ReqMint never uses bulk working-tree additions during commit and does not pull or push afterward. The initial safe workflow executes the commit with an empty temporary hooks directory so repository hooks cannot introduce hidden side effects; future hook support requires a separate explicit-consent design.
 
+## Explicit remote check
+
+ReqMint reads the current branch's configured upstream locally and displays only the remote name and branch; remote URLs are never passed to the UI because they may embed credentials. A separate confirmation is required before network access. The fetch command disables tags, submodule recursion, terminal prompts, and pagers, uses a bounded network timeout, and updates remote-tracking references without merging, rebasing, switching branches, changing working files, or pushing.
+
+Detached HEADs, missing upstreams, local-only upstreams, and remote names outside the conservative safe-character set fail closed with localized guidance. Fetch errors are sanitized before reaching the UI.
+
 Pull and push workflows remain disabled pending their own safety review.

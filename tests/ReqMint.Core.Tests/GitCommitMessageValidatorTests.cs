@@ -13,6 +13,15 @@ public sealed class GitCommitMessageValidatorTests
             new GitCommitResult().State);
     }
 
+    [Fact]
+    public void RemoteModels_DefaultToFailClosedStates()
+    {
+        Assert.False(new GitRemotePreflight().IsReady);
+        Assert.Equal(
+            GitFetchResultState.PreflightBlocked,
+            new GitFetchResult().State);
+    }
+
     [Theory]
     [InlineData("feat: add orders request")]
     [InlineData("Fix timeout")]

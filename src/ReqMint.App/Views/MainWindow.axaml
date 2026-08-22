@@ -346,6 +346,11 @@
                                         IsVisible="{Binding IsGitCommitReviewAvailable}"
                                         IsEnabled="{Binding !IsGitCommitBusy}"
                                         Command="{Binding ReviewGitCommitCommand}" />
+                                <Button Content="{DynamicResource GitRemoteReviewAction}"
+                                        Margin="0,4,0,0"
+                                        IsVisible="{Binding IsGitRemoteReviewAvailable}"
+                                        IsEnabled="{Binding !IsGitRemoteBusy}"
+                                        Command="{Binding ReviewGitRemoteCommand}" />
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -842,6 +847,93 @@
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
+            </Grid>
+
+            <Grid RowDefinitions="56,*" IsVisible="{Binding IsGitRemoteVisible}">
+                <Border Grid.Row="0"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="0,0,0,1">
+                    <Grid Margin="18,0" ColumnDefinitions="*,Auto">
+                        <StackPanel Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    Spacing="10">
+                            <TextBlock Text="⇄"
+                                       Foreground="{DynamicResource AccentBrush}"
+                                       FontSize="18" />
+                            <TextBlock Text="{DynamicResource GitRemoteReviewTitle}"
+                                       FontSize="17"
+                                       FontWeight="SemiBold" />
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Content="×"
+                                Width="30"
+                                Height="30"
+                                Padding="0"
+                                IsEnabled="{Binding !IsGitRemoteBusy}"
+                                Command="{Binding CancelGitRemoteCommand}" />
+                    </Grid>
+                </Border>
+
+                <StackPanel Grid.Row="1"
+                            Margin="28"
+                            MaxWidth="640"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="14">
+                    <Border Padding="16"
+                            CornerRadius="9"
+                            Background="{DynamicResource SurfaceRaisedBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1">
+                        <Grid ColumnDefinitions="Auto,14,*" RowDefinitions="Auto,6,Auto">
+                            <TextBlock Text="{DynamicResource GitRemoteNameLabel}"
+                                       Classes="secondary" />
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding GitRemoteName}"
+                                       FontFamily="Cascadia Mono, Consolas"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Grid.Row="2"
+                                       Text="{DynamicResource GitRemoteBranchLabel}"
+                                       Classes="secondary" />
+                            <TextBlock Grid.Row="2"
+                                       Grid.Column="2"
+                                       Text="{Binding GitRemoteBranch}"
+                                       FontFamily="Cascadia Mono, Consolas"
+                                       FontWeight="SemiBold" />
+                        </Grid>
+                    </Border>
+                    <TextBlock Text="{Binding GitRemoteSummary}"
+                               FontSize="15"
+                               TextWrapping="Wrap" />
+                    <Border Padding="14"
+                            CornerRadius="8"
+                            Background="{DynamicResource SurfaceRaisedBrush}">
+                        <StackPanel Spacing="7">
+                            <TextBlock Text="{DynamicResource GitRemoteSafetyTitle}"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Text="{DynamicResource GitRemoteSafetyRefs}"
+                                       Classes="secondary"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{DynamicResource GitRemoteSafetyLocal}"
+                                       Classes="secondary"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{DynamicResource GitRemoteSafetyNetwork}"
+                                       Classes="secondary"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Right"
+                                Spacing="8">
+                        <Button Content="{DynamicResource GitRemoteCancel}"
+                                IsEnabled="{Binding !IsGitRemoteBusy}"
+                                Command="{Binding CancelGitRemoteCommand}" />
+                        <Button Content="{DynamicResource GitRemoteConfirmFetch}"
+                                IsEnabled="{Binding !IsGitRemoteBusy}"
+                                Command="{Binding ConfirmGitFetchCommand}" />
+                    </StackPanel>
+                </StackPanel>
             </Grid>
             </Grid>
         </Grid>

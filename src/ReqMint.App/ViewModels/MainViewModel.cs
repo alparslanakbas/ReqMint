@@ -194,7 +194,27 @@ public partial class MainViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsGitCommitValidationVisible))]
     public partial string GitCommitValidationMessage { get; set; } = string.Empty;
 
-    public bool IsRequestWorkspaceVisible => !IsGitDiffVisible && !IsGitCommitVisible;
+    [ObservableProperty]
+    public partial bool IsGitRemoteReviewAvailable { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRequestWorkspaceVisible))]
+    public partial bool IsGitRemoteVisible { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsGitRemoteBusy { get; set; }
+
+    [ObservableProperty]
+    public partial string GitRemoteName { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string GitRemoteBranch { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string GitRemoteSummary { get; set; } = string.Empty;
+
+    public bool IsRequestWorkspaceVisible =>
+        !IsGitDiffVisible && !IsGitCommitVisible && !IsGitRemoteVisible;
 
     public bool IsGitCommitValidationVisible =>
         !string.IsNullOrEmpty(GitCommitValidationMessage);

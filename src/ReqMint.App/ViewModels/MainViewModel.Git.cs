@@ -40,6 +40,7 @@ public partial class MainViewModel
             GitRepositoryRoot = status.RepositoryRoot;
             CloseGitDiff();
             CloseGitCommit();
+            CloseGitRemote();
             GitChanges.Clear();
             var managedChanges = status.Changes
                 .Where(change => ReqMintGitFileClassifier.IsManaged(change.Path))
@@ -50,6 +51,7 @@ public partial class MainViewModel
             }
 
             GitConflictCount = managedChanges.Count(change => change.IsConflict);
+            IsGitRemoteReviewAvailable = true;
             var stagedReqMintCount = managedChanges.Count(change => change.HasStagedChanges);
             IsGitCommitReviewAvailable = stagedReqMintCount > 0;
 
@@ -120,7 +122,9 @@ public partial class MainViewModel
         GitSecretWarningCount = 0;
         GitConflictCount = 0;
         IsGitCommitReviewAvailable = false;
+        IsGitRemoteReviewAvailable = false;
         CloseGitCommit();
+        CloseGitRemote();
         GitChanges.Clear();
         CloseGitDiff();
         OnPropertyChanged(nameof(IsGitChangeListEmpty));
@@ -129,6 +133,7 @@ public partial class MainViewModel
     private async Task OpenGitDiffAsync(GitFileChange change)
     {
         CloseGitCommit();
+        CloseGitRemote();
         _selectedGitChange = change;
         GitDiffPath = change.Path;
         HasGitWorkingTreeDiff = change.HasWorkingTreeChanges;
@@ -403,6 +408,7 @@ public partial class MainViewModel
             }
 
             CloseGitDiff();
+            CloseGitRemote();
             GitCommitFiles.Clear();
             foreach (var path in preflight.StagedPaths)
             {
@@ -527,6 +533,128 @@ public partial class MainViewModel
             _ => Localize(
                 "GitCommitNoStagedFiles",
                 "There are no staged ReqMint files to commit"),
+        };
+    }
+
+    [RelayCommand]
+    private async Task ReviewGitRemoteAsync(CancellationToken cancellationToken)
+    {
+        var workspaceDirectory = _workspaceDirectory;
+        if (!IsGitRemoteReviewAvailable
+            || IsGitRemoteBusy
+            || workspaceDirectory is null)
+        {
+            return;
+        }
+
+        IsGitRemoteBusy = true;
+        try
+        {
+            var preflight = await _gitService.GetRemotePreflightAsync(
+                workspaceDirectory,
+                cancellationToken);
+            if (!preflight.IsReady)
+            {
+                ShowRemotePreflightFailure(preflight);
+                return;
+            }
+
+            CloseGitDiff();
+            CloseGitCommit();
+            GitRemoteName = preflight.RemoteName;
+            GitRemoteBranch = preflight.Branch;
+            GitRemoteSummary = Localize(
+                "GitRemoteReviewMessage",
+                "Fetch remote-tracking updates from {0}/{1} without changing your working tree or current branch.",
+                preflight.RemoteName,
+                preflight.Branch);
+            IsGitRemoteVisible = true;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            WorkspaceStatus = Localize(
+                "GitRemotePreflightFailed",
+                "Remote configuration could not be inspected");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+        finally
+        {
+            IsGitRemoteBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelGitRemote() => CloseGitRemote();
+
+    [RelayCommand]
+    private async Task ConfirmGitFetchAsync(CancellationToken cancellationToken)
+    {
+        var workspaceDirectory = _workspaceDirectory;
+        if (!IsGitRemoteVisible || IsGitRemoteBusy || workspaceDirectory is null)
+        {
+            return;
+        }
+
+        IsGitRemoteBusy = true;
+        try
+        {
+            var result = await _gitService.FetchAsync(workspaceDirectory, cancellationToken);
+            if (result.State == GitFetchResultState.PreflightBlocked)
+            {
+                CloseGitRemote();
+                ShowRemotePreflightFailure(result.Preflight);
+                return;
+            }
+
+            CloseGitRemote();
+            WorkspaceStatus = Localize(
+                "GitFetchCompleted",
+                "Remote check complete · behind {0} · ahead {1}",
+                result.BehindBy,
+                result.AheadBy);
+            await RefreshGitStatusAsync(workspaceDirectory, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            WorkspaceStatus = Localize(
+                "GitFetchFailed",
+                "Remote check failed; no local files were changed");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+        finally
+        {
+            IsGitRemoteBusy = false;
+        }
+    }
+
+    private void CloseGitRemote()
+    {
+        IsGitRemoteVisible = false;
+        IsGitRemoteBusy = false;
+        GitRemoteName = string.Empty;
+        GitRemoteBranch = string.Empty;
+        GitRemoteSummary = string.Empty;
+    }
+
+    private void ShowRemotePreflightFailure(GitRemotePreflight preflight)
+    {
+        WorkspaceStatus = preflight.State switch
+        {
+            GitRemotePreflightState.DetachedHead => Localize(
+                "GitRemoteDetachedHead",
+                "Remote check requires an active local branch"),
+            GitRemotePreflightState.UnsupportedRemote => Localize(
+                "GitRemoteUnsupported",
+                "This upstream configuration is not supported safely"),
+            _ => Localize(
+                "GitRemoteNoUpstream",
+                "The current branch has no upstream remote"),
         };
     }
 

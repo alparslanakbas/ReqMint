@@ -25,6 +25,14 @@ public interface IGitService
         string workspaceDirectory,
         string message,
         CancellationToken cancellationToken = default);
+
+    Task<GitRemotePreflight> GetRemotePreflightAsync(
+        string workspaceDirectory,
+        CancellationToken cancellationToken = default);
+
+    Task<GitFetchResult> FetchAsync(
+        string workspaceDirectory,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record GitRepositoryStatus
@@ -137,6 +145,46 @@ public static class GitCommitMessageValidator
         return message.Length is >= MinimumLength and <= MaximumLength
             && !message.Any(character => character is '\r' or '\n' || char.IsControl(character));
     }
+}
+
+public sealed record GitRemotePreflight
+{
+    public GitRemotePreflightState State { get; init; } = GitRemotePreflightState.NoUpstream;
+
+    public string RemoteName { get; init; } = string.Empty;
+
+    public string Branch { get; init; } = string.Empty;
+
+    public int AheadBy { get; init; }
+
+    public int BehindBy { get; init; }
+
+    public bool IsReady => State == GitRemotePreflightState.Ready;
+}
+
+public enum GitRemotePreflightState
+{
+    Ready,
+    NoUpstream,
+    DetachedHead,
+    UnsupportedRemote,
+}
+
+public sealed record GitFetchResult
+{
+    public GitFetchResultState State { get; init; } = GitFetchResultState.PreflightBlocked;
+
+    public GitRemotePreflight Preflight { get; init; } = new();
+
+    public int AheadBy { get; init; }
+
+    public int BehindBy { get; init; }
+}
+
+public enum GitFetchResultState
+{
+    Fetched,
+    PreflightBlocked,
 }
 
 public sealed record GitDiffPreview

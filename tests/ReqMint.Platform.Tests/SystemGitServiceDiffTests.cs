@@ -288,6 +288,57 @@ public sealed class SystemGitServiceDiffTests
             result.Preflight.State);
     }
 
+    [Fact]
+    public async Task GetRemotePreflightAsync_FailsClosedWithoutAnUpstream()
+    {
+        using var repository = await TemporaryGitRepository.CreateAsync();
+        await repository.WriteAsync(
+            "reqmint.workspace.json",
+            "{\"name\":\"Local only\"}");
+        await repository.CommitAllAsync("initial workspace");
+
+        var preflight = await new SystemGitService().GetRemotePreflightAsync(repository.Path);
+
+        Assert.Equal(GitRemotePreflightState.NoUpstream, preflight.State);
+        Assert.False(preflight.IsReady);
+        Assert.Empty(preflight.RemoteName);
+    }
+
+    [Fact]
+    public async Task FetchAsync_UpdatesTrackingRefsWithoutChangingLocalFilesOrHead()
+    {
+        using var upstream = await TemporaryGitRepository.CreateAsync();
+        await upstream.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Original\",\"requests\":[]}");
+        await upstream.CommitAllAsync("initial workspace");
+        using var local = await TemporaryGitRepository.CloneAsync(upstream.Path);
+        var originalHead = await local.GetHeadAsync();
+        await local.WriteAsync("notes.txt", "local draft must survive fetch");
+
+        await upstream.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Remote update\",\"requests\":[]}");
+        await upstream.CommitAllAsync("remote workspace update");
+
+        var service = new SystemGitService();
+        var review = await service.GetRemotePreflightAsync(local.Path);
+        var result = await service.FetchAsync(local.Path);
+        var localHead = await local.GetHeadAsync();
+        var localContent = await local.ReadAsync("collections/orders.json");
+        var localDraft = await local.ReadAsync("notes.txt");
+
+        Assert.True(review.IsReady);
+        Assert.Equal("origin", review.RemoteName);
+        Assert.Equal(GitFetchResultState.Fetched, result.State);
+        Assert.Equal(1, result.BehindBy);
+        Assert.Equal(0, result.AheadBy);
+        Assert.Equal(originalHead, localHead);
+        Assert.Contains("Original", localContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Remote update", localContent, StringComparison.Ordinal);
+        Assert.Equal("local draft must survive fetch", localDraft);
+    }
+
     private sealed class TemporaryGitRepository : IDisposable
     {
         private TemporaryGitRepository(string path)
@@ -311,6 +362,21 @@ public sealed class SystemGitServiceDiffTests
             return repository;
         }
 
+        public static async Task<TemporaryGitRepository> CloneAsync(string sourcePath)
+        {
+            var parent = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                "ReqMint.Git.Tests",
+                Guid.NewGuid().ToString("N"));
+            var path = System.IO.Path.Combine(parent, "clone");
+            Directory.CreateDirectory(parent);
+            await RunGitProcessAsync(parent, "clone", "--quiet", "--", sourcePath, path);
+            var repository = new TemporaryGitRepository(path);
+            await repository.RunGitAsync("config", "user.name", "ReqMint Tests");
+            await repository.RunGitAsync("config", "user.email", "reqmint-tests@example.invalid");
+            return repository;
+        }
+
         public async Task WriteAsync(string relativePath, string content)
         {
             var fullPath = System.IO.Path.Combine(
@@ -318,6 +384,17 @@ public sealed class SystemGitServiceDiffTests
                 relativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(fullPath)!);
             await File.WriteAllTextAsync(fullPath, content);
+        }
+
+        public Task<string> ReadAsync(string relativePath) => File.ReadAllTextAsync(
+            System.IO.Path.Combine(
+                Path,
+                relativePath.Replace('/', System.IO.Path.DirectorySeparatorChar)));
+
+        public async Task<string> GetHeadAsync()
+        {
+            var result = await RunGitProcessAsync(Path, "rev-parse", "HEAD");
+            return result.Trim();
         }
 
         public async Task CommitAllAsync(string message)
@@ -328,10 +405,17 @@ public sealed class SystemGitServiceDiffTests
 
         public async Task RunGitAsync(params string[] arguments)
         {
+            await RunGitProcessAsync(Path, arguments);
+        }
+
+        private static async Task<string> RunGitProcessAsync(
+            string workingDirectory,
+            params string[] arguments)
+        {
             var startInfo = new ProcessStartInfo
             {
                 FileName = "git",
-                WorkingDirectory = Path,
+                WorkingDirectory = workingDirectory,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -352,6 +436,8 @@ public sealed class SystemGitServiceDiffTests
                 throw new InvalidOperationException(
                     $"Git test command failed: {await standardError}\n{await standardOutput}");
             }
+
+            return await standardOutput;
         }
 
         public void Dispose()
@@ -367,6 +453,13 @@ public sealed class SystemGitServiceDiffTests
                 }
 
                 Directory.Delete(Path, recursive: true);
+                var parent = Directory.GetParent(Path)?.FullName;
+                if (parent is not null
+                    && Directory.Exists(parent)
+                    && !Directory.EnumerateFileSystemEntries(parent).Any())
+                {
+                    Directory.Delete(parent);
+                }
             }
         }
     }
