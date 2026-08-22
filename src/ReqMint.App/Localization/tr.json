@@ -1,0 +1,22 @@
+{
+  "TextWorkspace": "Çalışma alanı",
+  "TextSearch": "Ara veya bir komut çalıştır...",
+  "TextFilterRequests": "İstekleri filtrele...",
+  "TextRequestName": "İstek adı",
+  "TextSave": "Kaydet",
+  "TextSend": "Gönder",
+  "TextParams": "Parametreler",
+  "TextHeaders": "Başlıklar",
+  "TextBody": "Gövde",
+  "TextEnvironment": "Ortam",
+  "TextSettings": "Ayarlar",
+  "TextAddParameter": "＋ Parametre ekle",
+  "TextAddHeader": "＋ Başlık ekle",
+  "TextNewEnvironment": "Yeni ortam",
+  "TextEnvironmentName": "Ortam adı",
+  "TextAddVariable": "＋ Değişken ekle",
+  "TextSaveEnvironment": "Ortamı kaydet",
+  "TextLanguage": "Dil",
+  "TextRequestTimeout": "İstek zaman aşımı",
+  "TextSeconds": "saniye"
+}

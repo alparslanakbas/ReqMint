@@ -178,7 +178,8 @@ public sealed class MainViewModelWorkspaceTests
             store,
             new StubFolderPicker(directory),
             new RequestTemplateResolver(vault),
-            vault);
+            vault,
+            localization: null!);
     }
 
     private static string CreateWorkspacePath() => Path.Combine(

@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ReqMint.App.ViewModels"
+        xmlns:services="using:ReqMint.App.Services"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         x:Class="ReqMint.App.Views.MainWindow"
@@ -47,7 +48,7 @@
                 <TextBox Grid.Column="4"
                          Height="34"
                          VerticalAlignment="Center"
-                         PlaceholderText="Search or run a command..." />
+                         PlaceholderText="{DynamicResource TextSearch}" />
 
                 <ComboBox Grid.Column="6"
                           ItemsSource="{Binding EnvironmentNames}"
@@ -83,7 +84,7 @@
                     BorderThickness="0,0,1,0">
                 <Grid RowDefinitions="Auto,Auto,*,Auto">
                     <Grid Grid.Row="0" Margin="16,16,16,10" ColumnDefinitions="*,Auto,6,Auto">
-                        <TextBlock Text="Workspace" FontSize="17" FontWeight="SemiBold" />
+                        <TextBlock Text="{DynamicResource TextWorkspace}" FontSize="17" FontWeight="SemiBold" />
                         <Button Grid.Column="1"
                                 Content="▣＋"
                                 Width="30"
@@ -100,7 +101,7 @@
                                 ToolTip.Tip="Create a new request" />
                     </Grid>
 
-                    <TextBox Grid.Row="1" Margin="12,0,12,12" PlaceholderText="Filter requests..." />
+                    <TextBox Grid.Row="1" Margin="12,0,12,12" PlaceholderText="{DynamicResource TextFilterRequests}" />
 
                     <ScrollViewer Grid.Row="2">
                         <ItemsControl Margin="8,0" ItemsSource="{Binding Collections}">
@@ -167,7 +168,7 @@
                                  BorderThickness="0"
                                  Background="Transparent"
                                  FontWeight="SemiBold"
-                                 PlaceholderText="Request name" />
+                                 PlaceholderText="{DynamicResource TextRequestName}" />
                         <TextBlock Text="×" Classes="secondary" />
                     </StackPanel>
                 </Border>
@@ -179,17 +180,17 @@
                               HorizontalContentAlignment="Stretch" />
                     <TextBox Grid.Column="2" Text="{Binding Url}" PlaceholderText="Enter an HTTP or HTTPS URL" />
                     <Button Grid.Column="4"
-                            Content="Save"
+                            Content="{DynamicResource TextSave}"
                             Command="{Binding SaveRequestCommand}" />
                     <Button Grid.Column="6"
                             Classes="primary"
-                            Content="Send"
+                            Content="{DynamicResource TextSend}"
                             Command="{Binding SendCommand}" />
                 </Grid>
 
                 <Grid Grid.Row="2" RowDefinitions="2*,42,3*">
                     <TabControl Grid.Row="0" Background="{DynamicResource AppBackgroundBrush}">
-                        <TabItem Header="Params">
+                        <TabItem Header="{DynamicResource TextParams}">
                             <Grid RowDefinitions="*,Auto" Margin="18,12">
                                 <ScrollViewer Grid.Row="0">
                                     <ItemsControl ItemsSource="{Binding QueryParameters}">
@@ -206,12 +207,12 @@
                                 </ScrollViewer>
                                 <Button Grid.Row="1"
                                         HorizontalAlignment="Left"
-                                        Content="＋ Add parameter"
+                                        Content="{DynamicResource TextAddParameter}"
                                         Command="{Binding AddQueryParameterCommand}" />
                             </Grid>
                         </TabItem>
 
-                        <TabItem Header="Headers">
+                        <TabItem Header="{DynamicResource TextHeaders}">
                             <Grid RowDefinitions="*,Auto" Margin="18,12">
                                 <ScrollViewer Grid.Row="0">
                                     <ItemsControl ItemsSource="{Binding Headers}">
@@ -228,12 +229,12 @@
                                 </ScrollViewer>
                                 <Button Grid.Row="1"
                                         HorizontalAlignment="Left"
-                                        Content="＋ Add header"
+                                        Content="{DynamicResource TextAddHeader}"
                                         Command="{Binding AddHeaderCommand}" />
                             </Grid>
                         </TabItem>
 
-                        <TabItem Header="Body">
+                        <TabItem Header="{DynamicResource TextBody}">
                             <Grid RowDefinitions="Auto,12,*" Margin="18,12">
                                 <Grid Grid.Row="0" ColumnDefinitions="180,16,*">
                                     <ComboBox ItemsSource="{Binding BodyTypes}"
@@ -254,13 +255,13 @@
                             </Grid>
                         </TabItem>
 
-                        <TabItem Header="Environment">
+                        <TabItem Header="{DynamicResource TextEnvironment}">
                             <Grid RowDefinitions="Auto,12,*,12,Auto" Margin="18,12">
                                 <Grid Grid.Row="0" ColumnDefinitions="*,10,Auto">
                                     <TextBox Text="{Binding EnvironmentDraftName}"
-                                             PlaceholderText="Environment name" />
+                                             PlaceholderText="{DynamicResource TextEnvironmentName}" />
                                     <Button Grid.Column="2"
-                                            Content="New environment"
+                                            Content="{DynamicResource TextNewEnvironment}"
                                             Command="{Binding NewEnvironmentCommand}" />
                                 </Grid>
 
@@ -290,11 +291,11 @@
                                 </ScrollViewer>
 
                                 <Grid Grid.Row="4" ColumnDefinitions="Auto,10,Auto,16,*">
-                                    <Button Content="＋ Add variable"
+                                    <Button Content="{DynamicResource TextAddVariable}"
                                             Command="{Binding AddEnvironmentVariableCommand}" />
                                     <Button Grid.Column="2"
                                             Classes="primary"
-                                            Content="Save environment"
+                                            Content="{DynamicResource TextSaveEnvironment}"
                                             Command="{Binding SaveEnvironmentCommand}" />
                                     <TextBlock Grid.Column="4"
                                                Text="Secret inputs are stored in the OS vault and cleared after saving."
@@ -305,17 +306,26 @@
                             </Grid>
                         </TabItem>
 
-                        <TabItem Header="Settings">
+                        <TabItem Header="{DynamicResource TextSettings}">
                             <StackPanel Margin="18" Spacing="10" MaxWidth="560" HorizontalAlignment="Left">
-                                <TextBlock Text="Request timeout" FontWeight="SemiBold" />
+                                <TextBlock Text="{DynamicResource TextRequestTimeout}" FontWeight="SemiBold" />
                                 <Grid ColumnDefinitions="160,10,Auto">
                                     <NumericUpDown Grid.Column="0"
                                                    Minimum="1"
                                                    Maximum="600"
                                                    Increment="1"
                                                    Value="{Binding TimeoutSeconds}" />
-                                    <TextBlock Grid.Column="2" Text="seconds" Classes="secondary" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Text="{DynamicResource TextSeconds}" Classes="secondary" VerticalAlignment="Center" />
                                 </Grid>
+                                <TextBlock Text="{DynamicResource TextLanguage}" FontWeight="SemiBold" Margin="0,10,0,0" />
+                                <ComboBox ItemsSource="{Binding Localization.Languages}"
+                                          SelectedItem="{Binding Localization.SelectedLanguage}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="services:LanguageOption">
+                                            <TextBlock Text="{Binding DisplayName}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
                                 <TextBlock Text="The request and response preview are cancelled when this limit is reached."
                                            Classes="secondary"
                                            TextWrapping="Wrap" />

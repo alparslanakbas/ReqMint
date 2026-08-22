@@ -1,0 +1,22 @@
+{
+  "TextWorkspace": "Workspace",
+  "TextSearch": "Search or run a command...",
+  "TextFilterRequests": "Filter requests...",
+  "TextRequestName": "Request name",
+  "TextSave": "Save",
+  "TextSend": "Send",
+  "TextParams": "Params",
+  "TextHeaders": "Headers",
+  "TextBody": "Body",
+  "TextEnvironment": "Environment",
+  "TextSettings": "Settings",
+  "TextAddParameter": "＋ Add parameter",
+  "TextAddHeader": "＋ Add header",
+  "TextNewEnvironment": "New environment",
+  "TextEnvironmentName": "Environment name",
+  "TextAddVariable": "＋ Add variable",
+  "TextSaveEnvironment": "Save environment",
+  "TextLanguage": "Language",
+  "TextRequestTimeout": "Request timeout",
+  "TextSeconds": "seconds"
+}

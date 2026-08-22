@@ -36,6 +36,8 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<EnvironmentVariableViewModel> EnvironmentVariables { get; } = [];
 
+    public LocalizationService Localization { get; }
+
     [ObservableProperty]
     public partial string WorkspaceName { get; set; } = "No workspace";
 
@@ -123,13 +125,15 @@ public partial class MainViewModel : ViewModelBase
         IWorkspaceStore workspaceStore,
         IWorkspaceFolderPicker folderPicker,
         RequestTemplateResolver templateResolver,
-        ISecretVault secretVault)
+        ISecretVault secretVault,
+        LocalizationService localization)
     {
         _requestExecutor = requestExecutor;
         _workspaceStore = workspaceStore;
         _folderPicker = folderPicker;
         _templateResolver = templateResolver;
         _secretVault = secretVault;
+        Localization = localization;
     }
 
     partial void OnEnvironmentNameChanged(string value)

@@ -26,13 +26,15 @@ public partial class App : Application
         {
             _requestExecutor = new HttpRequestExecutor();
             var secretVault = PlatformSecretVaultFactory.Create();
+            var localization = new LocalizationService();
             var mainWindow = new MainWindow();
             mainWindow.DataContext = new MainViewModel(
                 _requestExecutor,
                 new WorkspaceJsonStore(),
                 new AvaloniaWorkspaceFolderPicker(mainWindow),
                 new RequestTemplateResolver(secretVault),
-                secretVault);
+                secretVault,
+                localization);
             desktop.MainWindow = mainWindow;
             desktop.Exit += (_, _) => _requestExecutor.Dispose();
         }
