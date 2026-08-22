@@ -2,7 +2,7 @@
 
 ReqMint currently ships with English (`en`) and Turkish (`tr`). UI text is loaded from JSON resources under `src/ReqMint.App/Localization` and applied through dynamic Avalonia resources, allowing the language to change without restarting the application.
 
-The selected language is stored in the user's local application-data folder as `ReqMint/ui-settings.json`. It is deliberately kept outside workspaces so language preferences are never committed to Git or shared with teammates.
+The selected language and other device-level preferences, such as request-history retention, are stored in the user's local application-data folder as `ReqMint/ui-settings.json`. The file is deliberately kept outside workspaces so personal preferences are never committed to Git or shared with teammates. Existing language-only settings files remain compatible as new preferences receive safe defaults.
 
 To add a language:
 

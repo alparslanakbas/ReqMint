@@ -8,7 +8,7 @@ namespace ReqMint.App.Services;
 
 public partial class LocalizationService : ObservableObject
 {
-    private readonly string _settingsPath;
+    private readonly IAppSettingsService _settings;
 
     public IReadOnlyList<LanguageOption> Languages { get; } =
     [
@@ -19,14 +19,11 @@ public partial class LocalizationService : ObservableObject
     [ObservableProperty]
     public partial LanguageOption SelectedLanguage { get; set; }
 
-    public LocalizationService(string? settingsDirectory = null)
+    public LocalizationService(IAppSettingsService settings)
     {
-        settingsDirectory ??= Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ReqMint");
-        _settingsPath = Path.Combine(settingsDirectory, "ui-settings.json");
+        _settings = settings;
 
-        var savedLanguage = ReadSavedLanguage();
+        var savedLanguage = settings.Current.Language;
         var systemLanguage = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
         SelectedLanguage = Languages.FirstOrDefault(language => language.Code == savedLanguage)
             ?? Languages.FirstOrDefault(language => language.Code == systemLanguage)
@@ -36,74 +33,16 @@ public partial class LocalizationService : ObservableObject
     partial void OnSelectedLanguageChanged(LanguageOption value)
     {
         Apply(value);
-        SaveLanguage(value.Code);
+        if (!string.Equals(_settings.Current.Language, value.Code, StringComparison.Ordinal))
+        {
+            _settings.Update(_settings.Current with { Language = value.Code });
+        }
     }
 
     public string? GetString(string key) =>
         Application.Current?.Resources.TryGetResource(key, theme: null, out var value) == true
             ? value as string
             : null;
-
-    private string? ReadSavedLanguage()
-    {
-        try
-        {
-            if (!File.Exists(_settingsPath))
-            {
-                return null;
-            }
-
-            using var stream = File.OpenRead(_settingsPath);
-            return JsonSerializer.Deserialize<UiSettings>(stream)?.Language;
-        }
-        catch (Exception exception) when (
-            exception is IOException or UnauthorizedAccessException or JsonException)
-        {
-            return null;
-        }
-    }
-
-    private void SaveLanguage(string language)
-    {
-        var directory = Path.GetDirectoryName(_settingsPath);
-        if (directory is null)
-        {
-            return;
-        }
-
-        var temporaryPath = $"{_settingsPath}.tmp-{Guid.NewGuid():N}";
-        try
-        {
-            Directory.CreateDirectory(directory);
-            using (var stream = File.Create(temporaryPath))
-            {
-                JsonSerializer.Serialize(stream, new UiSettings(language));
-                stream.Flush(flushToDisk: true);
-            }
-
-            File.Move(temporaryPath, _settingsPath, overwrite: true);
-        }
-        catch (Exception exception) when (
-            exception is IOException or UnauthorizedAccessException or JsonException)
-        {
-            // Language persistence is best-effort and must never prevent startup.
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-            {
-                try
-                {
-                    File.Delete(temporaryPath);
-                }
-                catch (Exception exception) when (
-                    exception is IOException or UnauthorizedAccessException)
-                {
-                    // A stale temporary settings file is safe to ignore.
-                }
-            }
-        }
-    }
 
     private static void Apply(LanguageOption language)
     {
@@ -125,6 +64,4 @@ public partial class LocalizationService : ObservableObject
             applicationResources[resource.Key] = resource.Value;
         }
     }
-
-    private sealed record UiSettings(string Language);
 }

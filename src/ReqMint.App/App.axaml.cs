@@ -26,10 +26,11 @@ public partial class App : Application
         {
             _requestExecutor = new HttpRequestExecutor();
             var secretVault = PlatformSecretVaultFactory.Create();
-            var localization = new LocalizationService();
             var applicationData = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "ReqMint");
+            var settings = new JsonAppSettingsService(applicationData);
+            var localization = new LocalizationService(settings);
             var mainWindow = new MainWindow();
             mainWindow.DataContext = new MainViewModel(
                 _requestExecutor,
@@ -39,7 +40,9 @@ public partial class App : Application
                 secretVault,
                 localization,
                 new AvaloniaUnsavedChangesPrompt(mainWindow, localization),
-                new SqliteRequestHistoryStore(Path.Combine(applicationData, "reqmint.db")));
+                new SqliteRequestHistoryStore(Path.Combine(applicationData, "reqmint.db")),
+                new AvaloniaHistoryClearPrompt(mainWindow, localization),
+                settings);
             desktop.MainWindow = mainWindow;
             desktop.Exit += (_, _) => _requestExecutor.Dispose();
         }

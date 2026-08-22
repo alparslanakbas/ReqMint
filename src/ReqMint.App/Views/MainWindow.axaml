@@ -161,24 +161,39 @@
                     </Border>
                     </Grid>
 
-                    <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding IsHistoryVisible}">
-                    <Grid Grid.Row="0" Margin="16" ColumnDefinitions="*,Auto">
+                    <Grid RowDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding IsHistoryVisible}">
+                    <Grid Grid.Row="0" Margin="16,16,16,10" ColumnDefinitions="*,Auto,6,Auto">
                         <StackPanel Spacing="3">
                             <TextBlock Text="{DynamicResource TextHistory}" FontSize="17" FontWeight="SemiBold" />
                             <TextBlock Text="{DynamicResource TextHistorySubtitle}" Classes="secondary" FontSize="11" />
                         </StackPanel>
                         <Button Grid.Column="1"
+                                Content="⌫"
+                                Width="30"
+                                Height="30"
+                                Padding="0"
+                                Command="{Binding ClearHistoryCommand}"
+                                ToolTip.Tip="{DynamicResource TextClearHistory}" />
+                        <Button Grid.Column="3"
                                 Content="↻"
                                 Width="30"
                                 Height="30"
                                 Padding="0"
                                 Command="{Binding ShowHistoryCommand}"
-                                ToolTip.Tip="Refresh history" />
+                                ToolTip.Tip="{DynamicResource TextRefreshHistory}" />
                     </Grid>
 
-                    <ScrollViewer Grid.Row="1">
-                        <ItemsControl Margin="8,0" ItemsSource="{Binding History}">
-                            <ItemsControl.ItemTemplate>
+                    <TextBox Grid.Row="1"
+                             Margin="12,0,12,12"
+                             Text="{Binding HistorySearchText}"
+                             PlaceholderText="{DynamicResource TextSearchHistory}" />
+
+                    <Grid Grid.Row="2">
+                        <ListBox Margin="8,0"
+                                 ItemsSource="{Binding History}"
+                                 Background="Transparent"
+                                 BorderThickness="0">
+                            <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="vm:RequestHistoryItemViewModel">
                                     <Button Padding="10,8"
                                             Margin="0,0,0,5"
@@ -209,15 +224,22 @@
                                         </Grid>
                                     </Button>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-
-                    <Border Grid.Row="2" Margin="12" Padding="10" CornerRadius="6" Background="{DynamicResource SurfaceRaisedBrush}">
-                        <TextBlock Text="{DynamicResource TextHistoryPrivacy}"
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock Margin="18"
+                                   Text="{DynamicResource TextNoHistoryResults}"
+                                   IsVisible="{Binding IsHistoryEmpty}"
                                    Classes="secondary"
-                                   FontSize="11"
-                                   TextWrapping="Wrap" />
+                                   TextWrapping="Wrap"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+
+                    <Border Grid.Row="3" Margin="12" Padding="10" CornerRadius="6" Background="{DynamicResource SurfaceRaisedBrush}">
+                            <TextBlock Text="{DynamicResource TextHistoryPrivacy}"
+                                       Classes="secondary"
+                                       FontSize="11"
+                                       TextWrapping="Wrap" />
                     </Border>
                     </Grid>
                 </Grid>
@@ -391,6 +413,19 @@
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
+                                <TextBlock Text="{DynamicResource TextHistoryRetention}" FontWeight="SemiBold" Margin="0,10,0,0" />
+                                <Grid ColumnDefinitions="160,10,*">
+                                    <NumericUpDown Grid.Column="0"
+                                                   Minimum="25"
+                                                   Maximum="2000"
+                                                   Increment="25"
+                                                   Value="{Binding HistoryRetentionLimit}" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{DynamicResource TextHistoryRetentionHelp}"
+                                               Classes="secondary"
+                                               VerticalAlignment="Center"
+                                               TextWrapping="Wrap" />
+                                </Grid>
                                 <TextBlock Text="{DynamicResource TextCollectionManagement}" FontWeight="SemiBold" Margin="0,10,0,0" />
                                 <Grid ColumnDefinitions="*,10,Auto,10,Auto">
                                     <TextBox Text="{Binding CollectionDraftName}"

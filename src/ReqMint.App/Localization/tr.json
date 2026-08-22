@@ -50,5 +50,16 @@
   "TextHistoryPrivacy": "Yanıt gövdeleri ve hassas değerler saklanmaz.",
   "HistoryResponseNotStored": "Yanıt gövdeleri geçmişte saklanmaz. Yanıtı incelemek için isteği yeniden gönderin.",
   "StatusOpenedHistory": "Geçmiş kaydı açıldı",
-  "StatusHistoryUnavailable": "İstek tamamlandı; geçmiş kaydedilemedi"
+  "StatusHistoryUnavailable": "İstek tamamlandı; geçmiş kaydedilemedi",
+  "TextSearchHistory": "Metot, ad, URL veya durum ara...",
+  "TextClearHistory": "Geçmişi temizle",
+  "TextNoHistoryResults": "Eşleşen geçmiş kaydı bulunamadı.",
+  "ClearHistoryTitle": "İstek geçmişini temizle",
+  "ClearHistoryMessage": "'{1}' içindeki {0} geçmiş kaydı kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",
+  "ClearHistoryConfirm": "Geçmişi temizle",
+  "StatusHistoryCleared": "İstek geçmişi temizlendi",
+  "StatusHistoryClearFailed": "İstek geçmişi temizlenemedi",
+  "TextHistoryRetention": "Geçmiş saklama sınırı",
+  "TextHistoryRetentionHelp": "Her çalışma alanı için 25 ile 2.000 arasında istek özeti sakla.",
+  "TextRefreshHistory": "Geçmişi yenile"
 }

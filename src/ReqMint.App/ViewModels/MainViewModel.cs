@@ -130,6 +130,8 @@ public partial class MainViewModel : ViewModelBase
     private readonly ISecretVault _secretVault;
     private readonly IUnsavedChangesPrompt _unsavedChangesPrompt;
     private readonly IRequestHistoryStore _historyStore;
+    private readonly IHistoryClearPrompt _historyClearPrompt;
+    private readonly IAppSettingsService _appSettings;
     private WorkspaceSnapshot? _workspaceSnapshot;
     private string? _workspaceDirectory;
     private Guid? _selectedRequestId;
@@ -148,7 +150,9 @@ public partial class MainViewModel : ViewModelBase
         ISecretVault secretVault,
         LocalizationService localization,
         IUnsavedChangesPrompt unsavedChangesPrompt,
-        IRequestHistoryStore historyStore)
+        IRequestHistoryStore historyStore,
+        IHistoryClearPrompt historyClearPrompt,
+        IAppSettingsService appSettings)
     {
         _requestExecutor = requestExecutor;
         _workspaceStore = workspaceStore;
@@ -158,6 +162,9 @@ public partial class MainViewModel : ViewModelBase
         Localization = localization;
         _unsavedChangesPrompt = unsavedChangesPrompt;
         _historyStore = historyStore;
+        _historyClearPrompt = historyClearPrompt;
+        _appSettings = appSettings;
+        HistoryRetentionLimit = appSettings.Current.HistoryRetentionLimit;
         _cleanRequestDraft = CaptureRequestDraft();
     }
 
@@ -700,12 +707,17 @@ public partial class MainViewModel : ViewModelBase
 
         try
         {
-            await _historyStore.AddAsync(entry, cancellationToken: CancellationToken.None);
-            History.Insert(0, new RequestHistoryItemViewModel(entry, OpenHistoryEntryAsync));
-            while (History.Count > 100)
+            await _historyStore.AddAsync(
+                entry,
+                (int)HistoryRetentionLimit,
+                CancellationToken.None);
+            _historyEntries.Insert(0, entry);
+            while (_historyEntries.Count > HistoryRetentionLimit)
             {
-                History.RemoveAt(History.Count - 1);
+                _historyEntries.RemoveAt(_historyEntries.Count - 1);
             }
+
+            ApplyHistoryFilter();
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

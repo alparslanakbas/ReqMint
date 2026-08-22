@@ -50,5 +50,16 @@
   "TextHistoryPrivacy": "Response bodies and sensitive values are not stored.",
   "HistoryResponseNotStored": "Response bodies are not stored in history. Send the request again to inspect its response.",
   "StatusOpenedHistory": "Opened history entry",
-  "StatusHistoryUnavailable": "Request completed; history could not be saved"
+  "StatusHistoryUnavailable": "Request completed; history could not be saved",
+  "TextSearchHistory": "Search method, name, URL or status...",
+  "TextClearHistory": "Clear history",
+  "TextNoHistoryResults": "No matching history entries.",
+  "ClearHistoryTitle": "Clear request history",
+  "ClearHistoryMessage": "Permanently remove {0} history entries from '{1}'? This cannot be undone.",
+  "ClearHistoryConfirm": "Clear history",
+  "StatusHistoryCleared": "Request history cleared",
+  "StatusHistoryClearFailed": "Request history could not be cleared",
+  "TextHistoryRetention": "History retention",
+  "TextHistoryRetentionHelp": "Keep between 25 and 2,000 request summaries per workspace.",
+  "TextRefreshHistory": "Refresh history"
 }

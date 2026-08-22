@@ -224,6 +224,78 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task HistorySearch_FiltersAcrossRequestAndResponseMetadata()
+    {
+        var snapshot = CreateSnapshot();
+        var entries = new[]
+        {
+            CreateHistoryEntry(snapshot.Workspace.Id, "List orders", "GET", 200),
+            CreateHistoryEntry(snapshot.Workspace.Id, "Create customer", "POST", 201),
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = snapshot },
+            CreateWorkspacePath(),
+            historyStore: new RecordingHistoryStore(entries));
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        viewModel.HistorySearchText = "post 201";
+
+        var result = Assert.Single(viewModel.History);
+        Assert.Equal("Create customer", result.Name);
+    }
+
+    [Fact]
+    public async Task ClearHistoryCommand_RequiresConfirmationBeforeDeletingEntries()
+    {
+        var snapshot = CreateSnapshot();
+        var historyStore = new RecordingHistoryStore(
+            [CreateHistoryEntry(snapshot.Workspace.Id, "List orders", "GET", 200)]);
+        var prompt = new StubHistoryClearPrompt { Confirmed = false };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = snapshot },
+            CreateWorkspacePath(),
+            historyStore: historyStore,
+            historyClearPrompt: prompt);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        await viewModel.ClearHistoryCommand.ExecuteAsync(null);
+
+        Assert.Single(historyStore.Entries);
+        Assert.Equal(1, prompt.CallCount);
+
+        prompt.Confirmed = true;
+        await viewModel.ClearHistoryCommand.ExecuteAsync(null);
+
+        Assert.Empty(historyStore.Entries);
+        Assert.Empty(viewModel.History);
+        Assert.Equal("Request history cleared", viewModel.WorkspaceStatus);
+    }
+
+    [Fact]
+    public async Task HistoryRetentionLimit_PersistsAndControlsTrimming()
+    {
+        var settings = new StubAppSettingsService();
+        var historyStore = new RecordingHistoryStore();
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            executor: new RecordingRequestExecutor(),
+            historyStore: historyStore,
+            appSettings: settings);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+
+        viewModel.HistoryRetentionLimit = 5000;
+        Assert.Equal(JsonAppSettingsService.MaximumHistoryRetentionLimit, viewModel.HistoryRetentionLimit);
+
+        viewModel.HistoryRetentionLimit = 350;
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.Equal(350, settings.Current.HistoryRetentionLimit);
+        Assert.Equal(350, historyStore.LastRetentionLimit);
+    }
+
+    [Fact]
     public async Task CollectionCommands_CreateSelectAndRenameACollection()
     {
         var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
@@ -286,7 +358,9 @@ public sealed class MainViewModelWorkspaceTests
         IRequestExecutor? executor = null,
         RecordingSecretVault? vault = null,
         StubUnsavedChangesPrompt? prompt = null,
-        RecordingHistoryStore? historyStore = null)
+        RecordingHistoryStore? historyStore = null,
+        StubHistoryClearPrompt? historyClearPrompt = null,
+        StubAppSettingsService? appSettings = null)
     {
         vault ??= new RecordingSecretVault();
         return new MainViewModel(
@@ -297,7 +371,9 @@ public sealed class MainViewModelWorkspaceTests
             vault,
             localization: null!,
             prompt ?? new StubUnsavedChangesPrompt(),
-            historyStore ?? new RecordingHistoryStore());
+            historyStore ?? new RecordingHistoryStore(),
+            historyClearPrompt ?? new StubHistoryClearPrompt(),
+            appSettings ?? new StubAppSettingsService());
     }
 
     private static string CreateWorkspacePath() => Path.Combine(
@@ -337,6 +413,27 @@ public sealed class MainViewModelWorkspaceTests
         return new WorkspaceSnapshot(workspace, [collection], []);
     }
 
+    private static RequestHistoryEntry CreateHistoryEntry(
+        Guid workspaceId,
+        string name,
+        string method,
+        int statusCode) => new()
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = workspaceId,
+            SentAtUtc = DateTimeOffset.UtcNow,
+            Outcome = "completed",
+            StatusCode = statusCode,
+            ReasonPhrase = statusCode == 201 ? "Created" : "OK",
+            Request = new RequestDocument
+            {
+                Id = Guid.NewGuid(),
+                Name = name,
+                Method = method,
+                Url = $"https://api.example.com/{name.Replace(' ', '-').ToLowerInvariant()}",
+            },
+        };
+
     private sealed class StubFolderPicker(string directory) : IWorkspaceFolderPicker
     {
         public Task<string?> PickFolderAsync(string title) => Task.FromResult<string?>(directory);
@@ -353,6 +450,26 @@ public sealed class MainViewModelWorkspaceTests
             CallCount++;
             return Task.FromResult(Choice);
         }
+    }
+
+    private sealed class StubHistoryClearPrompt : IHistoryClearPrompt
+    {
+        public bool Confirmed { get; set; }
+
+        public int CallCount { get; private set; }
+
+        public Task<bool> ShowAsync(string workspaceName, int entryCount)
+        {
+            CallCount++;
+            return Task.FromResult(Confirmed);
+        }
+    }
+
+    private sealed class StubAppSettingsService : IAppSettingsService
+    {
+        public AppSettings Current { get; private set; } = new();
+
+        public void Update(AppSettings settings) => Current = settings;
     }
 
     private sealed class RecordingWorkspaceStore : IWorkspaceStore
@@ -438,11 +555,14 @@ public sealed class MainViewModelWorkspaceTests
     {
         public List<RequestHistoryEntry> Entries { get; } = initialEntries?.ToList() ?? [];
 
+        public int? LastRetentionLimit { get; private set; }
+
         public Task AddAsync(
             RequestHistoryEntry entry,
             int retentionLimit = 200,
             CancellationToken cancellationToken = default)
         {
+            LastRetentionLimit = retentionLimit;
             Entries.Insert(0, entry);
             return Task.CompletedTask;
         }
