@@ -48,6 +48,8 @@ public partial class MainViewModel
                 GitChanges.Add(new GitChangeItemViewModel(change, OpenGitDiffAsync));
             }
 
+            GitConflictCount = managedChanges.Count(change => change.IsConflict);
+
             var secretScan = managedChanges.Length == 0
                 ? GitSecretScanResult.Empty
                 : await _gitSecretScanner.ScanAsync(
@@ -68,6 +70,14 @@ public partial class MainViewModel
                     "GitOtherChangesCount",
                     "{0} other repository changes",
                     GitOtherChangeCount);
+            }
+
+            if (GitConflictCount > 0)
+            {
+                GitSummary += " · " + Localize(
+                    "GitConflictsCount",
+                    "Conflicts: {0}",
+                    GitConflictCount);
             }
 
             if (status.AheadBy > 0)
@@ -105,6 +115,7 @@ public partial class MainViewModel
         GitSecuritySummary = string.Empty;
         HasGitSecurityWarning = false;
         GitSecretWarningCount = 0;
+        GitConflictCount = 0;
         GitChanges.Clear();
         CloseGitDiff();
         OnPropertyChanged(nameof(IsGitChangeListEmpty));
@@ -117,6 +128,21 @@ public partial class MainViewModel
         HasGitWorkingTreeDiff = change.HasWorkingTreeChanges;
         HasGitStagedDiff = change.HasStagedChanges;
         IsGitDiffVisible = true;
+        if (change.IsConflict)
+        {
+            HasGitWorkingTreeDiff = false;
+            HasGitStagedDiff = false;
+            IsGitConflictGuidanceVisible = true;
+            IsGitDiffSecurityBlocked = false;
+            GitDiffLines.Clear();
+            GitDiffSummary = Localize("GitConflictDetected", "Merge conflict detected");
+            GitDiffMessage = Localize(
+                "GitConflictIntroduction",
+                "ReqMint will not modify this conflicted file automatically. Resolve it explicitly, then refresh Git status.");
+            OnPropertyChanged(nameof(IsGitDiffLineListEmpty));
+            return;
+        }
+
         var scope = change.HasWorkingTreeChanges
             ? GitDiffScope.WorkingTree
             : GitDiffScope.Staged;
@@ -140,6 +166,7 @@ public partial class MainViewModel
         GitDiffSummary = string.Empty;
         GitDiffMessage = string.Empty;
         IsGitDiffSecurityBlocked = false;
+        IsGitConflictGuidanceVisible = false;
         HasGitWorkingTreeDiff = false;
         HasGitStagedDiff = false;
         GitDiffLines.Clear();
@@ -167,6 +194,7 @@ public partial class MainViewModel
             ? Localize("GitDiffStaged", "Staged")
             : Localize("GitDiffWorkingTree", "Working tree");
         IsGitDiffSecurityBlocked = false;
+        IsGitConflictGuidanceVisible = false;
         OnPropertyChanged(nameof(IsGitDiffLineListEmpty));
 
         try

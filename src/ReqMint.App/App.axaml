@@ -54,6 +54,14 @@
             <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
         </Style>
 
+        <Style Selector="TextBlock.gitStatus">
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.gitStatus.warning">
+            <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+        </Style>
+
         <Style Selector="TextBlock.diffAdded">
             <Setter Property="Foreground" Value="{DynamicResource DiffAddedBrush}" />
         </Style>

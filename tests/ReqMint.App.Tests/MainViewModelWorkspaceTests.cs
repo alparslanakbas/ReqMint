@@ -470,6 +470,37 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task OpeningConflictedReqMintFile_ShowsGuidanceWithoutRunningDiff()
+    {
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = "C:/repos/commerce",
+                Branch = "main",
+                Changes = [new GitFileChange("collections/orders.json", "UU")],
+            },
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: git);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        var change = Assert.Single(viewModel.GitChanges);
+        await change.OpenCommand.ExecuteAsync(null);
+
+        Assert.True(change.IsConflict);
+        Assert.Equal("!", change.Status);
+        Assert.Equal(1, viewModel.GitConflictCount);
+        Assert.Equal("1 ReqMint file changes · Conflicts: 1", viewModel.GitSummary);
+        Assert.True(viewModel.IsGitConflictGuidanceVisible);
+        Assert.False(viewModel.HasGitWorkingTreeDiff);
+        Assert.False(viewModel.HasGitStagedDiff);
+        Assert.Equal(0, git.DiffCallCount);
+    }
+
+    [Fact]
     public async Task OpeningWorkspace_DoesNotListChangesOutsideReqMintScope()
     {
         var git = new StubGitService
@@ -704,6 +735,8 @@ public sealed class MainViewModelWorkspaceTests
 
         public GitDiffScope? LastDiffScope { get; private set; }
 
+        public int DiffCallCount { get; private set; }
+
         public Task<GitRepositoryStatus?> GetStatusAsync(
             string workspaceDirectory,
             CancellationToken cancellationToken = default)
@@ -718,6 +751,7 @@ public sealed class MainViewModelWorkspaceTests
             GitDiffScope scope,
             CancellationToken cancellationToken = default)
         {
+            DiffCallCount++;
             LastDiffScope = scope;
             return Task.FromResult(new GitDiffPreview
             {

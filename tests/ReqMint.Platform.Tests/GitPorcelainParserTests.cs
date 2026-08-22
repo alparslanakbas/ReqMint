@@ -43,4 +43,17 @@ public sealed class GitPorcelainParserTests
         Assert.Equal("src/New Name.cs", change.Path);
         Assert.Equal("R ", change.Status);
     }
+
+    [Fact]
+    public void Parse_PreservesUnmergedStatusForConflictGuidance()
+    {
+        var status = GitPorcelainParser.Parse(
+            "C:/repo",
+            "## main\0UU environments/local.json\0");
+
+        var change = Assert.Single(status.Changes);
+        Assert.True(change.IsConflict);
+        Assert.True(change.HasStagedChanges);
+        Assert.True(change.HasWorkingTreeChanges);
+    }
 }

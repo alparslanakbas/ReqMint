@@ -91,6 +91,14 @@
   "GitDiffEmpty": "Gösterilecek metinsel fark bulunmuyor.",
   "GitDiffLinesCount": "{0} satır",
   "GitDiffTruncated": "önizleme sınırlandı",
+  "GitConflictsCount": "Çakışma: {0}",
+  "GitConflictDetected": "Birleştirme çakışması algılandı",
+  "GitConflictIntroduction": "ReqMint çakışan dosyayı otomatik olarak değiştirmez. Çakışmayı açıkça çözün ve ardından Git durumunu yenileyin.",
+  "GitConflictStep1": "1. Dosyayı Git düzenleyicinizde açın ve iki sürümü de inceleyin.",
+  "GitConflictStep2": "2. Doğru JSON bloklarını koruyun; <<<<<<<, ======= ve >>>>>>> çakışma işaretlerinin tamamını kaldırın.",
+  "GitConflictStep3": "3. Ortaya çıkan JSON'u doğrulayın ve gizli değerlerin çalışma alanı dosyasına yapıştırılmadığından emin olun.",
+  "GitConflictStep4": "4. Dosyayı kaydedin, ReqMint'te Git durumunu yenileyin ve dışarıda stage etmeden önce temiz diff'i inceleyin.",
+  "GitConflictSafetyNote": "ReqMint çakışmaları otomatik çözmez, stage veya commit etmez. Gizli değerler işletim sistemi kasasında kalmalıdır.",
   "GitAheadBy": "{0} ileride",
   "GitBehindBy": "{0} geride"
 }

@@ -17,7 +17,7 @@ public sealed class GitChangeItemViewModel : ViewModelBase
 
     public string Path => Change.Path;
 
-    public string Status => Change.Status.Trim() switch
+    public string Status => Change.IsConflict ? "!" : Change.Status.Trim() switch
     {
         "??" => "?",
         "M" => "M",
@@ -32,6 +32,8 @@ public sealed class GitChangeItemViewModel : ViewModelBase
     public bool HasStagedChanges => Change.HasStagedChanges;
 
     public bool HasWorkingTreeChanges => Change.HasWorkingTreeChanges;
+
+    public bool IsConflict => Change.IsConflict;
 
     public IAsyncRelayCommand OpenCommand { get; }
 }

@@ -91,6 +91,14 @@
   "GitDiffEmpty": "No textual differences to display.",
   "GitDiffLinesCount": "{0} lines",
   "GitDiffTruncated": "preview limited",
+  "GitConflictsCount": "Conflicts: {0}",
+  "GitConflictDetected": "Merge conflict detected",
+  "GitConflictIntroduction": "ReqMint will not modify this conflicted file automatically. Resolve it explicitly, then refresh Git status.",
+  "GitConflictStep1": "1. Open the file in your Git editor and review both versions.",
+  "GitConflictStep2": "2. Keep the correct JSON blocks and remove all conflict markers: <<<<<<<, ======= and >>>>>>>.",
+  "GitConflictStep3": "3. Validate the resulting JSON and ensure secret values were not pasted into the workspace file.",
+  "GitConflictStep4": "4. Save the file, refresh Git status in ReqMint, then review the clean diff before staging externally.",
+  "GitConflictSafetyNote": "ReqMint does not auto-resolve, stage or commit conflicts. Secret values must remain in the operating-system vault.",
   "GitAheadBy": "ahead {0}",
   "GitBehindBy": "behind {0}"
 }

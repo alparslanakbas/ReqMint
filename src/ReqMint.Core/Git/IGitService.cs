@@ -32,11 +32,18 @@ public sealed record GitRepositoryStatus
 
 public sealed record GitFileChange(string Path, string Status)
 {
+    private static readonly HashSet<string> ConflictStatuses = new(StringComparer.Ordinal)
+    {
+        "DD", "AU", "UD", "UA", "DU", "AA", "UU",
+    };
+
     public bool HasStagedChanges =>
         Status.Length > 0 && Status[0] is not (' ' or '?' or '!');
 
     public bool HasWorkingTreeChanges =>
         Status == "??" || (Status.Length > 1 && Status[1] != ' ');
+
+    public bool IsConflict => ConflictStatuses.Contains(Status);
 }
 
 public sealed record GitDiffPreview

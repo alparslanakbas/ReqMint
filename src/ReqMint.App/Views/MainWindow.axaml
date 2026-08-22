@@ -290,7 +290,8 @@
                                                 Command="{Binding OpenCommand}">
                                             <Grid ColumnDefinitions="28,*,Auto,4,Auto">
                                                 <TextBlock Text="{Binding Status}"
-                                                           Foreground="{DynamicResource AccentBrush}"
+                                                           Classes="gitStatus"
+                                                           Classes.warning="{Binding IsConflict}"
                                                            FontFamily="Cascadia Mono, Consolas"
                                                            FontWeight="Bold" />
                                                 <TextBlock Grid.Column="1"
@@ -665,11 +666,42 @@
                                    Foreground="{DynamicResource WarningBrush}"
                                    FontSize="28"
                                    HorizontalAlignment="Center" />
+                        <TextBlock Text="!"
+                                   IsVisible="{Binding IsGitConflictGuidanceVisible}"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   FontSize="28"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="{DynamicResource GitConflictDetected}"
+                                   IsVisible="{Binding IsGitConflictGuidanceVisible}"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" />
                         <TextBlock Text="{Binding GitDiffMessage}"
                                    Classes="secondary"
                                    Classes.warning="{Binding IsGitDiffSecurityBlocked}"
                                    TextAlignment="Center"
                                    TextWrapping="Wrap" />
+                        <Border IsVisible="{Binding IsGitConflictGuidanceVisible}"
+                                Margin="0,8,0,0"
+                                Padding="16"
+                                CornerRadius="8"
+                                Background="{DynamicResource SurfaceRaisedBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1">
+                            <StackPanel Spacing="9">
+                                <TextBlock Text="{DynamicResource GitConflictStep1}" TextWrapping="Wrap" />
+                                <TextBlock Text="{DynamicResource GitConflictStep2}" TextWrapping="Wrap" />
+                                <TextBlock Text="{DynamicResource GitConflictStep3}" TextWrapping="Wrap" />
+                                <TextBlock Text="{DynamicResource GitConflictStep4}" TextWrapping="Wrap" />
+                                <TextBlock Text="{DynamicResource GitConflictSafetyNote}"
+                                           Classes="secondary"
+                                           FontSize="11"
+                                           TextWrapping="Wrap"
+                                           Margin="0,5,0,0" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </Grid>
             </Grid>

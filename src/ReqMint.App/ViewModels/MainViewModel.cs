@@ -131,6 +131,9 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial int GitSecretWarningCount { get; set; }
 
+    [ObservableProperty]
+    public partial int GitConflictCount { get; set; }
+
     public bool IsGitChangeListEmpty => GitChanges.Count == 0;
 
     public bool IsGitSecuritySummaryVisible => !string.IsNullOrEmpty(GitSecuritySummary);
@@ -155,6 +158,9 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial bool IsGitDiffSecurityBlocked { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsGitConflictGuidanceVisible { get; set; }
 
     public bool IsGitDiffLineListEmpty => GitDiffLines.Count == 0;
 
