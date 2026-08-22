@@ -78,6 +78,9 @@
   "GitReqMintChangesCount": "{0} ReqMint dosya değişikliği",
   "GitNoReqMintChanges": "ReqMint dosya değişikliği yok",
   "GitOtherChangesCount": "Depoda {0} diğer değişiklik",
+  "GitSecretScanClean": "Güvenlik kontrolü başarılı",
+  "GitSecretWarnings": "Güvenlik kontrolü {1} dosyada {0} olası gizli değer bulgusu tespit etti",
+  "GitSecretScanIncomplete": "{0} dosya incelenemedi",
   "GitAheadBy": "{0} ileride",
   "GitBehindBy": "{0} geride"
 }

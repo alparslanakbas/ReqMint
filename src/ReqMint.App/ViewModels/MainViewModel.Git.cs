@@ -43,6 +43,14 @@ public partial class MainViewModel
                 GitChanges.Add(new GitChangeItemViewModel(change));
             }
 
+            var secretScan = managedChanges.Length == 0
+                ? GitSecretScanResult.Empty
+                : await _gitSecretScanner.ScanAsync(
+                    workspaceDirectory,
+                    managedChanges.Select(change => change.Path).ToArray(),
+                    cancellationToken);
+            UpdateGitSecuritySummary(secretScan, managedChanges.Length);
+
             GitOtherChangeCount = status.Changes.Count - managedChanges.Length;
             GitSummary = status.IsClean
                 ? Localize("GitClean", "Working tree clean")
@@ -89,7 +97,48 @@ public partial class MainViewModel
         GitSummary = summary;
         GitRepositoryRoot = string.Empty;
         GitOtherChangeCount = 0;
+        GitSecuritySummary = string.Empty;
+        HasGitSecurityWarning = false;
+        GitSecretWarningCount = 0;
         GitChanges.Clear();
         OnPropertyChanged(nameof(IsGitChangeListEmpty));
+    }
+
+    private void UpdateGitSecuritySummary(GitSecretScanResult result, int managedChangeCount)
+    {
+        GitSecretWarningCount = result.Findings.Count;
+        HasGitSecurityWarning = result.HasWarnings || !result.IsComplete;
+        if (managedChangeCount == 0)
+        {
+            GitSecuritySummary = string.Empty;
+            return;
+        }
+
+        if (result.HasWarnings)
+        {
+            var affectedFileCount = result.Findings
+                .Select(finding => finding.Path)
+                .Distinct(OperatingSystem.IsWindows()
+                    ? StringComparer.OrdinalIgnoreCase
+                    : StringComparer.Ordinal)
+                .Count();
+            GitSecuritySummary = Localize(
+                "GitSecretWarnings",
+                "Security check found {0} possible secret findings across {1} files",
+                result.Findings.Count,
+                affectedFileCount);
+        }
+        else
+        {
+            GitSecuritySummary = Localize("GitSecretScanClean", "Security check passed");
+        }
+
+        if (!result.IsComplete)
+        {
+            GitSecuritySummary += " · " + Localize(
+                "GitSecretScanIncomplete",
+                "{0} files could not be inspected",
+                result.UnscannedFiles.Count);
+        }
     }
 }

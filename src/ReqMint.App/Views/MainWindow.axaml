@@ -309,6 +309,13 @@
                         <Border Grid.Row="4" Margin="12" Padding="10" CornerRadius="6" Background="{DynamicResource SurfaceRaisedBrush}">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{Binding GitSummary}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding GitSecuritySummary}"
+                                           IsVisible="{Binding IsGitSecuritySummaryVisible}"
+                                           Classes="secondary"
+                                           Classes.warning="{Binding HasGitSecurityWarning}"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           TextWrapping="Wrap" />
                                 <TextBlock Text="{DynamicResource TextGitReadOnly}"
                                            Classes="secondary"
                                            FontSize="11"

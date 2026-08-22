@@ -1,4 +1,5 @@
 using ReqMint.Core.Requests;
+using ReqMint.Core.Security;
 using ReqMint.Core.Workspaces;
 
 namespace ReqMint.Core.History;
@@ -6,22 +7,6 @@ namespace ReqMint.Core.History;
 public static class RequestHistoryPrivacy
 {
     public const string RedactedValue = "[redacted]";
-
-    private static readonly HashSet<string> SensitiveNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "authorization",
-        "proxy-authorization",
-        "cookie",
-        "set-cookie",
-        "x-api-key",
-        "api-key",
-        "apikey",
-        "access-token",
-        "refresh-token",
-        "password",
-        "secret",
-        "token",
-    };
 
     public static RequestDocument CreateSafeSnapshot(RequestDocument request)
     {
@@ -37,19 +22,9 @@ public static class RequestHistoryPrivacy
     }
 
     private static IReadOnlyList<RequestField> Redact(IEnumerable<RequestField> fields) =>
-        fields.Select(field => IsSensitive(field.Name)
+        fields.Select(field => SensitiveDataClassifier.IsSensitiveName(field.Name)
             ? field with { Value = RedactedValue }
             : field).ToArray();
-
-    private static bool IsSensitive(string name)
-    {
-        var normalized = name.Trim().Replace('_', '-');
-        return SensitiveNames.Contains(normalized) ||
-            normalized.Contains("token", StringComparison.OrdinalIgnoreCase) ||
-            normalized.Contains("password", StringComparison.OrdinalIgnoreCase) ||
-            normalized.Contains("secret", StringComparison.OrdinalIgnoreCase) ||
-            normalized.Contains("api-key", StringComparison.OrdinalIgnoreCase);
-    }
 
     private static string RedactUrl(string url)
     {
@@ -74,7 +49,7 @@ public static class RequestHistoryPrivacy
         var equalsIndex = parameter.IndexOf('=');
         var encodedName = equalsIndex < 0 ? parameter : parameter[..equalsIndex];
         var name = Uri.UnescapeDataString(encodedName.Replace('+', ' '));
-        return IsSensitive(name)
+        return SensitiveDataClassifier.IsSensitiveName(name)
             ? $"{encodedName}={Uri.EscapeDataString(RedactedValue)}"
             : parameter;
     }

@@ -15,6 +15,7 @@
             <Color x:Key="Mint500">#21D6A0</Color>
             <Color x:Key="Mint700">#0D6B53</Color>
             <Color x:Key="Blue500">#4B9BFF</Color>
+            <Color x:Key="Warning500">#FFB454</Color>
 
             <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource Graphite950}" />
             <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource Graphite900}" />
@@ -26,6 +27,7 @@
             <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource Mint500}" />
             <SolidColorBrush x:Key="AccentMutedBrush" Color="{StaticResource Mint700}" />
             <SolidColorBrush x:Key="MethodGetBrush" Color="{StaticResource Blue500}" />
+            <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource Warning500}" />
         </ResourceDictionary>
     </Application.Resources>
 
@@ -40,6 +42,10 @@
 
         <Style Selector="TextBlock.secondary">
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.warning">
+            <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
         </Style>
 
         <Style Selector="Button">

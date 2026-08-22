@@ -119,7 +119,19 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial int GitOtherChangeCount { get; set; }
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsGitSecuritySummaryVisible))]
+    public partial string GitSecuritySummary { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial bool HasGitSecurityWarning { get; set; }
+
+    [ObservableProperty]
+    public partial int GitSecretWarningCount { get; set; }
+
     public bool IsGitChangeListEmpty => GitChanges.Count == 0;
+
+    public bool IsGitSecuritySummaryVisible => !string.IsNullOrEmpty(GitSecuritySummary);
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendCommand))]
@@ -157,6 +169,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly IHistoryClearPrompt _historyClearPrompt;
     private readonly IAppSettingsService _appSettings;
     private readonly IGitService _gitService;
+    private readonly IGitSecretScanner _gitSecretScanner;
     private WorkspaceSnapshot? _workspaceSnapshot;
     private string? _workspaceDirectory;
     private Guid? _selectedRequestId;
@@ -178,7 +191,8 @@ public partial class MainViewModel : ViewModelBase
         IRequestHistoryStore historyStore,
         IHistoryClearPrompt historyClearPrompt,
         IAppSettingsService appSettings,
-        IGitService gitService)
+        IGitService gitService,
+        IGitSecretScanner gitSecretScanner)
     {
         _requestExecutor = requestExecutor;
         _workspaceStore = workspaceStore;
@@ -192,6 +206,7 @@ public partial class MainViewModel : ViewModelBase
         _historyClearPrompt = historyClearPrompt;
         _appSettings = appSettings;
         _gitService = gitService;
+        _gitSecretScanner = gitSecretScanner;
         HistoryRetentionLimit = appSettings.Current.HistoryRetentionLimit;
         ResponsePreviewLimitMegabytes = appSettings.Current.ResponsePreviewLimitMegabytes;
         _cleanRequestDraft = CaptureRequestDraft();
@@ -240,6 +255,9 @@ public partial class MainViewModel : ViewModelBase
 
     private string Localize(string key, string fallback, object value) =>
         string.Format(Localize(key, fallback), value);
+
+    private string Localize(string key, string fallback, object first, object second) =>
+        string.Format(Localize(key, fallback), first, second);
 
     [RelayCommand]
     private void AddQueryParameter() => QueryParameters.Add(new RequestFieldViewModel());

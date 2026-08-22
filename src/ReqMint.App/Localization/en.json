@@ -78,6 +78,9 @@
   "GitReqMintChangesCount": "{0} ReqMint file changes",
   "GitNoReqMintChanges": "No ReqMint file changes",
   "GitOtherChangesCount": "{0} other repository changes",
+  "GitSecretScanClean": "Security check passed",
+  "GitSecretWarnings": "Security check found {0} possible secret findings across {1} files",
+  "GitSecretScanIncomplete": "{0} files could not be inspected",
   "GitAheadBy": "ahead {0}",
   "GitBehindBy": "behind {0}"
 }

@@ -352,8 +352,55 @@ public sealed class MainViewModelWorkspaceTests
         Assert.Equal("2 ReqMint file changes · 1 other repository changes · ahead 1", viewModel.GitSummary);
         Assert.Equal(2, viewModel.GitChanges.Count);
         Assert.Equal(1, viewModel.GitOtherChangeCount);
+        Assert.Equal("Security check passed", viewModel.GitSecuritySummary);
+        Assert.False(viewModel.HasGitSecurityWarning);
         Assert.Equal("C:/repos/commerce", viewModel.GitRepositoryRoot);
         Assert.True(git.CallCount >= 2);
+    }
+
+    [Fact]
+    public async Task OpeningWorkspace_SurfacesSecretPreflightWarningsWithoutValues()
+    {
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = "C:/repos/commerce",
+                Branch = "main",
+                Changes =
+                [
+                    new GitFileChange("environments/local.json", " M"),
+                    new GitFileChange("src/Program.cs", " M"),
+                ],
+            },
+        };
+        var scanner = new StubGitSecretScanner
+        {
+            Result = new GitSecretScanResult
+            {
+                Findings =
+                [
+                    new GitSecretFinding(
+                        "environments/local.json",
+                        "$.variables[0].value",
+                        GitSecretFindingKind.PersistedSecretValue),
+                ],
+            },
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: git,
+            gitSecretScanner: scanner);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.HasGitSecurityWarning);
+        Assert.Equal(1, viewModel.GitSecretWarningCount);
+        Assert.Equal(
+            "Security check found 1 possible secret findings across 1 files",
+            viewModel.GitSecuritySummary);
+        Assert.Equal(["environments/local.json"], scanner.LastPaths);
     }
 
     [Fact]
@@ -462,7 +509,8 @@ public sealed class MainViewModelWorkspaceTests
         RecordingHistoryStore? historyStore = null,
         StubHistoryClearPrompt? historyClearPrompt = null,
         StubAppSettingsService? appSettings = null,
-        StubGitService? gitService = null)
+        StubGitService? gitService = null,
+        StubGitSecretScanner? gitSecretScanner = null)
     {
         vault ??= new RecordingSecretVault();
         return new MainViewModel(
@@ -476,7 +524,8 @@ public sealed class MainViewModelWorkspaceTests
             historyStore ?? new RecordingHistoryStore(),
             historyClearPrompt ?? new StubHistoryClearPrompt(),
             appSettings ?? new StubAppSettingsService(),
-            gitService ?? new StubGitService());
+            gitService ?? new StubGitService(),
+            gitSecretScanner ?? new StubGitSecretScanner());
     }
 
     private static string CreateWorkspacePath() => Path.Combine(
@@ -587,6 +636,22 @@ public sealed class MainViewModelWorkspaceTests
         {
             CallCount++;
             return Task.FromResult(Status);
+        }
+    }
+
+    private sealed class StubGitSecretScanner : IGitSecretScanner
+    {
+        public GitSecretScanResult Result { get; init; } = GitSecretScanResult.Empty;
+
+        public IReadOnlyList<string> LastPaths { get; private set; } = [];
+
+        public Task<GitSecretScanResult> ScanAsync(
+            string workspaceDirectory,
+            IReadOnlyList<string> workspaceRelativePaths,
+            CancellationToken cancellationToken = default)
+        {
+            LastPaths = workspaceRelativePaths;
+            return Task.FromResult(Result);
         }
     }
 

@@ -44,7 +44,8 @@ public partial class App : Application
                 new SqliteRequestHistoryStore(Path.Combine(applicationData, "reqmint.db")),
                 new AvaloniaHistoryClearPrompt(mainWindow, localization),
                 settings,
-                new SystemGitService());
+                new SystemGitService(),
+                new WorkspaceGitSecretScanner());
             desktop.MainWindow = mainWindow;
             desktop.Exit += (_, _) => _requestExecutor.Dispose();
         }

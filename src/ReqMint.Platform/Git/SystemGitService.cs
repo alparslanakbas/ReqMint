@@ -32,7 +32,11 @@ public sealed class SystemGitService : IGitService
 
         var repositoryRoot = rootResult.StandardOutput.Trim();
         var statusResult = await RunAsync(
-            ["-C", fullPath, "status", "--porcelain=v1", "--branch", "-z", "--untracked-files=normal"],
+            [
+                "-c", "status.relativePaths=true",
+                "-C", fullPath,
+                "status", "--porcelain=v1", "--branch", "-z", "--untracked-files=normal",
+            ],
             cancellationToken);
         if (statusResult.ExitCode != 0)
         {
