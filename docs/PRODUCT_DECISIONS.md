@@ -40,6 +40,16 @@ This document records the product decisions approved before implementation. It i
 - Start with a portable archive and one broadly usable package format.
 - Add distribution-specific packages only after usage data justifies their maintenance cost.
 
+## Background and system tray behavior
+
+- ReqMint will support an optional **minimize to system tray** mode to protect users from accidental window closure and provide faster reopening.
+- On the first close attempt, ask whether ReqMint should keep running in the background or exit, with an option to remember the choice.
+- The tray menu will provide **Open ReqMint**, **New Request**, and **Exit** actions; double-clicking the tray icon restores the main window.
+- Hiding the window does not trigger the unsaved-changes prompt because the application remains running. An explicit exit continues to use the approved save, discard, or cancel protection.
+- The behavior remains configurable in Settings and must clearly communicate that background mode continues using system resources.
+- Start at login is a separate opt-in setting and stays disabled by default.
+- Windows is the primary implementation target. macOS uses the equivalent menu-bar behavior, while Linux support is validated per desktop environment.
+
 ## Accounts, sync, and collaboration
 
 - No ReqMint account is required for Community features.
