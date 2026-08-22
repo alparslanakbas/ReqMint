@@ -40,6 +40,7 @@ docs/      product, architecture, and migration decisions
 - [Migration plan](docs/MIGRATION_PLAN.md)
 - [Workspace format](docs/WORKSPACE_FORMAT.md)
 - [Localization](docs/LOCALIZATION.md)
+- [Git integration](docs/GIT_INTEGRATION.md)
 
 ## Build
 

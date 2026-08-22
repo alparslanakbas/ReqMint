@@ -4,6 +4,7 @@ using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ReqMint.App.Services;
+using ReqMint.Core.Git;
 using ReqMint.Core.History;
 using ReqMint.Core.Requests;
 using ReqMint.Core.Security;
@@ -35,6 +36,8 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<CollectionItemViewModel> Collections { get; } = [];
 
     public ObservableCollection<RequestHistoryItemViewModel> History { get; } = [];
+
+    public ObservableCollection<GitChangeItemViewModel> GitChanges { get; } = [];
 
     public ObservableCollection<string> EnvironmentNames { get; } = ["No environment"];
 
@@ -98,7 +101,22 @@ public partial class MainViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsCollectionsVisible))]
     public partial bool IsHistoryVisible { get; set; }
 
-    public bool IsCollectionsVisible => !IsHistoryVisible;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCollectionsVisible))]
+    public partial bool IsGitVisible { get; set; }
+
+    public bool IsCollectionsVisible => !IsHistoryVisible && !IsGitVisible;
+
+    [ObservableProperty]
+    public partial string GitBranch { get; set; } = "—";
+
+    [ObservableProperty]
+    public partial string GitSummary { get; set; } = "Git status unavailable";
+
+    [ObservableProperty]
+    public partial string GitRepositoryRoot { get; set; } = string.Empty;
+
+    public bool IsGitChangeListEmpty => GitChanges.Count == 0;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendCommand))]
@@ -135,6 +153,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly IRequestHistoryStore _historyStore;
     private readonly IHistoryClearPrompt _historyClearPrompt;
     private readonly IAppSettingsService _appSettings;
+    private readonly IGitService _gitService;
     private WorkspaceSnapshot? _workspaceSnapshot;
     private string? _workspaceDirectory;
     private Guid? _selectedRequestId;
@@ -155,7 +174,8 @@ public partial class MainViewModel : ViewModelBase
         IUnsavedChangesPrompt unsavedChangesPrompt,
         IRequestHistoryStore historyStore,
         IHistoryClearPrompt historyClearPrompt,
-        IAppSettingsService appSettings)
+        IAppSettingsService appSettings,
+        IGitService gitService)
     {
         _requestExecutor = requestExecutor;
         _workspaceStore = workspaceStore;
@@ -163,10 +183,12 @@ public partial class MainViewModel : ViewModelBase
         _templateResolver = templateResolver;
         _secretVault = secretVault;
         Localization = localization;
+        GitSummary = Localize("GitNoWorkspace", "Open a workspace to inspect Git status");
         _unsavedChangesPrompt = unsavedChangesPrompt;
         _historyStore = historyStore;
         _historyClearPrompt = historyClearPrompt;
         _appSettings = appSettings;
+        _gitService = gitService;
         HistoryRetentionLimit = appSettings.Current.HistoryRetentionLimit;
         ResponsePreviewLimitMegabytes = appSettings.Current.ResponsePreviewLimitMegabytes;
         _cleanRequestDraft = CaptureRequestDraft();
@@ -283,6 +305,7 @@ public partial class MainViewModel : ViewModelBase
                 var existingSnapshot = await _workspaceStore.LoadAsync(directory, cancellationToken);
                 ApplyWorkspace(existingSnapshot, directory);
                 await LoadHistoryAsync(existingSnapshot.Workspace.Id, cancellationToken);
+                await RefreshGitStatusAsync(directory, cancellationToken);
                 ResetRequestDraft();
                 WorkspaceStatus = "Existing workspace opened";
                 return;
@@ -312,6 +335,7 @@ public partial class MainViewModel : ViewModelBase
             await _workspaceStore.SaveAsync(directory, snapshot, cancellationToken);
             ApplyWorkspace(snapshot, directory);
             await LoadHistoryAsync(snapshot.Workspace.Id, cancellationToken);
+            await RefreshGitStatusAsync(directory, cancellationToken);
             ResetRequestDraft();
             WorkspaceStatus = Localize("StatusWorkspaceCreated", "Workspace created");
         }
@@ -353,6 +377,7 @@ public partial class MainViewModel : ViewModelBase
             var snapshot = await _workspaceStore.LoadAsync(directory, cancellationToken);
             ApplyWorkspace(snapshot, directory);
             await LoadHistoryAsync(snapshot.Workspace.Id, cancellationToken);
+            await RefreshGitStatusAsync(directory, cancellationToken);
             ResetRequestDraft();
             WorkspaceStatus = Localize("StatusWorkspaceOpened", "Workspace opened");
         }

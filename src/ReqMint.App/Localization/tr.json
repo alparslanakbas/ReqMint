@@ -64,5 +64,18 @@
   "TextRefreshHistory": "Geçmişi yenile",
   "TextResponsePreviewLimit": "Yanıt önizleme sınırı",
   "TextResponsePreviewLimitHelp": "Her yanıt önizlemesi için belleğe en fazla 1–20 MB oku.",
-  "ResponsePreviewLimited": "\n\n— Önizleme {0} MB ile sınırlandırıldı —"
+  "ResponsePreviewLimited": "\n\n— Önizleme {0} MB ile sınırlandırıldı —",
+  "TextGit": "Git",
+  "TextGitSubtitle": "Salt okunur çalışma alanı durumu",
+  "TextRefreshGit": "Git durumunu yenile",
+  "TextGitReadOnly": "ReqMint yalnızca depo durumunu okur; kendiliğinden commit, pull veya push yapmaz.",
+  "GitNotRepository": "Çalışma alanı bir Git deposunun içinde değil",
+  "GitNoWorkspace": "Git durumunu incelemek için bir çalışma alanı açın",
+  "GitNotInstalled": "Git kurulu değil veya kullanılamıyor",
+  "GitStatusFailed": "Git durumu yüklenemedi",
+  "GitDetachedHead": "Bağımsız HEAD",
+  "GitClean": "Çalışma ağacı temiz",
+  "GitChangesCount": "{0} değişen dosya",
+  "GitAheadBy": "{0} ileride",
+  "GitBehindBy": "{0} geride"
 }

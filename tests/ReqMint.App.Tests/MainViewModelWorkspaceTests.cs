@@ -1,5 +1,6 @@
 using ReqMint.App.Services;
 using ReqMint.App.ViewModels;
+using ReqMint.Core.Git;
 using ReqMint.Core.History;
 using ReqMint.Core.Requests;
 using ReqMint.Core.Security;
@@ -320,6 +321,55 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task OpeningWorkspace_LoadsReadOnlyGitStatus()
+    {
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = "C:/repos/commerce",
+                Branch = "feature/mint-history",
+                AheadBy = 1,
+                Changes =
+                [
+                    new GitFileChange("collections/commerce.json", " M"),
+                    new GitFileChange("environments/local.json", "??"),
+                ],
+            },
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: git);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.ShowGitCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsGitVisible);
+        Assert.False(viewModel.IsHistoryVisible);
+        Assert.Equal("feature/mint-history", viewModel.GitBranch);
+        Assert.Equal("2 changed files · ahead 1", viewModel.GitSummary);
+        Assert.Equal(2, viewModel.GitChanges.Count);
+        Assert.Equal("C:/repos/commerce", viewModel.GitRepositoryRoot);
+        Assert.True(git.CallCount >= 2);
+    }
+
+    [Fact]
+    public async Task OpeningWorkspace_HandlesFoldersOutsideGitRepositories()
+    {
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: new StubGitService());
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        Assert.Equal("—", viewModel.GitBranch);
+        Assert.Equal("Workspace is not inside a Git repository", viewModel.GitSummary);
+        Assert.Empty(viewModel.GitChanges);
+    }
+
+    [Fact]
     public async Task CollectionCommands_CreateSelectAndRenameACollection()
     {
         var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
@@ -384,7 +434,8 @@ public sealed class MainViewModelWorkspaceTests
         StubUnsavedChangesPrompt? prompt = null,
         RecordingHistoryStore? historyStore = null,
         StubHistoryClearPrompt? historyClearPrompt = null,
-        StubAppSettingsService? appSettings = null)
+        StubAppSettingsService? appSettings = null,
+        StubGitService? gitService = null)
     {
         vault ??= new RecordingSecretVault();
         return new MainViewModel(
@@ -397,7 +448,8 @@ public sealed class MainViewModelWorkspaceTests
             prompt ?? new StubUnsavedChangesPrompt(),
             historyStore ?? new RecordingHistoryStore(),
             historyClearPrompt ?? new StubHistoryClearPrompt(),
-            appSettings ?? new StubAppSettingsService());
+            appSettings ?? new StubAppSettingsService(),
+            gitService ?? new StubGitService());
     }
 
     private static string CreateWorkspacePath() => Path.Combine(
@@ -494,6 +546,21 @@ public sealed class MainViewModelWorkspaceTests
         public AppSettings Current { get; private set; } = new();
 
         public void Update(AppSettings settings) => Current = settings;
+    }
+
+    private sealed class StubGitService : IGitService
+    {
+        public GitRepositoryStatus? Status { get; init; }
+
+        public int CallCount { get; private set; }
+
+        public Task<GitRepositoryStatus?> GetStatusAsync(
+            string workspaceDirectory,
+            CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            return Task.FromResult(Status);
+        }
     }
 
     private sealed class RecordingWorkspaceStore : IWorkspaceStore

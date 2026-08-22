@@ -10,6 +10,7 @@
     <Project Path="tests/ReqMint.App.Tests/ReqMint.App.Tests.csproj" />
     <Project Path="tests/ReqMint.Core.Tests/ReqMint.Core.Tests.csproj" />
     <Project Path="tests/ReqMint.Http.Tests/ReqMint.Http.Tests.csproj" />
+    <Project Path="tests/ReqMint.Platform.Tests/ReqMint.Platform.Tests.csproj" />
     <Project Path="tests/ReqMint.Storage.Tests/ReqMint.Storage.Tests.csproj" />
   </Folder>
 </Solution>

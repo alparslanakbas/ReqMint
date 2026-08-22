@@ -71,7 +71,7 @@
                         <Button Classes="rail" ToolTip.Tip="History" Content="◷" Command="{Binding ShowHistoryCommand}" />
                         <Button Classes="rail" ToolTip.Tip="Environments" Content="◇" />
                         <Button Classes="rail" ToolTip.Tip="Runner" Content="▶" />
-                        <Button Classes="rail" ToolTip.Tip="Git" Content="⑂" />
+                        <Button Classes="rail" ToolTip.Tip="Git" Content="⑂" Command="{Binding ShowGitCommand}" />
                     </StackPanel>
                     <Button Grid.Row="1" Classes="rail" ToolTip.Tip="Settings" Content="⚙" />
                 </Grid>
@@ -241,6 +241,80 @@
                                        FontSize="11"
                                        TextWrapping="Wrap" />
                     </Border>
+                    </Grid>
+
+                    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" IsVisible="{Binding IsGitVisible}">
+                        <Grid Grid.Row="0" Margin="16,16,16,10" ColumnDefinitions="*,Auto">
+                            <StackPanel Spacing="3">
+                                <TextBlock Text="{DynamicResource TextGit}" FontSize="17" FontWeight="SemiBold" />
+                                <TextBlock Text="{DynamicResource TextGitSubtitle}" Classes="secondary" FontSize="11" />
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Content="↻"
+                                    Width="30"
+                                    Height="30"
+                                    Padding="0"
+                                    Command="{Binding ShowGitCommand}"
+                                    ToolTip.Tip="{DynamicResource TextRefreshGit}" />
+                        </Grid>
+
+                        <Border Grid.Row="1" Margin="12,0,12,8" Padding="10" CornerRadius="6" Background="{DynamicResource SurfaceRaisedBrush}">
+                            <Grid ColumnDefinitions="Auto,10,*">
+                                <TextBlock Text="⑂" Foreground="{DynamicResource AccentBrush}" />
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding GitBranch}"
+                                           FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Grid.Row="2"
+                                   Margin="16,0,16,10"
+                                   Text="{Binding GitRepositoryRoot}"
+                                   Classes="secondary"
+                                   FontSize="10"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip.Tip="{Binding GitRepositoryRoot}" />
+
+                        <Grid Grid.Row="3">
+                            <ListBox Margin="8,0"
+                                     ItemsSource="{Binding GitChanges}"
+                                     Background="Transparent"
+                                     BorderThickness="0">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:GitChangeItemViewModel">
+                                        <Grid Margin="8,6" ColumnDefinitions="28,*">
+                                            <TextBlock Text="{Binding Status}"
+                                                       Foreground="{DynamicResource AccentBrush}"
+                                                       FontFamily="Cascadia Mono, Consolas"
+                                                       FontWeight="Bold" />
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Path}"
+                                                       FontFamily="Cascadia Mono, Consolas"
+                                                       FontSize="11"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <TextBlock Margin="18"
+                                       Text="{Binding GitSummary}"
+                                       IsVisible="{Binding IsGitChangeListEmpty}"
+                                       Classes="secondary"
+                                       TextWrapping="Wrap"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Grid>
+
+                        <Border Grid.Row="4" Margin="12" Padding="10" CornerRadius="6" Background="{DynamicResource SurfaceRaisedBrush}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{Binding GitSummary}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock Text="{DynamicResource TextGitReadOnly}"
+                                           Classes="secondary"
+                                           FontSize="11"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
                     </Grid>
                 </Grid>
             </Border>
@@ -478,8 +552,8 @@
 
                 <Border Grid.Row="3" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
                     <Grid Margin="14,0" ColumnDefinitions="Auto,18,Auto,*,Auto">
-                        <TextBlock Text="main" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="2" Text="Local only · No cloud sync" Classes="secondary" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding GitBranch}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{Binding GitSummary}" Classes="secondary" VerticalAlignment="Center" />
                         <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
                             <Ellipse Width="7" Height="7" Fill="{DynamicResource AccentBrush}" />
                             <TextBlock Text="{Binding ResponseStatus}" Classes="secondary" />

@@ -38,12 +38,17 @@ public partial class MainViewModel
     }
 
     [RelayCommand]
-    private void ShowCollections() => IsHistoryVisible = false;
+    private void ShowCollections()
+    {
+        IsHistoryVisible = false;
+        IsGitVisible = false;
+    }
 
     [RelayCommand]
     private async Task ShowHistoryAsync(CancellationToken cancellationToken)
     {
         IsHistoryVisible = true;
+        IsGitVisible = false;
         await LoadHistoryAsync(_workspaceSnapshot?.Workspace.Id ?? Guid.Empty, cancellationToken);
     }
 

@@ -7,6 +7,7 @@ using ReqMint.Core.Templates;
 using ReqMint.App.Views;
 using ReqMint.Http;
 using ReqMint.Platform.Security;
+using ReqMint.Platform.Git;
 using ReqMint.Storage;
 
 namespace ReqMint.App;
@@ -42,7 +43,8 @@ public partial class App : Application
                 new AvaloniaUnsavedChangesPrompt(mainWindow, localization),
                 new SqliteRequestHistoryStore(Path.Combine(applicationData, "reqmint.db")),
                 new AvaloniaHistoryClearPrompt(mainWindow, localization),
-                settings);
+                settings,
+                new SystemGitService());
             desktop.MainWindow = mainWindow;
             desktop.Exit += (_, _) => _requestExecutor.Dispose();
         }
