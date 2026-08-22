@@ -57,6 +57,9 @@ public partial class MainViewModel : ViewModelBase
     public partial string RequestName { get; set; } = "New request";
 
     [ObservableProperty]
+    public partial string CollectionDraftName { get; set; } = "Requests";
+
+    [ObservableProperty]
     public partial string SelectedMethod { get; set; } = "GET";
 
     [ObservableProperty]
@@ -93,6 +96,8 @@ public partial class MainViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(NewEnvironmentCommand))]
     [NotifyCanExecuteChangedFor(nameof(AddEnvironmentVariableCommand))]
     [NotifyCanExecuteChangedFor(nameof(SaveEnvironmentCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CreateCollectionCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RenameCollectionCommand))]
     public partial bool IsSending { get; set; }
 
     [ObservableProperty]
@@ -104,6 +109,8 @@ public partial class MainViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(NewEnvironmentCommand))]
     [NotifyCanExecuteChangedFor(nameof(AddEnvironmentVariableCommand))]
     [NotifyCanExecuteChangedFor(nameof(SaveEnvironmentCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CreateCollectionCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RenameCollectionCommand))]
     public partial bool IsWorkspaceBusy { get; set; }
 
     private readonly IRequestExecutor _requestExecutor;
@@ -151,6 +158,9 @@ public partial class MainViewModel : ViewModelBase
         !IsWorkspaceBusy && !IsSending && _workspaceSnapshot is not null;
 
     private bool CanEditEnvironment() =>
+        !IsWorkspaceBusy && !IsSending && _workspaceSnapshot is not null;
+
+    private bool CanManageCollection() =>
         !IsWorkspaceBusy && !IsSending && _workspaceSnapshot is not null;
 
     private string Localize(string key, string fallback) =>
@@ -510,6 +520,8 @@ public partial class MainViewModel : ViewModelBase
         _workspaceDirectory = directory;
         _selectedRequestId = selectedRequestId;
         _selectedCollectionId = selectedCollectionId ?? snapshot.Collections.FirstOrDefault()?.Id;
+        CollectionDraftName = snapshot.Collections.FirstOrDefault(
+            collection => collection.Id == _selectedCollectionId)?.Name ?? "Requests";
 
         WorkspaceName = snapshot.Workspace.Name;
         WorkspaceLocation = directory;
@@ -542,7 +554,8 @@ public partial class MainViewModel : ViewModelBase
                 collection.Requests.Select(request =>
                     new SavedRequestItemViewModel(
                         request,
-                        selected => OpenRequest(selected, collection.Id)))));
+                        selected => OpenRequest(selected, collection.Id))),
+                SelectCollection));
         }
 
         SaveRequestCommand.NotifyCanExecuteChanged();
@@ -550,6 +563,21 @@ public partial class MainViewModel : ViewModelBase
         NewEnvironmentCommand.NotifyCanExecuteChanged();
         AddEnvironmentVariableCommand.NotifyCanExecuteChanged();
         SaveEnvironmentCommand.NotifyCanExecuteChanged();
+        CreateCollectionCommand.NotifyCanExecuteChanged();
+        RenameCollectionCommand.NotifyCanExecuteChanged();
+    }
+
+    private void SelectCollection(Guid collectionId)
+    {
+        var collection = _workspaceSnapshot?.Collections.FirstOrDefault(item => item.Id == collectionId);
+        if (collection is null)
+        {
+            return;
+        }
+
+        _selectedCollectionId = collection.Id;
+        CollectionDraftName = collection.Name;
+        WorkspaceStatus = collection.Name;
     }
 
     private void OpenRequest(RequestDocument request, Guid collectionId)

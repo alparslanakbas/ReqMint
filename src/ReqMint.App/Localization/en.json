@@ -33,5 +33,11 @@
   "StatusSavedItem": "Saved {0}",
   "StatusOpenedItem": "Opened {0}",
   "StatusWorkspaceCreated": "Workspace created",
-  "StatusWorkspaceOpened": "Workspace opened"
+  "StatusWorkspaceOpened": "Workspace opened",
+  "TextCollectionManagement": "Collection management",
+  "TextCollectionName": "Collection name",
+  "TextNewCollection": "New collection",
+  "TextRenameCollection": "Rename",
+  "StatusCollectionCreated": "Collection created",
+  "StatusCollectionRenamed": "Collection renamed"
 }

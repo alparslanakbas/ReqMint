@@ -108,7 +108,10 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:CollectionItemViewModel">
                                     <StackPanel Spacing="3" Margin="0,0,0,8">
-                                        <Border Padding="10,7" CornerRadius="6">
+                                        <Button Padding="10,7"
+                                                BorderThickness="0"
+                                                HorizontalContentAlignment="Stretch"
+                                                Command="{Binding SelectCommand}">
                                             <Grid ColumnDefinitions="Auto,*,Auto">
                                                 <TextBlock Text="⌄" Classes="secondary" />
                                                 <TextBlock Grid.Column="1"
@@ -118,7 +121,7 @@
                                                            TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Grid.Column="2" Text="{Binding RequestCount}" Classes="secondary" />
                                             </Grid>
-                                        </Border>
+                                        </Button>
                                         <ItemsControl ItemsSource="{Binding Requests}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="vm:SavedRequestItemViewModel">
@@ -326,6 +329,17 @@
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
+                                <TextBlock Text="{DynamicResource TextCollectionManagement}" FontWeight="SemiBold" Margin="0,10,0,0" />
+                                <Grid ColumnDefinitions="*,10,Auto,10,Auto">
+                                    <TextBox Text="{Binding CollectionDraftName}"
+                                             PlaceholderText="{DynamicResource TextCollectionName}" />
+                                    <Button Grid.Column="2"
+                                            Content="{DynamicResource TextNewCollection}"
+                                            Command="{Binding CreateCollectionCommand}" />
+                                    <Button Grid.Column="4"
+                                            Content="{DynamicResource TextRenameCollection}"
+                                            Command="{Binding RenameCollectionCommand}" />
+                                </Grid>
                                 <TextBlock Text="The request and response preview are cancelled when this limit is reached."
                                            Classes="secondary"
                                            TextWrapping="Wrap" />

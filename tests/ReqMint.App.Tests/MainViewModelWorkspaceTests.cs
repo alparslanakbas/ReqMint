@@ -166,6 +166,27 @@ public sealed class MainViewModelWorkspaceTests
         Assert.Equal("200 OK", viewModel.ResponseStatus);
     }
 
+    [Fact]
+    public async Task CollectionCommands_CreateSelectAndRenameACollection()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        await viewModel.CreateCollectionCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, store.SavedSnapshot!.Collections.Count);
+        Assert.Equal("New collection", viewModel.CollectionDraftName);
+
+        viewModel.CollectionDraftName = "Partner API";
+        await viewModel.RenameCollectionCommand.ExecuteAsync(null);
+
+        Assert.Contains(store.SavedSnapshot.Collections, collection => collection.Name == "Partner API");
+        Assert.Contains(
+            store.SavedSnapshot.Workspace.Collections,
+            reference => reference.Name == "Partner API");
+    }
+
     private static MainViewModel CreateViewModel(
         RecordingWorkspaceStore store,
         string directory,

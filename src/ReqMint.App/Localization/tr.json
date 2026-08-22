@@ -33,5 +33,11 @@
   "StatusSavedItem": "{0} kaydedildi",
   "StatusOpenedItem": "{0} açıldı",
   "StatusWorkspaceCreated": "Çalışma alanı oluşturuldu",
-  "StatusWorkspaceOpened": "Çalışma alanı açıldı"
+  "StatusWorkspaceOpened": "Çalışma alanı açıldı",
+  "TextCollectionManagement": "Koleksiyon yönetimi",
+  "TextCollectionName": "Koleksiyon adı",
+  "TextNewCollection": "Yeni koleksiyon",
+  "TextRenameCollection": "Yeniden adlandır",
+  "StatusCollectionCreated": "Koleksiyon oluşturuldu",
+  "StatusCollectionRenamed": "Koleksiyon yeniden adlandırıldı"
 }
