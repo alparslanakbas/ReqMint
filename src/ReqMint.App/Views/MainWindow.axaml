@@ -620,7 +620,7 @@
                         Background="{DynamicResource SurfaceRaisedBrush}"
                         BorderBrush="{DynamicResource BorderBrush}"
                         BorderThickness="0,0,0,1">
-                    <Grid Margin="16,0" ColumnDefinitions="Auto,8,Auto,18,*">
+                    <Grid Margin="16,0" ColumnDefinitions="Auto,8,Auto,18,*,12,Auto">
                         <Button Content="{DynamicResource GitDiffWorkingTree}"
                                 IsVisible="{Binding HasGitWorkingTreeDiff}"
                                 Padding="10,5"
@@ -635,6 +635,12 @@
                                    Classes="secondary"
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center" />
+                        <Button Grid.Column="6"
+                                Content="{DynamicResource GitStageReviewAction}"
+                                IsVisible="{Binding IsGitStageAvailable}"
+                                IsEnabled="{Binding !IsGitStageBusy}"
+                                Padding="12,6"
+                                Command="{Binding ReviewGitStageCommand}" />
                     </Grid>
                 </Border>
 
@@ -703,6 +709,45 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
+                    <Border IsVisible="{Binding IsGitStageReviewVisible}"
+                            ZIndex="10"
+                            Width="460"
+                            Padding="20"
+                            CornerRadius="10"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource AccentBrush}"
+                            BorderThickness="1">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="{DynamicResource GitStageReviewTitle}"
+                                       FontSize="18"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding GitDiffPath}"
+                                       FontFamily="Cascadia Mono, Consolas"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{DynamicResource GitStageReviewMessage}"
+                                       Classes="secondary"
+                                       TextWrapping="Wrap" />
+                            <Border Padding="10"
+                                    CornerRadius="6"
+                                    Background="{DynamicResource SurfaceRaisedBrush}">
+                                <TextBlock Text="{DynamicResource GitStageSafetyNote}"
+                                           FontSize="11"
+                                           TextWrapping="Wrap" />
+                            </Border>
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Right"
+                                        Spacing="8">
+                                <Button Content="{DynamicResource GitStageCancel}"
+                                        IsEnabled="{Binding !IsGitStageBusy}"
+                                        Command="{Binding CancelGitStageReviewCommand}" />
+                                <Button Content="{DynamicResource GitStageConfirm}"
+                                        IsEnabled="{Binding !IsGitStageBusy}"
+                                        Command="{Binding ConfirmGitStageCommand}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Grid>
             </Grid>

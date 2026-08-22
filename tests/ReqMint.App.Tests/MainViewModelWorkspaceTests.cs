@@ -501,6 +501,40 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task StagingAFile_RequiresReviewAndExplicitConfirmation()
+    {
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = "C:/repos/commerce",
+                Branch = "main",
+                Changes = [new GitFileChange("collections/orders.json", " M")],
+            },
+            DiffContent = "+{\"name\":\"Orders\"}",
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: git);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await Assert.Single(viewModel.GitChanges).OpenCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsGitStageAvailable);
+        viewModel.ReviewGitStageCommand.Execute(null);
+        Assert.True(viewModel.IsGitStageReviewVisible);
+        Assert.Equal(0, git.StageCallCount);
+
+        await viewModel.ConfirmGitStageCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, git.StageCallCount);
+        Assert.Equal("collections/orders.json", git.LastStagedPath);
+        Assert.Equal("File staged safely", viewModel.WorkspaceStatus);
+        Assert.False(viewModel.IsGitStageReviewVisible);
+    }
+
+    [Fact]
     public async Task OpeningWorkspace_DoesNotListChangesOutsideReqMintScope()
     {
         var git = new StubGitService
@@ -737,6 +771,12 @@ public sealed class MainViewModelWorkspaceTests
 
         public int DiffCallCount { get; private set; }
 
+        public GitStageResultState StageState { get; init; } = GitStageResultState.Staged;
+
+        public int StageCallCount { get; private set; }
+
+        public string? LastStagedPath { get; private set; }
+
         public Task<GitRepositoryStatus?> GetStatusAsync(
             string workspaceDirectory,
             CancellationToken cancellationToken = default)
@@ -760,6 +800,20 @@ public sealed class MainViewModelWorkspaceTests
                 State = DiffState,
                 Content = DiffContent,
                 SecurityWarningCount = DiffSecurityWarningCount,
+            });
+        }
+
+        public Task<GitStageResult> StageFileAsync(
+            string workspaceDirectory,
+            string workspaceRelativePath,
+            CancellationToken cancellationToken = default)
+        {
+            StageCallCount++;
+            LastStagedPath = workspaceRelativePath;
+            return Task.FromResult(new GitStageResult
+            {
+                Path = workspaceRelativePath,
+                State = StageState,
             });
         }
     }

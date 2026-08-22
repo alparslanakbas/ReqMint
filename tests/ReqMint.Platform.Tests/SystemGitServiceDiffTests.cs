@@ -97,6 +97,95 @@ public sealed class SystemGitServiceDiffTests
         Assert.DoesNotContain(secret, preview.ToString(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task StageFileAsync_StagesOnlyTheRequestedManagedFile()
+    {
+        using var repository = await TemporaryGitRepository.CreateAsync();
+        await repository.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Orders\",\"requests\":[]}");
+        await repository.WriteAsync("notes.txt", "initial");
+        await repository.CommitAllAsync("initial files");
+        await repository.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Commerce orders\",\"requests\":[]}");
+        await repository.WriteAsync("notes.txt", "changed");
+
+        var service = new SystemGitService();
+        var result = await service.StageFileAsync(
+            repository.Path,
+            "collections/orders.json");
+        var status = await service.GetStatusAsync(repository.Path);
+
+        Assert.Equal(GitStageResultState.Staged, result.State);
+        Assert.Contains(
+            status!.Changes,
+            change => change.Path == "collections/orders.json" && change.Status == "M ");
+        Assert.Contains(
+            status.Changes,
+            change => change.Path == "notes.txt" && change.Status == " M");
+    }
+
+    [Fact]
+    public async Task StageFileAsync_BlocksSecretsWithoutChangingTheIndex()
+    {
+        using var repository = await TemporaryGitRepository.CreateAsync();
+        const string safeEnvironment =
+            "{\"variables\":[{\"name\":\"API_TOKEN\",\"value\":null,\"isSecret\":true}]}";
+        await repository.WriteAsync("environments/local.json", safeEnvironment);
+        await repository.CommitAllAsync("initial workspace");
+        await repository.WriteAsync(
+            "environments/local.json",
+            "{\"variables\":[{\"name\":\"API_TOKEN\",\"value\":\"do-not-stage\",\"isSecret\":true}]}");
+
+        var service = new SystemGitService();
+        var result = await service.StageFileAsync(
+            repository.Path,
+            "environments/local.json");
+        var status = await service.GetStatusAsync(repository.Path);
+
+        Assert.Equal(GitStageResultState.BlockedBySecurity, result.State);
+        Assert.True(result.SecurityWarningCount > 0);
+        Assert.Contains(
+            status!.Changes,
+            change => change.Path == "environments/local.json" && change.Status == " M");
+    }
+
+    [Fact]
+    public async Task StageFileAsync_PreservesAnExistingPartialStage()
+    {
+        using var repository = await TemporaryGitRepository.CreateAsync();
+        await repository.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Original\",\"requests\":[]}");
+        await repository.CommitAllAsync("initial workspace");
+        await repository.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Staged version\",\"requests\":[]}");
+        await repository.RunGitAsync("add", "--", "collections/orders.json");
+        await repository.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Working version\",\"requests\":[]}");
+
+        var service = new SystemGitService();
+        var result = await service.StageFileAsync(
+            repository.Path,
+            "collections/orders.json");
+        var staged = await service.GetDiffAsync(
+            repository.Path,
+            "collections/orders.json",
+            GitDiffScope.Staged);
+        var working = await service.GetDiffAsync(
+            repository.Path,
+            "collections/orders.json",
+            GitDiffScope.WorkingTree);
+
+        Assert.Equal(GitStageResultState.NotEligible, result.State);
+        Assert.Contains("Staged version", staged.Content, StringComparison.Ordinal);
+        Assert.DoesNotContain("Working version", staged.Content, StringComparison.Ordinal);
+        Assert.Contains("Working version", working.Content, StringComparison.Ordinal);
+    }
+
     private sealed class TemporaryGitRepository : IDisposable
     {
         private TemporaryGitRepository(string path)

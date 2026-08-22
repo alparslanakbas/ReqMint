@@ -11,6 +11,11 @@ public interface IGitService
         string workspaceRelativePath,
         GitDiffScope scope,
         CancellationToken cancellationToken = default);
+
+    Task<GitStageResult> StageFileAsync(
+        string workspaceDirectory,
+        string workspaceRelativePath,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record GitRepositoryStatus
@@ -44,6 +49,27 @@ public sealed record GitFileChange(string Path, string Status)
         Status == "??" || (Status.Length > 1 && Status[1] != ' ');
 
     public bool IsConflict => ConflictStatuses.Contains(Status);
+
+    public bool IsStageCandidate =>
+        HasWorkingTreeChanges && !HasStagedChanges && !IsConflict;
+}
+
+public sealed record GitStageResult
+{
+    public required string Path { get; init; }
+
+    public GitStageResultState State { get; init; } = GitStageResultState.Staged;
+
+    public int SecurityWarningCount { get; init; }
+
+    public int UnscannedFileCount { get; init; }
+}
+
+public enum GitStageResultState
+{
+    Staged,
+    BlockedBySecurity,
+    NotEligible,
 }
 
 public sealed record GitDiffPreview

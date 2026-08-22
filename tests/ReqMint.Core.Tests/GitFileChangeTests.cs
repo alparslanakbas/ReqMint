@@ -26,4 +26,19 @@ public sealed class GitFileChangeTests
     {
         Assert.False(new GitFileChange("collections/ordinary.json", status).IsConflict);
     }
+
+    [Theory]
+    [InlineData(" M", true)]
+    [InlineData("??", true)]
+    [InlineData("M ", false)]
+    [InlineData("MM", false)]
+    [InlineData("UU", false)]
+    public void IsStageCandidate_RequiresOnlySafeWorkingTreeChanges(
+        string status,
+        bool expected)
+    {
+        var change = new GitFileChange("collections/orders.json", status);
+
+        Assert.Equal(expected, change.IsStageCandidate);
+    }
 }

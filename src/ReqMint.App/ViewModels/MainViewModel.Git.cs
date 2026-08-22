@@ -167,6 +167,9 @@ public partial class MainViewModel
         GitDiffMessage = string.Empty;
         IsGitDiffSecurityBlocked = false;
         IsGitConflictGuidanceVisible = false;
+        IsGitStageAvailable = false;
+        IsGitStageReviewVisible = false;
+        IsGitStageBusy = false;
         HasGitWorkingTreeDiff = false;
         HasGitStagedDiff = false;
         GitDiffLines.Clear();
@@ -195,6 +198,8 @@ public partial class MainViewModel
             : Localize("GitDiffWorkingTree", "Working tree");
         IsGitDiffSecurityBlocked = false;
         IsGitConflictGuidanceVisible = false;
+        IsGitStageAvailable = false;
+        IsGitStageReviewVisible = false;
         OnPropertyChanged(nameof(IsGitDiffLineListEmpty));
 
         try
@@ -229,6 +234,9 @@ public partial class MainViewModel
                     "Diff preview is unavailable for this file.");
                 return;
             }
+
+            IsGitStageAvailable = scope == GitDiffScope.WorkingTree
+                && change.IsStageCandidate;
 
             var normalizedContent = preview.Content.Replace(
                 "\r\n",
@@ -281,6 +289,85 @@ public partial class MainViewModel
             {
                 OnPropertyChanged(nameof(IsGitDiffLineListEmpty));
             }
+        }
+    }
+
+    [RelayCommand]
+    private void ReviewGitStage()
+    {
+        if (!IsGitStageAvailable || IsGitStageBusy)
+        {
+            return;
+        }
+
+        IsGitStageReviewVisible = true;
+    }
+
+    [RelayCommand]
+    private void CancelGitStageReview() => IsGitStageReviewVisible = false;
+
+    [RelayCommand]
+    private async Task ConfirmGitStageAsync(CancellationToken cancellationToken)
+    {
+        var change = _selectedGitChange;
+        var workspaceDirectory = _workspaceDirectory;
+        if (!IsGitStageReviewVisible
+            || !IsGitStageAvailable
+            || IsGitStageBusy
+            || change is null
+            || workspaceDirectory is null)
+        {
+            return;
+        }
+
+        IsGitStageBusy = true;
+        try
+        {
+            var result = await _gitService.StageFileAsync(
+                workspaceDirectory,
+                change.Path,
+                cancellationToken);
+            IsGitStageReviewVisible = false;
+            IsGitStageAvailable = false;
+            if (result.State == GitStageResultState.BlockedBySecurity)
+            {
+                IsGitDiffSecurityBlocked = true;
+                GitDiffLines.Clear();
+                GitDiffMessage = result.SecurityWarningCount > 0
+                    ? Localize(
+                        "GitStageBlockedBySecrets",
+                        "Staging blocked because this file may contain a secret.")
+                    : Localize(
+                        "GitStageBlockedByScan",
+                        "Staging blocked because this file could not be inspected safely.");
+                OnPropertyChanged(nameof(IsGitDiffLineListEmpty));
+                return;
+            }
+
+            if (result.State == GitStageResultState.NotEligible)
+            {
+                WorkspaceStatus = Localize(
+                    "GitStageNoLongerEligible",
+                    "The file changed and was not staged. Git status was refreshed.");
+                await RefreshGitStatusAsync(workspaceDirectory, cancellationToken);
+                return;
+            }
+
+            WorkspaceStatus = Localize("GitStageCompleted", "File staged safely");
+            await RefreshGitStatusAsync(workspaceDirectory, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            IsGitStageReviewVisible = false;
+            WorkspaceStatus = Localize("GitStageFailed", "File could not be staged");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+        finally
+        {
+            IsGitStageBusy = false;
         }
     }
 

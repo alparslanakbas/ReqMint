@@ -162,6 +162,15 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool IsGitConflictGuidanceVisible { get; set; }
 
+    [ObservableProperty]
+    public partial bool IsGitStageAvailable { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsGitStageReviewVisible { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsGitStageBusy { get; set; }
+
     public bool IsGitDiffLineListEmpty => GitDiffLines.Count == 0;
 
     [ObservableProperty]

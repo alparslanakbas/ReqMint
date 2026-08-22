@@ -137,6 +137,124 @@ public sealed class SystemGitService : IGitService
         };
     }
 
+    public async Task<GitStageResult> StageFileAsync(
+        string workspaceDirectory,
+        string workspaceRelativePath,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workspaceDirectory);
+        if (!ReqMintGitFileClassifier.IsManaged(workspaceRelativePath))
+        {
+            throw new ArgumentException(
+                "Staging is limited to ReqMint-managed workspace files.",
+                nameof(workspaceRelativePath));
+        }
+
+        var fullPath = Path.GetFullPath(workspaceDirectory);
+        var status = await GetStatusAsync(fullPath, cancellationToken);
+        var change = status?.Changes.FirstOrDefault(candidate => PathsEqual(
+            candidate.Path,
+            workspaceRelativePath));
+        if (change is null || !change.IsStageCandidate)
+        {
+            return StageResult(workspaceRelativePath, GitStageResultState.NotEligible);
+        }
+
+        var workingTreeScan = await new WorkspaceGitSecretScanner().ScanAsync(
+            fullPath,
+            [workspaceRelativePath],
+            cancellationToken);
+        if (workingTreeScan.HasWarnings || !workingTreeScan.IsComplete)
+        {
+            return BlockedStageResult(workspaceRelativePath, workingTreeScan);
+        }
+
+        var stage = await RunAsync(
+            ["-C", fullPath, "add", "--", workspaceRelativePath],
+            cancellationToken);
+        if (stage.ExitCode != 0)
+        {
+            throw new GitCommandException(stage.StandardError.Trim());
+        }
+
+        var stagedScan = await ScanStagedFileAsync(
+            fullPath,
+            workspaceRelativePath,
+            cancellationToken);
+        if (stagedScan.HasWarnings || !stagedScan.IsComplete)
+        {
+            await UnstageFileAsync(fullPath, workspaceRelativePath, cancellationToken);
+            return BlockedStageResult(workspaceRelativePath, stagedScan);
+        }
+
+        return StageResult(workspaceRelativePath, GitStageResultState.Staged);
+    }
+
+    private static bool PathsEqual(string first, string second) => string.Equals(
+        NormalizeRelativePath(first),
+        NormalizeRelativePath(second),
+        OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal);
+
+    private static string NormalizeRelativePath(string path)
+    {
+        var normalized = path.Replace('\\', '/');
+        while (normalized.StartsWith("./", StringComparison.Ordinal))
+        {
+            normalized = normalized[2..];
+        }
+
+        return normalized;
+    }
+
+    private static GitStageResult StageResult(string path, GitStageResultState state) => new()
+    {
+        Path = path,
+        State = state,
+    };
+
+    private static GitStageResult BlockedStageResult(
+        string path,
+        GitSecretScanResult scan) => new()
+        {
+            Path = path,
+            State = GitStageResultState.BlockedBySecurity,
+            SecurityWarningCount = scan.Findings.Count,
+            UnscannedFileCount = scan.UnscannedFiles.Count,
+        };
+
+    private static async Task UnstageFileAsync(
+        string workspaceDirectory,
+        string relativePath,
+        CancellationToken cancellationToken)
+    {
+        var restore = await RunAsync(
+            ["-C", workspaceDirectory, "restore", "--staged", "--", relativePath],
+            cancellationToken);
+        if (restore.ExitCode == 0)
+        {
+            return;
+        }
+
+        var reset = await RunAsync(
+            ["-C", workspaceDirectory, "reset", "--quiet", "--", relativePath],
+            cancellationToken);
+        if (reset.ExitCode == 0)
+        {
+            return;
+        }
+
+        var removeFromUnbornIndex = await RunAsync(
+            ["-C", workspaceDirectory, "rm", "--cached", "--force", "--", relativePath],
+            cancellationToken);
+        if (removeFromUnbornIndex.ExitCode != 0)
+        {
+            throw new GitCommandException(
+                "The staged file failed its security check and could not be removed from the Git index.");
+        }
+    }
+
     private static async Task<GitSecretScanResult> ScanStagedFileAsync(
         string workspaceDirectory,
         string relativePath,

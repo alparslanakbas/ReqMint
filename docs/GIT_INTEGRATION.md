@@ -1,17 +1,18 @@
 # Git integration
 
-ReqMint's first Git collaboration slice is deliberately read-only. Opening a workspace detects whether its folder is inside a Git repository and displays the repository root, active branch, ahead/behind counts, and changed ReqMint workspace files.
+ReqMint's Git collaboration panel detects whether a workspace is inside a Git repository and displays the repository root, active branch, ahead/behind counts, and changed ReqMint workspace files. Inspection remains read-only until the user explicitly reviews and confirms staging one eligible file.
 
 The detailed list is intentionally limited to `reqmint.workspace.json` and JSON documents under `collections/`, `environments/`, and `data/`. Changes elsewhere in the repository are represented only by a count. This keeps the panel focused on ReqMint's responsibility without hiding the fact that the wider repository is dirty.
 
 ## Safety boundary
 
 - Git remains optional; local ReqMint workspaces continue to work when Git is not installed.
-- ReqMint currently invokes only `git rev-parse` and `git status`.
+- Read operations use `git rev-parse`, `git status`, and bounded `git diff`/index snapshots.
 - Commands receive paths through process argument lists rather than shell command strings.
 - Credential prompts and optional Git file locks are disabled during status inspection.
 - Status commands have a bounded timeout and support cancellation.
-- ReqMint does not stage, commit, pull, push, reset, checkout, or modify Git configuration.
+- ReqMint never commits, pulls, pushes, checks out branches, or modifies Git configuration automatically.
+- The only mutating workflow is explicit single-file staging for a ReqMint-managed path.
 
 ## Secret preflight
 
@@ -25,4 +26,10 @@ Selecting a changed ReqMint file opens a read-only unified diff in the main work
 
 Every preview performs a fresh security check against the exact version being displayed. Staged previews inspect the Git index rather than trusting the working copy, so a credential staged and then removed locally remains blocked. Unsafe or unscannable versions return only a localized warning; their diff content is never passed to the view model.
 
-Future mutating workflows require explicit user intent, a visible operation scope, secret preflight checks, and separate safety review before implementation.
+## Explicit single-file staging
+
+Staging is offered only for a ReqMint-managed file that has working-tree changes, has no pre-existing staged portion, and is not conflicted. The user first reviews the working-tree diff, opens a confirmation card naming the exact file, and then confirms the operation. No bulk-stage action exists.
+
+The service re-reads Git status immediately before mutation and rejects stale or ineligible state. It scans the working copy, stages the exact path through a process argument list, then scans the resulting Git-index snapshot. A failed post-stage scan is removed from the index. Other repository files are never included, and staging never triggers commit, pull, or push.
+
+Commit and network workflows remain disabled pending their own safety review.
