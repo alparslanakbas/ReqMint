@@ -98,6 +98,24 @@ public partial class MainViewModel : ViewModelBase
     public partial decimal TimeoutSeconds { get; set; } = 30;
 
     [ObservableProperty]
+    public partial bool IsStatusAssertionEnabled { get; set; }
+
+    [ObservableProperty]
+    public partial decimal AssertionExpectedStatusCode { get; set; } = 200;
+
+    [ObservableProperty]
+    public partial bool IsDurationAssertionEnabled { get; set; }
+
+    [ObservableProperty]
+    public partial decimal AssertionMaximumDurationMilliseconds { get; set; } = 1000;
+
+    [ObservableProperty]
+    public partial bool IsJsonFieldAssertionEnabled { get; set; }
+
+    [ObservableProperty]
+    public partial string AssertionJsonPointer { get; set; } = "/id";
+
+    [ObservableProperty]
     public partial decimal ResponsePreviewLimitMegabytes { get; set; } = 2;
 
     [ObservableProperty]
@@ -444,6 +462,12 @@ public partial class MainViewModel : ViewModelBase
         SelectedMethod = "GET";
         Url = string.Empty;
         TimeoutSeconds = 30;
+        IsStatusAssertionEnabled = false;
+        AssertionExpectedStatusCode = 200;
+        IsDurationAssertionEnabled = false;
+        AssertionMaximumDurationMilliseconds = 1000;
+        IsJsonFieldAssertionEnabled = false;
+        AssertionJsonPointer = "/id";
 
         QueryParameters.Clear();
         QueryParameters.Add(new RequestFieldViewModel());
@@ -792,6 +816,7 @@ public partial class MainViewModel : ViewModelBase
                 .ToArray(),
             Body = CreateBody(),
             TimeoutSeconds = (int)TimeoutSeconds,
+            Assertions = CreateAssertions(),
         };
     }
 
@@ -923,6 +948,21 @@ public partial class MainViewModel : ViewModelBase
 
         SelectedBodyType = GetBodyType(request.Body?.ContentType);
         RequestBody = request.Body?.Content ?? string.Empty;
+        IsStatusAssertionEnabled = request.Assertions.Any(
+            assertion => assertion.Kind == RequestAssertionKind.StatusCodeEquals);
+        AssertionExpectedStatusCode = request.Assertions.FirstOrDefault(
+            assertion => assertion.Kind == RequestAssertionKind.StatusCodeEquals)
+            ?.ExpectedStatusCode ?? 200;
+        IsDurationAssertionEnabled = request.Assertions.Any(
+            assertion => assertion.Kind == RequestAssertionKind.MaximumDuration);
+        AssertionMaximumDurationMilliseconds = request.Assertions.FirstOrDefault(
+            assertion => assertion.Kind == RequestAssertionKind.MaximumDuration)
+            ?.MaximumDurationMilliseconds ?? 1000;
+        IsJsonFieldAssertionEnabled = request.Assertions.Any(
+            assertion => assertion.Kind == RequestAssertionKind.JsonPointerExists);
+        AssertionJsonPointer = request.Assertions.FirstOrDefault(
+            assertion => assertion.Kind == RequestAssertionKind.JsonPointerExists)
+            ?.JsonPointer ?? "/id";
     }
 
     private async Task RecordHistoryAsync(
@@ -1053,6 +1093,12 @@ public partial class MainViewModel : ViewModelBase
         SelectedBodyType,
         RequestBody,
         TimeoutSeconds,
+        IsStatusAssertionEnabled,
+        AssertionExpectedStatusCode,
+        IsDurationAssertionEnabled,
+        AssertionMaximumDurationMilliseconds,
+        IsJsonFieldAssertionEnabled,
+        AssertionJsonPointer,
         Query = QueryParameters.Select(field => new { field.IsEnabled, field.Name, field.Value }),
         Headers = Headers.Select(field => new { field.IsEnabled, field.Name, field.Value }),
     });
@@ -1100,6 +1146,45 @@ public partial class MainViewModel : ViewModelBase
         "Form URL Encoded" => new ApiRequestBody(RequestBody, "application/x-www-form-urlencoded"),
         _ => null,
     };
+
+    private IReadOnlyList<RequestAssertion> CreateAssertions()
+    {
+        var assertions = new List<RequestAssertion>(3);
+        if (IsStatusAssertionEnabled)
+        {
+            assertions.Add(new RequestAssertion
+            {
+                Kind = RequestAssertionKind.StatusCodeEquals,
+                ExpectedStatusCode = (int)AssertionExpectedStatusCode,
+            });
+        }
+
+        if (IsDurationAssertionEnabled)
+        {
+            assertions.Add(new RequestAssertion
+            {
+                Kind = RequestAssertionKind.MaximumDuration,
+                MaximumDurationMilliseconds = (int)AssertionMaximumDurationMilliseconds,
+            });
+        }
+
+        if (IsJsonFieldAssertionEnabled)
+        {
+            assertions.Add(new RequestAssertion
+            {
+                Kind = RequestAssertionKind.JsonPointerExists,
+                JsonPointer = AssertionJsonPointer.Trim(),
+            });
+        }
+
+        var validationError = RequestAssertionValidator.GetValidationError(assertions);
+        if (validationError is not null)
+        {
+            throw new ArgumentException(validationError);
+        }
+
+        return assertions;
+    }
 
     private static string FormatBody(string body, string? contentType)
     {

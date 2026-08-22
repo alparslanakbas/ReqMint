@@ -70,6 +70,43 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task SaveRequestCommand_PersistsRunnerAssertions()
+    {
+        var snapshot = CreateSnapshot();
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        viewModel.IsStatusAssertionEnabled = true;
+        viewModel.AssertionExpectedStatusCode = 201;
+        viewModel.IsDurationAssertionEnabled = true;
+        viewModel.AssertionMaximumDurationMilliseconds = 750;
+        viewModel.IsJsonFieldAssertionEnabled = true;
+        viewModel.AssertionJsonPointer = "/data/id";
+
+        await viewModel.SaveRequestCommand.ExecuteAsync(null);
+
+        var assertions = store.SavedSnapshot!.Collections[0].Requests[0].Assertions;
+        Assert.Collection(
+            assertions,
+            assertion =>
+            {
+                Assert.Equal(RequestAssertionKind.StatusCodeEquals, assertion.Kind);
+                Assert.Equal(201, assertion.ExpectedStatusCode);
+            },
+            assertion =>
+            {
+                Assert.Equal(RequestAssertionKind.MaximumDuration, assertion.Kind);
+                Assert.Equal(750, assertion.MaximumDurationMilliseconds);
+            },
+            assertion =>
+            {
+                Assert.Equal(RequestAssertionKind.JsonPointerExists, assertion.Kind);
+                Assert.Equal("/data/id", assertion.JsonPointer);
+            });
+    }
+
+    [Fact]
     public async Task NewRequestCommand_SavesANewDocumentInsteadOfOverwritingTheSelection()
     {
         var snapshot = CreateSnapshot();
@@ -945,6 +982,12 @@ public sealed class MainViewModelWorkspaceTests
                         State = CollectionRequestRunState.Passed,
                         StatusCode = 201,
                         Duration = TimeSpan.FromMilliseconds(12),
+                        Assertions =
+                        [
+                            new CollectionAssertionResult(
+                                RequestAssertionKind.StatusCodeEquals,
+                                CollectionAssertionOutcome.Passed),
+                        ],
                     },
                 ],
             },
@@ -969,6 +1012,7 @@ public sealed class MainViewModelWorkspaceTests
         Assert.Equal("Create order", item.Name);
         Assert.Equal("Passed", item.Status);
         Assert.Equal("HTTP 201", item.Detail);
+        Assert.Equal("Status: passed", item.Assertions);
         Assert.Equal("Completed · 1 passed · 0 failed", viewModel.CollectionRunSummary);
     }
 

@@ -186,8 +186,39 @@ public partial class MainViewModel
             detail,
             result.Duration == TimeSpan.Zero
                 ? "—"
-                : $"{result.Duration.TotalMilliseconds:N0} ms");
+                : $"{result.Duration.TotalMilliseconds:N0} ms",
+            CreateAssertionSummary(result.Assertions));
     }
+
+    private string CreateAssertionSummary(
+        IReadOnlyList<CollectionAssertionResult> assertions) => string.Join(
+            " · ",
+            assertions.Select(assertion =>
+            {
+                var name = assertion.Kind switch
+                {
+                    ReqMint.Core.Workspaces.RequestAssertionKind.StatusCodeEquals => Localize(
+                        "CollectionAssertionStatus",
+                        "Status"),
+                    ReqMint.Core.Workspaces.RequestAssertionKind.MaximumDuration => Localize(
+                        "CollectionAssertionDuration",
+                        "Duration"),
+                    _ => Localize("CollectionAssertionJsonField", "JSON field"),
+                };
+                var outcome = assertion.Outcome switch
+                {
+                    CollectionAssertionOutcome.Passed => Localize(
+                        "CollectionAssertionPassed",
+                        "passed"),
+                    CollectionAssertionOutcome.Failed => Localize(
+                        "CollectionAssertionFailed",
+                        "failed"),
+                    _ => Localize(
+                        "CollectionAssertionUnable",
+                        "not evaluated"),
+                };
+                return $"{name}: {outcome}";
+            }));
 
     private ReqMint.Core.Workspaces.CollectionDocument? GetSelectedCollectionForRun() =>
         _workspaceSnapshot?.Collections.FirstOrDefault(

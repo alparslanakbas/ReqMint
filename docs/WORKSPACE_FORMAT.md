@@ -38,6 +38,22 @@ Authorization: Bearer {{API_TOKEN}}
 
 Templates remain unchanged in collection files. ReqMint resolves them from the active environment immediately before sending and reports all missing values together.
 
+## Runner assertions
+
+Assertions are optional and older request documents without the field remain valid. They are stored with the request so teams review test expectations through Git:
+
+```json
+{
+  "assertions": [
+    { "kind": "StatusCodeEquals", "expectedStatusCode": 200 },
+    { "kind": "MaximumDuration", "maximumDurationMilliseconds": 750 },
+    { "kind": "JsonPointerExists", "jsonPointer": "/data/id" }
+  ]
+}
+```
+
+JSON-field checks use JSON Pointer, not executable scripts. Assertion counts, status values, duration limits, pointer length, pointer depth, and escape sequences are validated when loading and saving.
+
 ## Safety guarantees
 
 - Workspace and document schema versions are validated when loading and saving.

@@ -50,15 +50,23 @@ public sealed class CollectionRunner(
                 var response = await requestExecutor.ExecuteAsync(
                     resolvedRequest,
                     cancellationToken);
+                var assertionResults = RequestAssertionEvaluator.Evaluate(
+                    request.Assertions,
+                    response);
+                var passed = assertionResults.Count == 0
+                    ? response.IsSuccessStatusCode
+                    : assertionResults.All(assertion =>
+                        assertion.Outcome == CollectionAssertionOutcome.Passed);
                 result = new CollectionRequestRunResult
                 {
                     RequestId = request.Id,
                     RequestName = request.Name,
-                    State = response.IsSuccessStatusCode
+                    State = passed
                         ? CollectionRequestRunState.Passed
                         : CollectionRequestRunState.Failed,
                     StatusCode = response.StatusCode,
                     Duration = response.Duration,
+                    Assertions = assertionResults,
                 };
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -147,6 +155,17 @@ public sealed class CollectionRunner(
             throw new ArgumentException(
                 "Every collection request requires a unique identifier.",
                 nameof(definition));
+        }
+
+        foreach (var request in definition.Collection.Requests)
+        {
+            var assertionError = RequestAssertionValidator.GetValidationError(request.Assertions);
+            if (assertionError is not null)
+            {
+                throw new ArgumentException(
+                    $"Request assertions are invalid: {assertionError}",
+                    nameof(definition));
+            }
         }
     }
 
@@ -242,6 +261,19 @@ public sealed record CollectionRequestRunResult
     public TimeSpan Duration { get; init; }
 
     public CollectionRunErrorKind ErrorKind { get; init; }
+
+    public IReadOnlyList<CollectionAssertionResult> Assertions { get; init; } = [];
+}
+
+public sealed record CollectionAssertionResult(
+    RequestAssertionKind Kind,
+    CollectionAssertionOutcome Outcome);
+
+public enum CollectionAssertionOutcome
+{
+    Passed,
+    Failed,
+    UnableToEvaluate,
 }
 
 public sealed record CollectionRunProgress(

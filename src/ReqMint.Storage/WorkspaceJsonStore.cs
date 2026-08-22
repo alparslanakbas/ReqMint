@@ -208,6 +208,13 @@ public sealed class WorkspaceJsonStore : IWorkspaceStore
                 throw new WorkspaceFormatException(
                     $"Request body in '{request.Name}' must contain content and a content type.");
             }
+
+            var assertionError = RequestAssertionValidator.GetValidationError(request.Assertions);
+            if (assertionError is not null)
+            {
+                throw new WorkspaceFormatException(
+                    $"Assertions in request '{request.Name}' are invalid: {assertionError}");
+            }
         }
     }
 

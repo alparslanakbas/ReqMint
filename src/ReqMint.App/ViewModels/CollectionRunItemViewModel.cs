@@ -4,4 +4,5 @@ public sealed record CollectionRunItemViewModel(
     string Name,
     string Status,
     string Detail,
-    string Duration);
+    string Duration,
+    string Assertions);

@@ -32,5 +32,6 @@ public sealed record RequestDocument
     public ApiRequestBody? Body { get; init; }
 
     public int TimeoutSeconds { get; init; } = 30;
-}
 
+    public IReadOnlyList<RequestAssertion> Assertions { get; init; } = [];
+}

@@ -158,6 +158,90 @@ public sealed class CollectionRunnerTests
         Assert.Equal(1, result.CompletedCount);
     }
 
+    [Fact]
+    public async Task RunAsync_UsesAssertionsAsTheRequestOutcomeWithoutRetainingBodyValues()
+    {
+        const string sensitiveResponseValue = "response-value-must-not-be-retained";
+        var request = CreateRequest("Expected missing order", "https://api.example.com/orders/42") with
+        {
+            Assertions =
+            [
+                new RequestAssertion
+                {
+                    Kind = RequestAssertionKind.StatusCodeEquals,
+                    ExpectedStatusCode = 404,
+                },
+                new RequestAssertion
+                {
+                    Kind = RequestAssertionKind.MaximumDuration,
+                    MaximumDurationMilliseconds = 100,
+                },
+                new RequestAssertion
+                {
+                    Kind = RequestAssertionKind.JsonPointerExists,
+                    JsonPointer = "/error/details/0/code",
+                },
+            ],
+        };
+        var executor = new RecordingExecutor((_, _, _) => Task.FromResult(Response(
+            404,
+            $"{{\"error\":{{\"details\":[{{\"code\":\"{sensitiveResponseValue}\"}}]}}}}",
+            TimeSpan.FromMilliseconds(25))));
+        var runner = new CollectionRunner(
+            executor,
+            new RequestTemplateResolver(new StubSecretVault(null)));
+
+        var result = await runner.RunAsync(new CollectionRunDefinition
+        {
+            WorkspaceId = Guid.NewGuid(),
+            Collection = CreateCollection(request),
+        });
+
+        var requestResult = Assert.Single(result.Results);
+        Assert.Equal(CollectionRequestRunState.Passed, requestResult.State);
+        Assert.All(
+            requestResult.Assertions,
+            assertion => Assert.Equal(CollectionAssertionOutcome.Passed, assertion.Outcome));
+        Assert.DoesNotContain(sensitiveResponseValue, requestResult.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(sensitiveResponseValue, result.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RunAsync_FailsJsonAssertionsClosedForTruncatedBodies()
+    {
+        var request = CreateRequest("Large response", "https://api.example.com/large") with
+        {
+            Assertions =
+            [
+                new RequestAssertion
+                {
+                    Kind = RequestAssertionKind.JsonPointerExists,
+                    JsonPointer = "/data/id",
+                },
+            ],
+        };
+        var executor = new RecordingExecutor((_, _, _) => Task.FromResult(Response(
+            200,
+            "{\"data\":{\"id\":42}}",
+            TimeSpan.FromMilliseconds(10),
+            isBodyTruncated: true)));
+        var runner = new CollectionRunner(
+            executor,
+            new RequestTemplateResolver(new StubSecretVault(null)));
+
+        var result = await runner.RunAsync(new CollectionRunDefinition
+        {
+            WorkspaceId = Guid.NewGuid(),
+            Collection = CreateCollection(request),
+        });
+
+        var requestResult = Assert.Single(result.Results);
+        Assert.Equal(CollectionRequestRunState.Failed, requestResult.State);
+        Assert.Equal(
+            CollectionAssertionOutcome.UnableToEvaluate,
+            Assert.Single(requestResult.Assertions).Outcome);
+    }
+
     private static CollectionDocument CreateCollection(params RequestDocument[] requests) => new()
     {
         Id = Guid.NewGuid(),
@@ -173,14 +257,18 @@ public sealed class CollectionRunnerTests
         Url = url,
     };
 
-    private static ApiResponse Response(int statusCode) => new(
+    private static ApiResponse Response(
+        int statusCode,
+        string body = "",
+        TimeSpan? duration = null,
+        bool isBodyTruncated = false) => new(
         statusCode,
         statusCode is >= 200 and <= 299 ? "OK" : "Failure",
         new Dictionary<string, IReadOnlyList<string>>(),
-        string.Empty,
+        body,
         "application/json",
-        TimeSpan.FromMilliseconds(10),
-        IsBodyTruncated: false);
+        duration ?? TimeSpan.FromMilliseconds(10),
+        isBodyTruncated);
 
     private sealed class RecordingExecutor(
         Func<ApiRequest, int, CancellationToken, Task<ApiResponse>> handler) : IRequestExecutor

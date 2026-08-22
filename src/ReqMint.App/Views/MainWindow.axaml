@@ -522,7 +522,8 @@
                         </TabItem>
 
                         <TabItem Header="{DynamicResource TextSettings}">
-                            <StackPanel Margin="18" Spacing="10" MaxWidth="560" HorizontalAlignment="Left">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="18" Spacing="10" MaxWidth="620" HorizontalAlignment="Left">
                                 <TextBlock Text="{DynamicResource TextRequestTimeout}" FontWeight="SemiBold" />
                                 <Grid ColumnDefinitions="160,10,Auto">
                                     <NumericUpDown Grid.Column="0"
@@ -531,6 +532,48 @@
                                                    Increment="1"
                                                    Value="{Binding TimeoutSeconds}" />
                                     <TextBlock Grid.Column="2" Text="{DynamicResource TextSeconds}" Classes="secondary" VerticalAlignment="Center" />
+                                </Grid>
+                                <TextBlock Text="{DynamicResource TextAssertions}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,10,0,0" />
+                                <TextBlock Text="{DynamicResource TextAssertionsHelp}"
+                                           Classes="secondary"
+                                           TextWrapping="Wrap" />
+                                <Grid ColumnDefinitions="190,10,160,*">
+                                    <CheckBox Content="{DynamicResource TextAssertStatusCode}"
+                                              IsChecked="{Binding IsStatusAssertionEnabled}"
+                                              VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Column="2"
+                                                   Minimum="100"
+                                                   Maximum="599"
+                                                   Increment="1"
+                                                   Value="{Binding AssertionExpectedStatusCode}"
+                                                   IsEnabled="{Binding IsStatusAssertionEnabled}" />
+                                </Grid>
+                                <Grid ColumnDefinitions="190,10,160,*">
+                                    <CheckBox Content="{DynamicResource TextAssertDuration}"
+                                              IsChecked="{Binding IsDurationAssertionEnabled}"
+                                              VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Column="2"
+                                                   Minimum="1"
+                                                   Maximum="600000"
+                                                   Increment="50"
+                                                   Value="{Binding AssertionMaximumDurationMilliseconds}"
+                                                   IsEnabled="{Binding IsDurationAssertionEnabled}" />
+                                    <TextBlock Grid.Column="3"
+                                               Margin="8,0,0,0"
+                                               Text="ms"
+                                               Classes="secondary"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                                <Grid ColumnDefinitions="190,10,*">
+                                    <CheckBox Content="{DynamicResource TextAssertJsonField}"
+                                              IsChecked="{Binding IsJsonFieldAssertionEnabled}"
+                                              VerticalAlignment="Center" />
+                                    <TextBox Grid.Column="2"
+                                             Text="{Binding AssertionJsonPointer}"
+                                             IsEnabled="{Binding IsJsonFieldAssertionEnabled}"
+                                             PlaceholderText="/data/id" />
                                 </Grid>
                                 <TextBlock Text="{DynamicResource TextResponsePreviewLimit}" FontWeight="SemiBold" Margin="0,10,0,0" />
                                 <Grid ColumnDefinitions="160,10,*">
@@ -582,6 +625,7 @@
                                            Classes="secondary"
                                            TextWrapping="Wrap" />
                             </StackPanel>
+                            </ScrollViewer>
                         </TabItem>
                     </TabControl>
 
@@ -688,7 +732,9 @@
                                      BorderThickness="0">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate x:DataType="vm:CollectionRunItemViewModel">
-                                        <Grid Margin="0,0,0,7" ColumnDefinitions="*,110,120,90">
+                                        <Grid Margin="0,0,0,9"
+                                              RowDefinitions="Auto,Auto"
+                                              ColumnDefinitions="*,110,120,90">
                                             <TextBlock Text="{Binding Name}"
                                                        FontWeight="SemiBold"
                                                        TextTrimming="CharacterEllipsis" />
@@ -702,6 +748,13 @@
                                                        Text="{Binding Duration}"
                                                        Classes="secondary"
                                                        HorizontalAlignment="Right" />
+                                            <TextBlock Grid.Row="1"
+                                                       Grid.ColumnSpan="4"
+                                                       Margin="0,3,0,0"
+                                                       Text="{Binding Assertions}"
+                                                       Classes="secondary"
+                                                       FontSize="10"
+                                                       TextWrapping="Wrap" />
                                         </Grid>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>

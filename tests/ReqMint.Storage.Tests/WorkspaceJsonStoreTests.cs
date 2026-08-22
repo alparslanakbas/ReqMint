@@ -35,6 +35,7 @@ public sealed class WorkspaceJsonStoreTests
         Assert.Equal(expectedRequest.Headers, actualRequest.Headers);
         Assert.Equal(expectedRequest.Body, actualRequest.Body);
         Assert.Equal(expectedRequest.TimeoutSeconds, actualRequest.TimeoutSeconds);
+        Assert.Equal(expectedRequest.Assertions, actualRequest.Assertions);
         Assert.Equal(snapshot.Environments[0].Id, loaded.Environments[0].Id);
         Assert.Equal(snapshot.Environments[0].Name, loaded.Environments[0].Name);
         Assert.Equal(snapshot.Environments[0].Variables, loaded.Environments[0].Variables);
@@ -53,6 +54,38 @@ public sealed class WorkspaceJsonStoreTests
 
         Assert.Contains("cannot be persisted", exception.Message, StringComparison.Ordinal);
         Assert.False(File.Exists(System.IO.Path.Combine(directory.Path, WorkspaceJsonStore.WorkspaceFileName)));
+    }
+
+    [Fact]
+    public async Task SaveAsync_RejectsInvalidRunnerAssertionsBeforeWritingFiles()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new WorkspaceJsonStore();
+        var snapshot = CreateSnapshot();
+        var request = snapshot.Collections[0].Requests[0] with
+        {
+            Assertions =
+            [
+                new RequestAssertion
+                {
+                    Kind = RequestAssertionKind.JsonPointerExists,
+                    JsonPointer = "data/id",
+                },
+            ],
+        };
+        snapshot = snapshot with
+        {
+            Collections =
+            [
+                snapshot.Collections[0] with { Requests = [request] },
+            ],
+        };
+
+        await Assert.ThrowsAsync<WorkspaceFormatException>(
+            () => store.SaveAsync(directory.Path, snapshot, CancellationToken.None));
+
+        Assert.False(File.Exists(
+            System.IO.Path.Combine(directory.Path, WorkspaceJsonStore.WorkspaceFileName)));
     }
 
     [Fact]
@@ -203,6 +236,19 @@ public sealed class WorkspaceJsonStoreTests
                     Headers = [new RequestField("Accept", "application/json")],
                     Body = new ApiRequestBody("{\"name\":\"ReqMint\"}", "application/json"),
                     TimeoutSeconds = 45,
+                    Assertions =
+                    [
+                        new RequestAssertion
+                        {
+                            Kind = RequestAssertionKind.StatusCodeEquals,
+                            ExpectedStatusCode = 201,
+                        },
+                        new RequestAssertion
+                        {
+                            Kind = RequestAssertionKind.JsonPointerExists,
+                            JsonPointer = "/id",
+                        },
+                    ],
                 },
             ],
         };
