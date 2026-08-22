@@ -38,6 +38,7 @@ docs/      product, architecture, and migration decisions
 - [Product decisions](docs/PRODUCT_DECISIONS.md)
 - [Technical architecture](docs/ARCHITECTURE.md)
 - [Migration plan](docs/MIGRATION_PLAN.md)
+- [Workspace format](docs/WORKSPACE_FORMAT.md)
 
 ## Build
 
