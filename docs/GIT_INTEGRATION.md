@@ -44,4 +44,10 @@ ReqMint reads the current branch's configured upstream locally and displays only
 
 Detached HEADs, missing upstreams, local-only upstreams, and remote names outside the conservative safe-character set fail closed with localized guidance. Fetch errors are sanitized before reaching the UI.
 
-Pull and push workflows remain disabled pending their own safety review.
+## Fast-forward workspace update
+
+After an explicit remote check reports incoming commits, ReqMint can build a bounded local preview of commit summaries and changed paths. No network request occurs while opening this preview. The update is offered only when the entire repository is clean, no conflict exists, the local branch has no unique commits, and the upstream is strictly ahead. Unsaved in-memory request, environment, and collection edits also block the app workflow. Every changed path must belong to ReqMint's managed workspace scope; incoming commits that also modify application source or any other repository file are delegated to an external Git tool. Previews above 50 commits or 200 changed paths likewise fail closed so the user never confirms a partially visible scope.
+
+Confirmation reruns the complete preflight and executes only `git merge --ff-only` against the configured upstream reference. ReqMint never stashes, creates a merge commit, rebases, fetches, or pushes as part of this action. Repository hooks are disabled to avoid hidden file mutations. After success the workspace is reloaded from disk; if reload fails, the UI explicitly reports that Git succeeded and asks the user to reopen the workspace.
+
+Push remains disabled pending its own safety review.

@@ -12,6 +12,8 @@ public sealed class SystemGitService : IGitService
     private const int MaximumSnapshotCharacters = 2 * 1024 * 1024;
     private const int MaximumDiffCharacters = 256 * 1024;
     private const int MaximumErrorCharacters = 64 * 1024;
+    private const int MaximumFastForwardCommits = 50;
+    private const int MaximumFastForwardPaths = 200;
 
     public async Task<GitRepositoryStatus?> GetStatusAsync(
         string workspaceDirectory,
@@ -276,25 +278,9 @@ public sealed class SystemGitService : IGitService
             };
         }
 
-        var emptyHooksDirectory = Path.Combine(
-            Path.GetTempPath(),
-            $"ReqMint.GitHooks.{Guid.NewGuid():N}");
-        Directory.CreateDirectory(emptyHooksDirectory);
-        GitCommandResult commit;
-        try
-        {
-            commit = await RunAsync(
-                [
-                    "-c", $"core.hooksPath={emptyHooksDirectory}",
-                    "-C", fullPath,
-                    "commit", "--quiet", "-m", message,
-                ],
-                cancellationToken);
-        }
-        finally
-        {
-            TryDeleteDirectory(emptyHooksDirectory);
-        }
+        var commit = await RunWithHooksDisabledAsync(
+            ["-C", fullPath, "commit", "--quiet", "-m", message],
+            cancellationToken);
 
         if (commit.ExitCode != 0)
         {
@@ -416,6 +402,215 @@ public sealed class SystemGitService : IGitService
         };
     }
 
+    public async Task<GitFastForwardPreflight> GetFastForwardPreflightAsync(
+        string workspaceDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workspaceDirectory);
+        var fullPath = Path.GetFullPath(workspaceDirectory);
+        var remote = await GetRemotePreflightAsync(fullPath, cancellationToken);
+        if (!remote.IsReady)
+        {
+            return FastForwardPreflight(
+                GitFastForwardPreflightState.RemoteUnavailable,
+                remote);
+        }
+
+        var status = await GetStatusAsync(fullPath, cancellationToken);
+        if (status is null)
+        {
+            return FastForwardPreflight(
+                GitFastForwardPreflightState.RemoteUnavailable,
+                remote);
+        }
+
+        if (status.Changes.Any(change => change.IsConflict))
+        {
+            return FastForwardPreflight(GitFastForwardPreflightState.Conflicts, remote);
+        }
+
+        if (!status.IsClean)
+        {
+            return FastForwardPreflight(
+                GitFastForwardPreflightState.WorkingTreeDirty,
+                remote);
+        }
+
+        if (status.BehindBy <= 0)
+        {
+            return FastForwardPreflight(GitFastForwardPreflightState.NoUpdates, remote);
+        }
+
+        if (status.AheadBy > 0)
+        {
+            return FastForwardPreflight(GitFastForwardPreflightState.Diverged, remote);
+        }
+
+        var commits = await RunAsync(
+            [
+                "-C", fullPath,
+                "log", $"--max-count={MaximumFastForwardCommits + 1}",
+                "--format=%h%x09%s", "HEAD..@{upstream}",
+            ],
+            cancellationToken,
+            maximumOutputCharacters: 128 * 1024);
+        var paths = await RunAsync(
+            ["-C", fullPath, "diff", "--name-only", "-z", "HEAD..@{upstream}"],
+            cancellationToken,
+            maximumOutputCharacters: 256 * 1024);
+        if (commits.ExitCode != 0 || paths.ExitCode != 0)
+        {
+            return FastForwardPreflight(
+                GitFastForwardPreflightState.PreviewUnavailable,
+                remote);
+        }
+
+        var commitLines = commits.StandardOutput
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+        var changedPaths = paths.StandardOutput
+            .Split('\0', StringSplitOptions.RemoveEmptyEntries);
+        var isTruncated = commits.StandardOutputTruncated
+            || paths.StandardOutputTruncated
+            || commitLines.Length > MaximumFastForwardCommits
+            || changedPaths.Length > MaximumFastForwardPaths;
+        if (isTruncated)
+        {
+            return new GitFastForwardPreflight
+            {
+                State = GitFastForwardPreflightState.PreviewTooLarge,
+                Remote = remote,
+                IsTruncated = true,
+            };
+        }
+
+        var workspacePrefix = Path.GetRelativePath(status.RepositoryRoot, fullPath)
+            .Replace('\\', '/')
+            .Trim('/');
+        if (workspacePrefix == ".")
+        {
+            workspacePrefix = string.Empty;
+        }
+
+        var managedPaths = new List<string>(changedPaths.Length);
+        var otherChangedFileCount = 0;
+        foreach (var changedPath in changedPaths)
+        {
+            var normalizedPath = changedPath.Replace('\\', '/');
+            var workspacePath = string.IsNullOrEmpty(workspacePrefix)
+                ? normalizedPath
+                : normalizedPath.StartsWith(
+                    workspacePrefix + "/",
+                    OperatingSystem.IsWindows()
+                        ? StringComparison.OrdinalIgnoreCase
+                        : StringComparison.Ordinal)
+                    ? normalizedPath[(workspacePrefix.Length + 1)..]
+                    : string.Empty;
+            if (!ReqMintGitFileClassifier.IsManaged(workspacePath))
+            {
+                otherChangedFileCount++;
+                continue;
+            }
+
+            managedPaths.Add(workspacePath);
+        }
+
+        if (otherChangedFileCount > 0)
+        {
+            return new GitFastForwardPreflight
+            {
+                State = GitFastForwardPreflightState.ContainsOtherFiles,
+                Remote = remote,
+                OtherChangedFileCount = otherChangedFileCount,
+            };
+        }
+
+        return new GitFastForwardPreflight
+        {
+            State = GitFastForwardPreflightState.Ready,
+            Remote = remote,
+            CommitSummaries = commitLines
+                .Take(MaximumFastForwardCommits)
+                .Select(FormatCommitSummary)
+                .ToArray(),
+            ChangedPaths = managedPaths
+                .Select(SanitizeDisplayText)
+                .ToArray(),
+        };
+    }
+
+    public async Task<GitFastForwardResult> FastForwardAsync(
+        string workspaceDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workspaceDirectory);
+        var fullPath = Path.GetFullPath(workspaceDirectory);
+        var preflight = await GetFastForwardPreflightAsync(fullPath, cancellationToken);
+        if (!preflight.IsReady)
+        {
+            return new GitFastForwardResult
+            {
+                State = GitFastForwardResultState.PreflightBlocked,
+                Preflight = preflight,
+            };
+        }
+
+        var previous = await GetShortHeadAsync(fullPath, cancellationToken);
+        var merge = await RunWithHooksDisabledAsync(
+            ["-C", fullPath, "merge", "--ff-only", "--no-edit", "@{upstream}"],
+            cancellationToken);
+        if (merge.ExitCode != 0)
+        {
+            throw new GitCommandException("The fast-forward update could not be completed.");
+        }
+
+        return new GitFastForwardResult
+        {
+            State = GitFastForwardResultState.Updated,
+            Preflight = preflight,
+            PreviousCommitId = previous,
+            CurrentCommitId = await GetShortHeadAsync(fullPath, cancellationToken),
+        };
+    }
+
+    private static Task<string> GetShortHeadAsync(
+        string workspaceDirectory,
+        CancellationToken cancellationToken) => GetRevisionAsync(
+            workspaceDirectory,
+            "HEAD",
+            cancellationToken);
+
+    private static async Task<string> GetRevisionAsync(
+        string workspaceDirectory,
+        string revision,
+        CancellationToken cancellationToken)
+    {
+        var result = await RunAsync(
+            ["-C", workspaceDirectory, "rev-parse", "--short=12", revision],
+            cancellationToken,
+            maximumOutputCharacters: 256);
+        return result.ExitCode == 0 ? result.StandardOutput.Trim() : string.Empty;
+    }
+
+    private static GitFastForwardPreflight FastForwardPreflight(
+        GitFastForwardPreflightState state,
+        GitRemotePreflight remote) => new()
+        {
+            State = state,
+            Remote = remote,
+        };
+
+    private static string FormatCommitSummary(string value)
+    {
+        var separator = value.IndexOf('\t');
+        return separator < 0
+            ? SanitizeDisplayText(value)
+            : $"{SanitizeDisplayText(value[..separator])} · " +
+                SanitizeDisplayText(value[(separator + 1)..]);
+    }
+
+    private static string SanitizeDisplayText(string value) => new(
+        value.Select(character => char.IsControl(character) ? '�' : character).ToArray());
+
     private static bool IsSafeRemoteName(string remoteName) =>
         remoteName.Length is > 0 and <= 128
         && remoteName[0] != '-'
@@ -434,6 +629,29 @@ public sealed class SystemGitService : IGitService
         }
         catch (UnauthorizedAccessException)
         {
+        }
+    }
+
+    private static async Task<GitCommandResult> RunWithHooksDisabledAsync(
+        IReadOnlyList<string> arguments,
+        CancellationToken cancellationToken)
+    {
+        var emptyHooksDirectory = Path.Combine(
+            Path.GetTempPath(),
+            $"ReqMint.GitHooks.{Guid.NewGuid():N}");
+        Directory.CreateDirectory(emptyHooksDirectory);
+        try
+        {
+            var safeArguments = new List<string>
+            {
+                "-c", $"core.hooksPath={emptyHooksDirectory}",
+            };
+            safeArguments.AddRange(arguments);
+            return await RunAsync(safeArguments, cancellationToken);
+        }
+        finally
+        {
+            TryDeleteDirectory(emptyHooksDirectory);
         }
     }
 

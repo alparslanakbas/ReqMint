@@ -697,6 +697,118 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task FastForwardUpdate_RequiresPreviewAndExplicitConfirmation()
+    {
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = "C:/repos/commerce",
+                Branch = "main",
+                BehindBy = 1,
+            },
+            FastForwardPreflight = new GitFastForwardPreflight
+            {
+                State = GitFastForwardPreflightState.Ready,
+                Remote = new GitRemotePreflight
+                {
+                    State = GitRemotePreflightState.Ready,
+                    RemoteName = "origin",
+                    Branch = "main",
+                    BehindBy = 1,
+                },
+                CommitSummaries = ["abc123 · update orders"],
+                ChangedPaths = ["collections/orders.json"],
+            },
+            FastForwardResult = new GitFastForwardResult
+            {
+                State = GitFastForwardResultState.Updated,
+                PreviousCommitId = "111111111111",
+                CurrentCommitId = "222222222222",
+            },
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: git);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        Assert.True(viewModel.IsGitFastForwardReviewAvailable);
+
+        await viewModel.ReviewGitFastForwardCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsGitFastForwardVisible);
+        Assert.Equal(["abc123 · update orders"], viewModel.GitFastForwardCommits);
+        Assert.Equal(["collections/orders.json"], viewModel.GitFastForwardPaths);
+        Assert.Equal(1, git.FastForwardPreflightCallCount);
+        Assert.Equal(0, git.FastForwardCallCount);
+
+        await viewModel.ConfirmGitFastForwardCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, git.FastForwardCallCount);
+        Assert.Equal(
+            "Workspace updated 111111111111 → 222222222222",
+            viewModel.WorkspaceStatus);
+        Assert.False(viewModel.IsGitFastForwardVisible);
+    }
+
+    [Fact]
+    public async Task FastForwardReview_BlocksUnsavedRequestDraftBeforeGitAccess()
+    {
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = "C:/repos/commerce",
+                Branch = "main",
+                BehindBy = 1,
+            },
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: git);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        viewModel.Url = "https://api.example.com/unsaved-change";
+
+        await viewModel.ReviewGitFastForwardCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.IsGitFastForwardVisible);
+        Assert.Equal(
+            "Save or discard current workspace edits before updating",
+            viewModel.WorkspaceStatus);
+        Assert.Equal(0, git.FastForwardPreflightCallCount);
+    }
+
+    [Fact]
+    public async Task FastForwardReview_BlocksUnsavedEnvironmentEditorBeforeGitAccess()
+    {
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = "C:/repos/commerce",
+                Branch = "main",
+                BehindBy = 1,
+            },
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: git);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        viewModel.NewEnvironmentCommand.Execute(null);
+
+        await viewModel.ReviewGitFastForwardCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.IsGitFastForwardVisible);
+        Assert.Equal(
+            "Save or discard current workspace edits before updating",
+            viewModel.WorkspaceStatus);
+        Assert.Equal(0, git.FastForwardPreflightCallCount);
+    }
+
+    [Fact]
     public async Task OpeningWorkspace_DoesNotListChangesOutsideReqMintScope()
     {
         var git = new StubGitService
@@ -963,6 +1075,14 @@ public sealed class MainViewModelWorkspaceTests
 
         public int FetchCallCount { get; private set; }
 
+        public GitFastForwardPreflight FastForwardPreflight { get; init; } = new();
+
+        public GitFastForwardResult FastForwardResult { get; init; } = new();
+
+        public int FastForwardPreflightCallCount { get; private set; }
+
+        public int FastForwardCallCount { get; private set; }
+
         public Task<GitRepositoryStatus?> GetStatusAsync(
             string workspaceDirectory,
             CancellationToken cancellationToken = default)
@@ -1035,6 +1155,22 @@ public sealed class MainViewModelWorkspaceTests
         {
             FetchCallCount++;
             return Task.FromResult(FetchResult);
+        }
+
+        public Task<GitFastForwardPreflight> GetFastForwardPreflightAsync(
+            string workspaceDirectory,
+            CancellationToken cancellationToken = default)
+        {
+            FastForwardPreflightCallCount++;
+            return Task.FromResult(FastForwardPreflight);
+        }
+
+        public Task<GitFastForwardResult> FastForwardAsync(
+            string workspaceDirectory,
+            CancellationToken cancellationToken = default)
+        {
+            FastForwardCallCount++;
+            return Task.FromResult(FastForwardResult);
         }
     }
 

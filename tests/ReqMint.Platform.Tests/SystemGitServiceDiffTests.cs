@@ -339,6 +339,151 @@ public sealed class SystemGitServiceDiffTests
         Assert.Equal("local draft must survive fetch", localDraft);
     }
 
+    [Fact]
+    public async Task FastForwardAsync_AppliesOnlyTheReviewedIncomingCommits()
+    {
+        using var upstream = await TemporaryGitRepository.CreateAsync();
+        await upstream.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Original\",\"requests\":[]}");
+        await upstream.CommitAllAsync("initial workspace");
+        using var local = await TemporaryGitRepository.CloneAsync(upstream.Path);
+        var originalHead = await local.GetHeadAsync();
+
+        await upstream.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Remote update\",\"requests\":[]}");
+        await upstream.CommitAllAsync("remote orders update");
+
+        var service = new SystemGitService();
+        await service.FetchAsync(local.Path);
+        var preview = await service.GetFastForwardPreflightAsync(local.Path);
+        var result = await service.FastForwardAsync(local.Path);
+        var updatedContent = await local.ReadAsync("collections/orders.json");
+
+        Assert.True(preview.IsReady);
+        Assert.Contains(
+            preview.CommitSummaries,
+            summary => summary.Contains("remote orders update", StringComparison.Ordinal));
+        Assert.Equal(["collections/orders.json"], preview.ChangedPaths);
+        Assert.Equal(GitFastForwardResultState.Updated, result.State);
+        Assert.Equal(originalHead[..12], result.PreviousCommitId);
+        Assert.NotEqual(result.PreviousCommitId, result.CurrentCommitId);
+        Assert.Contains("Remote update", updatedContent, StringComparison.Ordinal);
+        Assert.True((await service.GetStatusAsync(local.Path))!.IsClean);
+    }
+
+    [Fact]
+    public async Task GetFastForwardPreflightAsync_BlocksIncomingFilesOutsideReqMintScope()
+    {
+        using var upstream = await TemporaryGitRepository.CreateAsync();
+        await upstream.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Original\",\"requests\":[]}");
+        await upstream.WriteAsync("notes.txt", "original");
+        await upstream.CommitAllAsync("initial workspace");
+        using var local = await TemporaryGitRepository.CloneAsync(upstream.Path);
+
+        await upstream.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Remote update\",\"requests\":[]}");
+        await upstream.WriteAsync("notes.txt", "remote notes update");
+        await upstream.CommitAllAsync("mixed remote update");
+
+        var service = new SystemGitService();
+        await service.FetchAsync(local.Path);
+        var preflight = await service.GetFastForwardPreflightAsync(local.Path);
+        var result = await service.FastForwardAsync(local.Path);
+
+        Assert.Equal(GitFastForwardPreflightState.ContainsOtherFiles, preflight.State);
+        Assert.Equal(1, preflight.OtherChangedFileCount);
+        Assert.Equal(GitFastForwardResultState.PreflightBlocked, result.State);
+        Assert.Contains(
+            "Original",
+            await local.ReadAsync("collections/orders.json"),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetFastForwardPreflightAsync_ResolvesManagedPathsInNestedWorkspaces()
+    {
+        using var upstream = await TemporaryGitRepository.CreateAsync();
+        await upstream.WriteAsync(
+            "workspace/collections/orders.json",
+            "{\"name\":\"Original\",\"requests\":[]}");
+        await upstream.CommitAllAsync("initial nested workspace");
+        using var local = await TemporaryGitRepository.CloneAsync(upstream.Path);
+
+        await upstream.WriteAsync(
+            "workspace/collections/orders.json",
+            "{\"name\":\"Remote update\",\"requests\":[]}");
+        await upstream.CommitAllAsync("nested workspace update");
+
+        var workspaceDirectory = System.IO.Path.Combine(local.Path, "workspace");
+        var service = new SystemGitService();
+        await service.FetchAsync(workspaceDirectory);
+        var preflight = await service.GetFastForwardPreflightAsync(workspaceDirectory);
+
+        Assert.True(preflight.IsReady);
+        Assert.Equal(["collections/orders.json"], preflight.ChangedPaths);
+    }
+
+    [Fact]
+    public async Task GetFastForwardPreflightAsync_BlocksDirtyAndDivergedRepositories()
+    {
+        using var upstream = await TemporaryGitRepository.CreateAsync();
+        await upstream.WriteAsync(
+            "reqmint.workspace.json",
+            "{\"name\":\"Original\"}");
+        await upstream.CommitAllAsync("initial workspace");
+        using var local = await TemporaryGitRepository.CloneAsync(upstream.Path);
+
+        await upstream.WriteAsync(
+            "reqmint.workspace.json",
+            "{\"name\":\"Remote\"}");
+        await upstream.CommitAllAsync("remote update");
+        var service = new SystemGitService();
+        await service.FetchAsync(local.Path);
+
+        await local.WriteAsync("notes.txt", "dirty draft");
+        var dirty = await service.GetFastForwardPreflightAsync(local.Path);
+        Assert.Equal(GitFastForwardPreflightState.WorkingTreeDirty, dirty.State);
+
+        await local.RunGitAsync("clean", "-f", "--", "notes.txt");
+        await local.WriteAsync("local.txt", "local commit");
+        await local.CommitAllAsync("local update");
+        var diverged = await service.GetFastForwardPreflightAsync(local.Path);
+        Assert.Equal(GitFastForwardPreflightState.Diverged, diverged.State);
+    }
+
+    [Fact]
+    public async Task GetFastForwardPreflightAsync_BlocksScopesTooLargeForFullReview()
+    {
+        using var upstream = await TemporaryGitRepository.CreateAsync();
+        await upstream.WriteAsync(
+            "reqmint.workspace.json",
+            "{\"name\":\"Original\"}");
+        await upstream.CommitAllAsync("initial workspace");
+        using var local = await TemporaryGitRepository.CloneAsync(upstream.Path);
+
+        for (var index = 0; index < 201; index++)
+        {
+            await upstream.WriteAsync(
+                $"data/generated-{index:D3}.json",
+                $"{{\"index\":{index}}}");
+        }
+
+        await upstream.CommitAllAsync("large remote update");
+        var service = new SystemGitService();
+        await service.FetchAsync(local.Path);
+
+        var preflight = await service.GetFastForwardPreflightAsync(local.Path);
+
+        Assert.Equal(GitFastForwardPreflightState.PreviewTooLarge, preflight.State);
+        Assert.True(preflight.IsTruncated);
+        Assert.False(preflight.IsReady);
+    }
+
     private sealed class TemporaryGitRepository : IDisposable
     {
         private TemporaryGitRepository(string path)

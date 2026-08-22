@@ -22,6 +22,15 @@ public sealed class GitCommitMessageValidatorTests
             new GitFetchResult().State);
     }
 
+    [Fact]
+    public void FastForwardModels_DefaultToFailClosedStates()
+    {
+        Assert.False(new GitFastForwardPreflight().IsReady);
+        Assert.Equal(
+            GitFastForwardResultState.PreflightBlocked,
+            new GitFastForwardResult().State);
+    }
+
     [Theory]
     [InlineData("feat: add orders request")]
     [InlineData("Fix timeout")]

@@ -41,6 +41,7 @@ public partial class MainViewModel
             CloseGitDiff();
             CloseGitCommit();
             CloseGitRemote();
+            CloseGitFastForward();
             GitChanges.Clear();
             var managedChanges = status.Changes
                 .Where(change => ReqMintGitFileClassifier.IsManaged(change.Path))
@@ -52,6 +53,9 @@ public partial class MainViewModel
 
             GitConflictCount = managedChanges.Count(change => change.IsConflict);
             IsGitRemoteReviewAvailable = true;
+            GitAheadCount = status.AheadBy;
+            GitBehindCount = status.BehindBy;
+            IsGitFastForwardReviewAvailable = status.BehindBy > 0;
             var stagedReqMintCount = managedChanges.Count(change => change.HasStagedChanges);
             IsGitCommitReviewAvailable = stagedReqMintCount > 0;
 
@@ -123,8 +127,12 @@ public partial class MainViewModel
         GitConflictCount = 0;
         IsGitCommitReviewAvailable = false;
         IsGitRemoteReviewAvailable = false;
+        IsGitFastForwardReviewAvailable = false;
+        GitAheadCount = 0;
+        GitBehindCount = 0;
         CloseGitCommit();
         CloseGitRemote();
+        CloseGitFastForward();
         GitChanges.Clear();
         CloseGitDiff();
         OnPropertyChanged(nameof(IsGitChangeListEmpty));
@@ -134,6 +142,7 @@ public partial class MainViewModel
     {
         CloseGitCommit();
         CloseGitRemote();
+        CloseGitFastForward();
         _selectedGitChange = change;
         GitDiffPath = change.Path;
         HasGitWorkingTreeDiff = change.HasWorkingTreeChanges;
@@ -409,6 +418,7 @@ public partial class MainViewModel
 
             CloseGitDiff();
             CloseGitRemote();
+            CloseGitFastForward();
             GitCommitFiles.Clear();
             foreach (var path in preflight.StagedPaths)
             {
@@ -561,6 +571,7 @@ public partial class MainViewModel
 
             CloseGitDiff();
             CloseGitCommit();
+            CloseGitFastForward();
             GitRemoteName = preflight.RemoteName;
             GitRemoteBranch = preflight.Branch;
             GitRemoteSummary = Localize(
@@ -655,6 +666,197 @@ public partial class MainViewModel
             _ => Localize(
                 "GitRemoteNoUpstream",
                 "The current branch has no upstream remote"),
+        };
+    }
+
+    [RelayCommand]
+    private async Task ReviewGitFastForwardAsync(CancellationToken cancellationToken)
+    {
+        var workspaceDirectory = _workspaceDirectory;
+        if (!IsGitFastForwardReviewAvailable
+            || IsGitFastForwardBusy
+            || IsWorkspaceBusy
+            || IsSending
+            || workspaceDirectory is null)
+        {
+            return;
+        }
+
+        if (HasUnsavedWorkspaceChanges())
+        {
+            WorkspaceStatus = Localize(
+                "GitFastForwardUnsavedDraft",
+                "Save or discard current workspace edits before updating");
+            return;
+        }
+
+        IsGitFastForwardBusy = true;
+        try
+        {
+            var preflight = await _gitService.GetFastForwardPreflightAsync(
+                workspaceDirectory,
+                cancellationToken);
+            if (!preflight.IsReady)
+            {
+                ShowFastForwardPreflightFailure(preflight);
+                return;
+            }
+
+            CloseGitDiff();
+            CloseGitCommit();
+            CloseGitRemote();
+            GitFastForwardCommits.Clear();
+            foreach (var summary in preflight.CommitSummaries)
+            {
+                GitFastForwardCommits.Add(summary);
+            }
+
+            GitFastForwardPaths.Clear();
+            foreach (var path in preflight.ChangedPaths)
+            {
+                GitFastForwardPaths.Add(path);
+            }
+
+            GitFastForwardSummary = Localize(
+                "GitFastForwardReviewSummary",
+                "Review {0} incoming commits from {1}",
+                preflight.Remote.BehindBy,
+                $"{preflight.Remote.RemoteName}/{preflight.Remote.Branch}");
+            IsGitFastForwardVisible = true;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            WorkspaceStatus = Localize(
+                "GitFastForwardPreviewFailed",
+                "Incoming update preview could not be created");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+        finally
+        {
+            IsGitFastForwardBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelGitFastForward() => CloseGitFastForward();
+
+    [RelayCommand]
+    private async Task ConfirmGitFastForwardAsync(CancellationToken cancellationToken)
+    {
+        var workspaceDirectory = _workspaceDirectory;
+        if (!IsGitFastForwardVisible
+            || IsGitFastForwardBusy
+            || IsWorkspaceBusy
+            || IsSending
+            || workspaceDirectory is null)
+        {
+            return;
+        }
+
+        if (HasUnsavedWorkspaceChanges())
+        {
+            WorkspaceStatus = Localize(
+                "GitFastForwardUnsavedDraft",
+                "Save or discard current workspace edits before updating");
+            return;
+        }
+
+        IsGitFastForwardBusy = true;
+        IsWorkspaceBusy = true;
+        try
+        {
+            var result = await _gitService.FastForwardAsync(
+                workspaceDirectory,
+                cancellationToken);
+            if (result.State == GitFastForwardResultState.PreflightBlocked)
+            {
+                CloseGitFastForward();
+                ShowFastForwardPreflightFailure(result.Preflight);
+                await RefreshGitStatusAsync(workspaceDirectory, cancellationToken);
+                return;
+            }
+
+            CloseGitFastForward();
+            try
+            {
+                var snapshot = await _workspaceStore.LoadAsync(
+                    workspaceDirectory,
+                    CancellationToken.None);
+                ApplyWorkspace(snapshot, workspaceDirectory);
+                ResetRequestDraft();
+                await RefreshGitStatusAsync(workspaceDirectory, CancellationToken.None);
+                WorkspaceStatus = Localize(
+                    "GitFastForwardCompleted",
+                    "Workspace updated {0} → {1}",
+                    result.PreviousCommitId,
+                    result.CurrentCommitId);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                WorkspaceStatus = Localize(
+                    "GitFastForwardReloadFailed",
+                    "Git update completed, but the workspace must be reopened");
+                System.Diagnostics.Debug.WriteLine(exception);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            await RefreshGitStatusAsync(workspaceDirectory, CancellationToken.None);
+            WorkspaceStatus = Localize(
+                "GitFastForwardFailed",
+                "Workspace update could not be completed; check Git status");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+        finally
+        {
+            IsGitFastForwardBusy = false;
+            IsWorkspaceBusy = false;
+        }
+    }
+
+    private void CloseGitFastForward()
+    {
+        IsGitFastForwardVisible = false;
+        IsGitFastForwardBusy = false;
+        GitFastForwardSummary = string.Empty;
+        GitFastForwardCommits.Clear();
+        GitFastForwardPaths.Clear();
+    }
+
+    private void ShowFastForwardPreflightFailure(GitFastForwardPreflight preflight)
+    {
+        WorkspaceStatus = preflight.State switch
+        {
+            GitFastForwardPreflightState.WorkingTreeDirty => Localize(
+                "GitFastForwardDirty",
+                "Update blocked because the repository has local file changes"),
+            GitFastForwardPreflightState.Conflicts => Localize(
+                "GitFastForwardConflicts",
+                "Update blocked until all merge conflicts are resolved"),
+            GitFastForwardPreflightState.Diverged => Localize(
+                "GitFastForwardDiverged",
+                "Update blocked because local and remote branches have diverged"),
+            GitFastForwardPreflightState.PreviewUnavailable => Localize(
+                "GitFastForwardPreviewFailed",
+                "Incoming update preview could not be created"),
+            GitFastForwardPreflightState.PreviewTooLarge => Localize(
+                "GitFastForwardPreviewTooLarge",
+                "Update blocked because the incoming scope is too large to review safely"),
+            GitFastForwardPreflightState.ContainsOtherFiles => Localize(
+                "GitFastForwardContainsOtherFiles",
+                "Update blocked because incoming commits change files outside ReqMint's scope"),
+            GitFastForwardPreflightState.RemoteUnavailable => Localize(
+                "GitFastForwardRemoteUnavailable",
+                "Update blocked because the upstream remote is unavailable"),
+            _ => Localize(
+                "GitFastForwardNoUpdates",
+                "There are no incoming fast-forward updates"),
         };
     }
 

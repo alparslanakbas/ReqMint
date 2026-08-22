@@ -43,6 +43,10 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<string> GitCommitFiles { get; } = [];
 
+    public ObservableCollection<string> GitFastForwardCommits { get; } = [];
+
+    public ObservableCollection<string> GitFastForwardPaths { get; } = [];
+
     public ObservableCollection<string> EnvironmentNames { get; } = ["No environment"];
 
     public ObservableCollection<EnvironmentVariableViewModel> EnvironmentVariables { get; } = [];
@@ -213,8 +217,30 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial string GitRemoteSummary { get; set; } = string.Empty;
 
+    [ObservableProperty]
+    public partial int GitAheadCount { get; set; }
+
+    [ObservableProperty]
+    public partial int GitBehindCount { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsGitFastForwardReviewAvailable { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRequestWorkspaceVisible))]
+    public partial bool IsGitFastForwardVisible { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsGitFastForwardBusy { get; set; }
+
+    [ObservableProperty]
+    public partial string GitFastForwardSummary { get; set; } = string.Empty;
+
     public bool IsRequestWorkspaceVisible =>
-        !IsGitDiffVisible && !IsGitCommitVisible && !IsGitRemoteVisible;
+        !IsGitDiffVisible
+        && !IsGitCommitVisible
+        && !IsGitRemoteVisible
+        && !IsGitFastForwardVisible;
 
     public bool IsGitCommitValidationVisible =>
         !string.IsNullOrEmpty(GitCommitValidationMessage);
@@ -910,6 +936,64 @@ public partial class MainViewModel : ViewModelBase
     }
 
     private void MarkRequestClean() => _cleanRequestDraft = CaptureRequestDraft();
+
+    private bool HasUnsavedRequestChanges() => !string.Equals(
+        _cleanRequestDraft,
+        CaptureRequestDraft(),
+        StringComparison.Ordinal);
+
+    private bool HasUnsavedWorkspaceChanges()
+    {
+        if (HasUnsavedRequestChanges())
+        {
+            return true;
+        }
+
+        var selectedCollection = _workspaceSnapshot?.Collections.FirstOrDefault(
+            collection => collection.Id == _selectedCollectionId);
+        if (selectedCollection is not null
+            && !string.Equals(
+                CollectionDraftName,
+                selectedCollection.Name,
+                StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        var environment = _workspaceSnapshot?.Environments.FirstOrDefault(
+            item => item.Id == _editingEnvironmentId);
+        if (environment is null)
+        {
+            return _editingEnvironmentId is null
+                && (EnvironmentVariables.Count > 0
+                    || !string.Equals(
+                        EnvironmentDraftName,
+                        "Development",
+                        StringComparison.Ordinal));
+        }
+
+        if (!string.Equals(EnvironmentDraftName, environment.Name, StringComparison.Ordinal)
+            || EnvironmentVariables.Count != environment.Variables.Count)
+        {
+            return true;
+        }
+
+        for (var index = 0; index < environment.Variables.Count; index++)
+        {
+            var editor = EnvironmentVariables[index];
+            var stored = environment.Variables[index];
+            if (!string.Equals(editor.Name, stored.Name, StringComparison.Ordinal)
+                || editor.IsSecret != stored.IsSecret
+                || (stored.IsSecret
+                    ? !string.IsNullOrEmpty(editor.Value)
+                    : !string.Equals(editor.Value, stored.Value ?? string.Empty, StringComparison.Ordinal)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private string CaptureRequestDraft() => JsonSerializer.Serialize(new
     {
