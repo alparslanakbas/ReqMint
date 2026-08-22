@@ -809,6 +809,61 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task Push_RequiresPreviewAndExplicitConfirmation()
+    {
+        var pushPreflight = new GitPushPreflight
+        {
+            State = GitPushPreflightState.Ready,
+            Remote = new GitRemotePreflight
+            {
+                State = GitRemotePreflightState.Ready,
+                RemoteName = "origin",
+                Branch = "main",
+                AheadBy = 1,
+            },
+            CommitSummaries = ["abc123 · update orders"],
+            ChangedPaths = ["collections/orders.json"],
+        };
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = "C:/repos/commerce",
+                Branch = "main",
+                AheadBy = 1,
+            },
+            PushPreflight = pushPreflight,
+            PushResult = new GitPushResult
+            {
+                State = GitPushResultState.Pushed,
+                Preflight = pushPreflight,
+                CurrentCommitId = "abc123",
+            },
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: git);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        Assert.True(viewModel.IsGitPushReviewAvailable);
+
+        await viewModel.ReviewGitPushCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsGitPushVisible);
+        Assert.Equal(["abc123 · update orders"], viewModel.GitPushCommits);
+        Assert.Equal(["collections/orders.json"], viewModel.GitPushPaths);
+        Assert.Equal(1, git.PushPreflightCallCount);
+        Assert.Equal(0, git.PushCallCount);
+
+        await viewModel.ConfirmGitPushCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, git.PushCallCount);
+        Assert.Equal("Pushed 1 commits to origin/main", viewModel.WorkspaceStatus);
+        Assert.False(viewModel.IsGitPushVisible);
+    }
+
+    [Fact]
     public async Task OpeningWorkspace_DoesNotListChangesOutsideReqMintScope()
     {
         var git = new StubGitService
@@ -1083,6 +1138,14 @@ public sealed class MainViewModelWorkspaceTests
 
         public int FastForwardCallCount { get; private set; }
 
+        public GitPushPreflight PushPreflight { get; init; } = new();
+
+        public GitPushResult PushResult { get; init; } = new();
+
+        public int PushPreflightCallCount { get; private set; }
+
+        public int PushCallCount { get; private set; }
+
         public Task<GitRepositoryStatus?> GetStatusAsync(
             string workspaceDirectory,
             CancellationToken cancellationToken = default)
@@ -1171,6 +1234,22 @@ public sealed class MainViewModelWorkspaceTests
         {
             FastForwardCallCount++;
             return Task.FromResult(FastForwardResult);
+        }
+
+        public Task<GitPushPreflight> GetPushPreflightAsync(
+            string workspaceDirectory,
+            CancellationToken cancellationToken = default)
+        {
+            PushPreflightCallCount++;
+            return Task.FromResult(PushPreflight);
+        }
+
+        public Task<GitPushResult> PushAsync(
+            string workspaceDirectory,
+            CancellationToken cancellationToken = default)
+        {
+            PushCallCount++;
+            return Task.FromResult(PushResult);
         }
     }
 

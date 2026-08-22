@@ -29,6 +29,10 @@ public sealed class GitCommitMessageValidatorTests
         Assert.Equal(
             GitFastForwardResultState.PreflightBlocked,
             new GitFastForwardResult().State);
+        Assert.False(new GitPushPreflight().IsReady);
+        Assert.Equal(
+            GitPushResultState.PreflightBlocked,
+            new GitPushResult().State);
     }
 
     [Theory]

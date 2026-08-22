@@ -41,6 +41,14 @@ public interface IGitService
     Task<GitFastForwardResult> FastForwardAsync(
         string workspaceDirectory,
         CancellationToken cancellationToken = default);
+
+    Task<GitPushPreflight> GetPushPreflightAsync(
+        string workspaceDirectory,
+        CancellationToken cancellationToken = default);
+
+    Task<GitPushResult> PushAsync(
+        string workspaceDirectory,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record GitRepositoryStatus
@@ -241,6 +249,58 @@ public sealed record GitFastForwardResult
 public enum GitFastForwardResultState
 {
     Updated,
+    PreflightBlocked,
+}
+
+public sealed record GitPushPreflight
+{
+    public GitPushPreflightState State { get; init; } =
+        GitPushPreflightState.NoOutgoingCommits;
+
+    public GitRemotePreflight Remote { get; init; } = new();
+
+    public IReadOnlyList<string> CommitSummaries { get; init; } = [];
+
+    public IReadOnlyList<string> ChangedPaths { get; init; } = [];
+
+    public int SecurityWarningCount { get; init; }
+
+    public int UnscannedSnapshotCount { get; init; }
+
+    public bool IsTruncated { get; init; }
+
+    public int OtherChangedFileCount { get; init; }
+
+    public bool IsReady => State == GitPushPreflightState.Ready;
+}
+
+public enum GitPushPreflightState
+{
+    Ready,
+    RemoteUnavailable,
+    WorkingTreeDirty,
+    Conflicts,
+    NoOutgoingCommits,
+    BehindRemote,
+    Diverged,
+    PreviewUnavailable,
+    PreviewTooLarge,
+    ContainsOtherFiles,
+    BlockedBySecurity,
+}
+
+public sealed record GitPushResult
+{
+    public GitPushResultState State { get; init; } = GitPushResultState.PreflightBlocked;
+
+    public GitPushPreflight Preflight { get; init; } = new();
+
+    public string CurrentCommitId { get; init; } = string.Empty;
+}
+
+public enum GitPushResultState
+{
+    Pushed,
     PreflightBlocked,
 }
 

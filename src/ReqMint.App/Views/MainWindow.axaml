@@ -356,6 +356,11 @@
                                         IsVisible="{Binding IsGitFastForwardReviewAvailable}"
                                         IsEnabled="{Binding !IsGitFastForwardBusy}"
                                         Command="{Binding ReviewGitFastForwardCommand}" />
+                                <Button Content="{DynamicResource GitPushReviewAction}"
+                                        Margin="0,4,0,0"
+                                        IsVisible="{Binding IsGitPushReviewAvailable}"
+                                        IsEnabled="{Binding !IsGitPushBusy}"
+                                        Command="{Binding ReviewGitPushCommand}" />
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -1040,6 +1045,110 @@
                             <Button Content="{DynamicResource GitFastForwardConfirm}"
                                     IsEnabled="{Binding !IsGitFastForwardBusy}"
                                     Command="{Binding ConfirmGitFastForwardCommand}" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Grid>
+
+            <Grid RowDefinitions="56,*" IsVisible="{Binding IsGitPushVisible}">
+                <Border Grid.Row="0"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="0,0,0,1">
+                    <Grid Margin="18,0" ColumnDefinitions="*,Auto">
+                        <StackPanel Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    Spacing="10">
+                            <TextBlock Text="⇡"
+                                       Foreground="{DynamicResource AccentBrush}"
+                                       FontSize="18" />
+                            <TextBlock Text="{DynamicResource GitPushReviewTitle}"
+                                       FontSize="17"
+                                       FontWeight="SemiBold" />
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Content="×"
+                                Width="30"
+                                Height="30"
+                                Padding="0"
+                                IsEnabled="{Binding !IsGitPushBusy}"
+                                Command="{Binding CancelGitPushCommand}" />
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="1"
+                      Margin="24"
+                      RowDefinitions="Auto,12,*,12,Auto">
+                    <TextBlock Text="{Binding GitPushSummary}"
+                               Foreground="{DynamicResource AccentBrush}"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap" />
+                    <Grid Grid.Row="2" ColumnDefinitions="*,12,*">
+                        <Border Padding="14"
+                                CornerRadius="8"
+                                Background="{DynamicResource SurfaceRaisedBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1">
+                            <Grid RowDefinitions="Auto,8,*">
+                                <TextBlock Text="{DynamicResource GitPushCommitsTitle}"
+                                           FontWeight="SemiBold" />
+                                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding GitPushCommits}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}"
+                                                           Margin="0,0,0,6"
+                                                           FontFamily="Cascadia Mono, Consolas"
+                                                           FontSize="11"
+                                                           TextWrapping="Wrap" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                        <Border Grid.Column="2"
+                                Padding="14"
+                                CornerRadius="8"
+                                Background="{DynamicResource SurfaceRaisedBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1">
+                            <Grid RowDefinitions="Auto,8,*">
+                                <TextBlock Text="{DynamicResource GitPushPathsTitle}"
+                                           FontWeight="SemiBold" />
+                                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding GitPushPaths}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}"
+                                                           Margin="0,0,0,5"
+                                                           FontFamily="Cascadia Mono, Consolas"
+                                                           FontSize="11"
+                                                           TextWrapping="Wrap" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                    <Grid Grid.Row="4" ColumnDefinitions="*,Auto">
+                        <TextBlock Text="{DynamicResource GitPushSafetyNote}"
+                                   Classes="secondary"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1"
+                                    Margin="16,0,0,0"
+                                    Orientation="Horizontal"
+                                    Spacing="8">
+                            <Button Content="{DynamicResource GitPushCancel}"
+                                    IsEnabled="{Binding !IsGitPushBusy}"
+                                    Command="{Binding CancelGitPushCommand}" />
+                            <Button Content="{DynamicResource GitPushConfirm}"
+                                    IsEnabled="{Binding !IsGitPushBusy}"
+                                    Command="{Binding ConfirmGitPushCommand}" />
                         </StackPanel>
                     </Grid>
                 </Grid>

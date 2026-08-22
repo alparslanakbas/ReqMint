@@ -14,6 +14,7 @@ public sealed class SystemGitService : IGitService
     private const int MaximumErrorCharacters = 64 * 1024;
     private const int MaximumFastForwardCommits = 50;
     private const int MaximumFastForwardPaths = 200;
+    private const int MaximumPushSnapshots = 500;
 
     public async Task<GitRepositoryStatus?> GetStatusAsync(
         string workspaceDirectory,
@@ -572,6 +573,253 @@ public sealed class SystemGitService : IGitService
         };
     }
 
+    public async Task<GitPushPreflight> GetPushPreflightAsync(
+        string workspaceDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workspaceDirectory);
+        var fullPath = Path.GetFullPath(workspaceDirectory);
+        var remote = await GetRemotePreflightAsync(fullPath, cancellationToken);
+        if (!remote.IsReady)
+        {
+            return PushPreflight(GitPushPreflightState.RemoteUnavailable, remote);
+        }
+
+        var branchCheck = await RunAsync(
+            ["check-ref-format", $"refs/heads/{remote.Branch}"],
+            cancellationToken,
+            maximumOutputCharacters: 1024);
+        if (branchCheck.ExitCode != 0)
+        {
+            return PushPreflight(GitPushPreflightState.RemoteUnavailable, remote);
+        }
+
+        var status = await GetStatusAsync(fullPath, cancellationToken);
+        if (status is null)
+        {
+            return PushPreflight(GitPushPreflightState.RemoteUnavailable, remote);
+        }
+
+        if (status.Changes.Any(change => change.IsConflict))
+        {
+            return PushPreflight(GitPushPreflightState.Conflicts, remote);
+        }
+
+        if (!status.IsClean)
+        {
+            return PushPreflight(GitPushPreflightState.WorkingTreeDirty, remote);
+        }
+
+        if (status.BehindBy > 0 && status.AheadBy > 0)
+        {
+            return PushPreflight(GitPushPreflightState.Diverged, remote);
+        }
+
+        if (status.BehindBy > 0)
+        {
+            return PushPreflight(GitPushPreflightState.BehindRemote, remote);
+        }
+
+        if (status.AheadBy <= 0)
+        {
+            return PushPreflight(GitPushPreflightState.NoOutgoingCommits, remote);
+        }
+
+        var revisions = await RunAsync(
+            [
+                "-C", fullPath,
+                "rev-list", $"--max-count={MaximumFastForwardCommits + 1}",
+                "@{upstream}..HEAD",
+            ],
+            cancellationToken,
+            maximumOutputCharacters: 16 * 1024);
+        var commits = await RunAsync(
+            [
+                "-C", fullPath,
+                "log", $"--max-count={MaximumFastForwardCommits + 1}",
+                "--format=%h%x09%s", "@{upstream}..HEAD",
+            ],
+            cancellationToken,
+            maximumOutputCharacters: 128 * 1024);
+        var paths = await RunAsync(
+            ["-C", fullPath, "diff", "--name-only", "-z", "@{upstream}..HEAD"],
+            cancellationToken,
+            maximumOutputCharacters: 256 * 1024);
+        if (revisions.ExitCode != 0 || commits.ExitCode != 0 || paths.ExitCode != 0)
+        {
+            return PushPreflight(GitPushPreflightState.PreviewUnavailable, remote);
+        }
+
+        var revisionIds = revisions.StandardOutput
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+        var commitLines = commits.StandardOutput
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+        var changedRepositoryPaths = paths.StandardOutput
+            .Split('\0', StringSplitOptions.RemoveEmptyEntries);
+        if (revisions.StandardOutputTruncated
+            || commits.StandardOutputTruncated
+            || paths.StandardOutputTruncated
+            || revisionIds.Length > MaximumFastForwardCommits
+            || commitLines.Length > MaximumFastForwardCommits
+            || changedRepositoryPaths.Length > MaximumFastForwardPaths)
+        {
+            return new GitPushPreflight
+            {
+                State = GitPushPreflightState.PreviewTooLarge,
+                Remote = remote,
+                IsTruncated = true,
+            };
+        }
+
+        var changedPaths = new List<string>(changedRepositoryPaths.Length);
+        var otherChangedFileCount = 0;
+        foreach (var repositoryPath in changedRepositoryPaths)
+        {
+            var workspacePath = GetManagedWorkspacePath(
+                status.RepositoryRoot,
+                fullPath,
+                repositoryPath);
+            if (workspacePath is null)
+            {
+                otherChangedFileCount++;
+            }
+            else
+            {
+                changedPaths.Add(workspacePath);
+            }
+        }
+
+        if (otherChangedFileCount > 0)
+        {
+            return new GitPushPreflight
+            {
+                State = GitPushPreflightState.ContainsOtherFiles,
+                Remote = remote,
+                OtherChangedFileCount = otherChangedFileCount,
+            };
+        }
+
+        var warningCount = 0;
+        var unscannedCount = 0;
+        var snapshotCount = 0;
+        foreach (var revision in revisionIds)
+        {
+            var revisionPaths = await RunAsync(
+                [
+                    "-C", fullPath,
+                    "diff-tree", "--root", "--no-commit-id", "--name-only", "-r", "-z",
+                    revision,
+                ],
+                cancellationToken,
+                maximumOutputCharacters: 256 * 1024);
+            if (revisionPaths.ExitCode != 0 || revisionPaths.StandardOutputTruncated)
+            {
+                return PushPreflight(GitPushPreflightState.PreviewUnavailable, remote);
+            }
+
+            foreach (var repositoryPath in revisionPaths.StandardOutput
+                .Split('\0', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var workspacePath = GetManagedWorkspacePath(
+                    status.RepositoryRoot,
+                    fullPath,
+                    repositoryPath);
+                if (workspacePath is null)
+                {
+                    return new GitPushPreflight
+                    {
+                        State = GitPushPreflightState.ContainsOtherFiles,
+                        Remote = remote,
+                        OtherChangedFileCount = 1,
+                    };
+                }
+
+                snapshotCount++;
+                if (snapshotCount > MaximumPushSnapshots)
+                {
+                    return new GitPushPreflight
+                    {
+                        State = GitPushPreflightState.PreviewTooLarge,
+                        Remote = remote,
+                        IsTruncated = true,
+                    };
+                }
+
+                var scan = await ScanCommittedFileAsync(
+                    fullPath,
+                    revision,
+                    workspacePath,
+                    cancellationToken);
+                warningCount += scan.Findings.Count;
+                unscannedCount += scan.UnscannedFiles.Count;
+            }
+        }
+
+        if (warningCount > 0 || unscannedCount > 0)
+        {
+            return new GitPushPreflight
+            {
+                State = GitPushPreflightState.BlockedBySecurity,
+                Remote = remote,
+                SecurityWarningCount = warningCount,
+                UnscannedSnapshotCount = unscannedCount,
+            };
+        }
+
+        return new GitPushPreflight
+        {
+            State = GitPushPreflightState.Ready,
+            Remote = remote,
+            CommitSummaries = commitLines.Select(FormatCommitSummary).ToArray(),
+            ChangedPaths = changedPaths
+                .Distinct(OperatingSystem.IsWindows()
+                    ? StringComparer.OrdinalIgnoreCase
+                    : StringComparer.Ordinal)
+                .Select(SanitizeDisplayText)
+                .ToArray(),
+        };
+    }
+
+    public async Task<GitPushResult> PushAsync(
+        string workspaceDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workspaceDirectory);
+        var fullPath = Path.GetFullPath(workspaceDirectory);
+        var preflight = await GetPushPreflightAsync(fullPath, cancellationToken);
+        if (!preflight.IsReady)
+        {
+            return new GitPushResult
+            {
+                State = GitPushResultState.PreflightBlocked,
+                Preflight = preflight,
+            };
+        }
+
+        var push = await RunWithHooksDisabledAsync(
+            [
+                "-c", "push.followTags=false",
+                "-C", fullPath,
+                "push", "--porcelain", "--no-verify", "--no-follow-tags", "--",
+                preflight.Remote.RemoteName,
+                $"HEAD:refs/heads/{preflight.Remote.Branch}",
+            ],
+            cancellationToken,
+            NetworkCommandTimeout,
+            64 * 1024);
+        if (push.ExitCode != 0)
+        {
+            throw new GitCommandException("The push could not be completed.");
+        }
+
+        return new GitPushResult
+        {
+            State = GitPushResultState.Pushed,
+            Preflight = preflight,
+            CurrentCommitId = await GetShortHeadAsync(fullPath, cancellationToken),
+        };
+    }
+
     private static Task<string> GetShortHeadAsync(
         string workspaceDirectory,
         CancellationToken cancellationToken) => GetRevisionAsync(
@@ -598,6 +846,39 @@ public sealed class SystemGitService : IGitService
             State = state,
             Remote = remote,
         };
+
+    private static GitPushPreflight PushPreflight(
+        GitPushPreflightState state,
+        GitRemotePreflight remote) => new()
+        {
+            State = state,
+            Remote = remote,
+        };
+
+    private static string? GetManagedWorkspacePath(
+        string repositoryRoot,
+        string workspaceDirectory,
+        string repositoryRelativePath)
+    {
+        var workspacePrefix = Path.GetRelativePath(repositoryRoot, workspaceDirectory)
+            .Replace('\\', '/')
+            .Trim('/');
+        if (workspacePrefix == ".")
+        {
+            workspacePrefix = string.Empty;
+        }
+
+        var normalizedPath = repositoryRelativePath.Replace('\\', '/');
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        var workspacePath = string.IsNullOrEmpty(workspacePrefix)
+            ? normalizedPath
+            : normalizedPath.StartsWith(workspacePrefix + "/", comparison)
+                ? normalizedPath[(workspacePrefix.Length + 1)..]
+                : string.Empty;
+        return ReqMintGitFileClassifier.IsManaged(workspacePath) ? workspacePath : null;
+    }
 
     private static string FormatCommitSummary(string value)
     {
@@ -634,7 +915,9 @@ public sealed class SystemGitService : IGitService
 
     private static async Task<GitCommandResult> RunWithHooksDisabledAsync(
         IReadOnlyList<string> arguments,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        TimeSpan? commandTimeout = null,
+        int maximumOutputCharacters = 16 * 1024)
     {
         var emptyHooksDirectory = Path.Combine(
             Path.GetTempPath(),
@@ -647,7 +930,11 @@ public sealed class SystemGitService : IGitService
                 "-c", $"core.hooksPath={emptyHooksDirectory}",
             };
             safeArguments.AddRange(arguments);
-            return await RunAsync(safeArguments, cancellationToken);
+            return await RunAsync(
+                safeArguments,
+                cancellationToken,
+                maximumOutputCharacters,
+                commandTimeout);
         }
         finally
         {
@@ -757,6 +1044,38 @@ public sealed class SystemGitService : IGitService
             cancellationToken,
             maximumOutputCharacters: 4096);
         return deletion.ExitCode == 0 && !string.IsNullOrWhiteSpace(deletion.StandardOutput)
+            ? GitSecretScanResult.Empty
+            : new GitSecretScanResult { UnscannedFiles = [relativePath] };
+    }
+
+    private static async Task<GitSecretScanResult> ScanCommittedFileAsync(
+        string workspaceDirectory,
+        string revision,
+        string relativePath,
+        CancellationToken cancellationToken)
+    {
+        var snapshot = await RunAsync(
+            ["-C", workspaceDirectory, "show", $"{revision}:./{relativePath}"],
+            cancellationToken,
+            MaximumSnapshotCharacters);
+        if (snapshot.ExitCode == 0 && !snapshot.StandardOutputTruncated)
+        {
+            return WorkspaceGitSecretScanner.ScanText(relativePath, snapshot.StandardOutput);
+        }
+
+        if (snapshot.StandardOutputTruncated)
+        {
+            return new GitSecretScanResult { UnscannedFiles = [relativePath] };
+        }
+
+        var exists = await RunAsync(
+            [
+                "-C", workspaceDirectory,
+                "ls-tree", "-r", "--name-only", "-z", revision, "--", relativePath,
+            ],
+            cancellationToken,
+            maximumOutputCharacters: 4096);
+        return exists.ExitCode == 0 && string.IsNullOrEmpty(exists.StandardOutput)
             ? GitSecretScanResult.Empty
             : new GitSecretScanResult { UnscannedFiles = [relativePath] };
     }

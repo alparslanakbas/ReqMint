@@ -42,6 +42,7 @@ public partial class MainViewModel
             CloseGitCommit();
             CloseGitRemote();
             CloseGitFastForward();
+            CloseGitPush();
             GitChanges.Clear();
             var managedChanges = status.Changes
                 .Where(change => ReqMintGitFileClassifier.IsManaged(change.Path))
@@ -56,6 +57,7 @@ public partial class MainViewModel
             GitAheadCount = status.AheadBy;
             GitBehindCount = status.BehindBy;
             IsGitFastForwardReviewAvailable = status.BehindBy > 0;
+            IsGitPushReviewAvailable = status.AheadBy > 0;
             var stagedReqMintCount = managedChanges.Count(change => change.HasStagedChanges);
             IsGitCommitReviewAvailable = stagedReqMintCount > 0;
 
@@ -128,11 +130,13 @@ public partial class MainViewModel
         IsGitCommitReviewAvailable = false;
         IsGitRemoteReviewAvailable = false;
         IsGitFastForwardReviewAvailable = false;
+        IsGitPushReviewAvailable = false;
         GitAheadCount = 0;
         GitBehindCount = 0;
         CloseGitCommit();
         CloseGitRemote();
         CloseGitFastForward();
+        CloseGitPush();
         GitChanges.Clear();
         CloseGitDiff();
         OnPropertyChanged(nameof(IsGitChangeListEmpty));
@@ -143,6 +147,7 @@ public partial class MainViewModel
         CloseGitCommit();
         CloseGitRemote();
         CloseGitFastForward();
+        CloseGitPush();
         _selectedGitChange = change;
         GitDiffPath = change.Path;
         HasGitWorkingTreeDiff = change.HasWorkingTreeChanges;
@@ -419,6 +424,7 @@ public partial class MainViewModel
             CloseGitDiff();
             CloseGitRemote();
             CloseGitFastForward();
+            CloseGitPush();
             GitCommitFiles.Clear();
             foreach (var path in preflight.StagedPaths)
             {
@@ -572,6 +578,7 @@ public partial class MainViewModel
             CloseGitDiff();
             CloseGitCommit();
             CloseGitFastForward();
+            CloseGitPush();
             GitRemoteName = preflight.RemoteName;
             GitRemoteBranch = preflight.Branch;
             GitRemoteSummary = Localize(
@@ -705,6 +712,7 @@ public partial class MainViewModel
             CloseGitDiff();
             CloseGitCommit();
             CloseGitRemote();
+            CloseGitPush();
             GitFastForwardCommits.Clear();
             foreach (var summary in preflight.CommitSummaries)
             {
@@ -857,6 +865,174 @@ public partial class MainViewModel
             _ => Localize(
                 "GitFastForwardNoUpdates",
                 "There are no incoming fast-forward updates"),
+        };
+    }
+
+    [RelayCommand]
+    private async Task ReviewGitPushAsync(CancellationToken cancellationToken)
+    {
+        var workspaceDirectory = _workspaceDirectory;
+        if (!IsGitPushReviewAvailable
+            || IsGitPushBusy
+            || IsSending
+            || workspaceDirectory is null)
+        {
+            return;
+        }
+
+        IsGitPushBusy = true;
+        try
+        {
+            var preflight = await _gitService.GetPushPreflightAsync(
+                workspaceDirectory,
+                cancellationToken);
+            if (!preflight.IsReady)
+            {
+                ShowPushPreflightFailure(preflight);
+                return;
+            }
+
+            CloseGitDiff();
+            CloseGitCommit();
+            CloseGitRemote();
+            CloseGitFastForward();
+            GitPushCommits.Clear();
+            foreach (var summary in preflight.CommitSummaries)
+            {
+                GitPushCommits.Add(summary);
+            }
+
+            GitPushPaths.Clear();
+            foreach (var path in preflight.ChangedPaths)
+            {
+                GitPushPaths.Add(path);
+            }
+
+            GitPushSummary = Localize(
+                "GitPushReviewSummary",
+                "Review {0} outgoing commits to {1}",
+                preflight.CommitSummaries.Count,
+                $"{preflight.Remote.RemoteName}/{preflight.Remote.Branch}");
+            IsGitPushVisible = true;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            WorkspaceStatus = Localize(
+                "GitPushPreviewFailed",
+                "Outgoing push preview could not be created");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+        finally
+        {
+            IsGitPushBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelGitPush() => CloseGitPush();
+
+    [RelayCommand]
+    private async Task ConfirmGitPushAsync(CancellationToken cancellationToken)
+    {
+        var workspaceDirectory = _workspaceDirectory;
+        if (!IsGitPushVisible
+            || IsGitPushBusy
+            || IsSending
+            || workspaceDirectory is null)
+        {
+            return;
+        }
+
+        IsGitPushBusy = true;
+        try
+        {
+            var result = await _gitService.PushAsync(workspaceDirectory, cancellationToken);
+            if (result.State == GitPushResultState.PreflightBlocked)
+            {
+                CloseGitPush();
+                ShowPushPreflightFailure(result.Preflight);
+                await RefreshGitStatusAsync(workspaceDirectory, cancellationToken);
+                return;
+            }
+
+            var pushedCommitCount = result.Preflight.CommitSummaries.Count;
+            var destination =
+                $"{result.Preflight.Remote.RemoteName}/{result.Preflight.Remote.Branch}";
+            CloseGitPush();
+            WorkspaceStatus = Localize(
+                "GitPushCompleted",
+                "Pushed {0} commits to {1}",
+                pushedCommitCount,
+                destination);
+            await RefreshGitStatusAsync(workspaceDirectory, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            await RefreshGitStatusAsync(workspaceDirectory, CancellationToken.None);
+            WorkspaceStatus = Localize(
+                "GitPushFailed",
+                "Push could not be completed; no force push was attempted");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+        finally
+        {
+            IsGitPushBusy = false;
+        }
+    }
+
+    private void CloseGitPush()
+    {
+        IsGitPushVisible = false;
+        IsGitPushBusy = false;
+        GitPushSummary = string.Empty;
+        GitPushCommits.Clear();
+        GitPushPaths.Clear();
+    }
+
+    private void ShowPushPreflightFailure(GitPushPreflight preflight)
+    {
+        WorkspaceStatus = preflight.State switch
+        {
+            GitPushPreflightState.WorkingTreeDirty => Localize(
+                "GitPushDirty",
+                "Push blocked because the repository has local file changes"),
+            GitPushPreflightState.Conflicts => Localize(
+                "GitPushConflicts",
+                "Push blocked until all merge conflicts are resolved"),
+            GitPushPreflightState.BehindRemote => Localize(
+                "GitPushBehind",
+                "Push blocked because the remote branch has newer commits"),
+            GitPushPreflightState.Diverged => Localize(
+                "GitPushDiverged",
+                "Push blocked because local and remote branches have diverged"),
+            GitPushPreflightState.PreviewUnavailable => Localize(
+                "GitPushPreviewFailed",
+                "Outgoing push preview could not be created"),
+            GitPushPreflightState.PreviewTooLarge => Localize(
+                "GitPushPreviewTooLarge",
+                "Push blocked because the outgoing scope is too large to inspect safely"),
+            GitPushPreflightState.ContainsOtherFiles => Localize(
+                "GitPushContainsOtherFiles",
+                "Push blocked because outgoing commits include files outside ReqMint's scope"),
+            GitPushPreflightState.BlockedBySecurity when preflight.SecurityWarningCount > 0 =>
+                Localize(
+                    "GitPushBlockedBySecrets",
+                    "Push blocked because an outgoing commit snapshot may contain a secret"),
+            GitPushPreflightState.BlockedBySecurity => Localize(
+                "GitPushBlockedByScan",
+                "Push blocked because every outgoing snapshot could not be inspected safely"),
+            GitPushPreflightState.RemoteUnavailable => Localize(
+                "GitPushRemoteUnavailable",
+                "Push blocked because the upstream remote is unavailable"),
+            _ => Localize(
+                "GitPushNoCommits",
+                "There are no outgoing commits to push"),
         };
     }
 

@@ -484,6 +484,89 @@ public sealed class SystemGitServiceDiffTests
         Assert.False(preflight.IsReady);
     }
 
+    [Fact]
+    public async Task PushAsync_PushesOnlyTheReviewedCurrentBranch()
+    {
+        using var upstream = await TemporaryGitRepository.CreateAsync();
+        await upstream.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Original\",\"requests\":[]}");
+        await upstream.CommitAllAsync("initial workspace");
+        await upstream.RunGitAsync("config", "receive.denyCurrentBranch", "updateInstead");
+        using var local = await TemporaryGitRepository.CloneAsync(upstream.Path);
+        await local.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Local update\",\"requests\":[]}");
+        await local.CommitAllAsync("update outgoing orders");
+
+        var service = new SystemGitService();
+        var preview = await service.GetPushPreflightAsync(local.Path);
+        var result = await service.PushAsync(local.Path);
+        var status = await service.GetStatusAsync(local.Path);
+
+        Assert.True(preview.IsReady);
+        Assert.Equal("origin", preview.Remote.RemoteName);
+        Assert.Contains(
+            preview.CommitSummaries,
+            summary => summary.Contains("update outgoing orders", StringComparison.Ordinal));
+        Assert.Equal(["collections/orders.json"], preview.ChangedPaths);
+        Assert.Equal(GitPushResultState.Pushed, result.State);
+        Assert.NotEmpty(result.CurrentCommitId);
+        Assert.Equal(0, status!.AheadBy);
+        Assert.Equal(0, status.BehindBy);
+        Assert.Contains(
+            "Local update",
+            await upstream.ReadAsync("collections/orders.json"),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetPushPreflightAsync_BlocksASecretFromAnyOutgoingCommitSnapshot()
+    {
+        using var upstream = await TemporaryGitRepository.CreateAsync();
+        const string safeEnvironment =
+            "{\"variables\":[{\"name\":\"API_TOKEN\",\"value\":null,\"isSecret\":true}]}";
+        await upstream.WriteAsync("environments/local.json", safeEnvironment);
+        await upstream.CommitAllAsync("initial workspace");
+        using var local = await TemporaryGitRepository.CloneAsync(upstream.Path);
+        await local.WriteAsync(
+            "environments/local.json",
+            "{\"variables\":[{\"name\":\"API_TOKEN\",\"value\":\"never-push\",\"isSecret\":true}]}");
+        await local.CommitAllAsync("temporarily add credential");
+        await local.WriteAsync("environments/local.json", safeEnvironment);
+        await local.CommitAllAsync("remove credential");
+
+        var service = new SystemGitService();
+        var preflight = await service.GetPushPreflightAsync(local.Path);
+        var result = await service.PushAsync(local.Path);
+
+        Assert.Equal(GitPushPreflightState.BlockedBySecurity, preflight.State);
+        Assert.True(preflight.SecurityWarningCount > 0);
+        Assert.Equal(GitPushResultState.PreflightBlocked, result.State);
+        Assert.DoesNotContain(
+            "never-push",
+            await upstream.ReadAsync("environments/local.json"),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetPushPreflightAsync_BlocksOutgoingFilesOutsideReqMintScope()
+    {
+        using var upstream = await TemporaryGitRepository.CreateAsync();
+        await upstream.WriteAsync("reqmint.workspace.json", "{\"name\":\"Original\"}");
+        await upstream.WriteAsync("notes.txt", "original");
+        await upstream.CommitAllAsync("initial workspace");
+        using var local = await TemporaryGitRepository.CloneAsync(upstream.Path);
+        await local.WriteAsync("notes.txt", "outgoing notes");
+        await local.CommitAllAsync("update notes");
+
+        var preflight = await new SystemGitService().GetPushPreflightAsync(local.Path);
+
+        Assert.Equal(GitPushPreflightState.ContainsOtherFiles, preflight.State);
+        Assert.Equal(1, preflight.OtherChangedFileCount);
+        Assert.False(preflight.IsReady);
+    }
+
     private sealed class TemporaryGitRepository : IDisposable
     {
         private TemporaryGitRepository(string path)

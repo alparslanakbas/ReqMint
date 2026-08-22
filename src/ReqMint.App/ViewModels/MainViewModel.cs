@@ -47,6 +47,10 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<string> GitFastForwardPaths { get; } = [];
 
+    public ObservableCollection<string> GitPushCommits { get; } = [];
+
+    public ObservableCollection<string> GitPushPaths { get; } = [];
+
     public ObservableCollection<string> EnvironmentNames { get; } = ["No environment"];
 
     public ObservableCollection<EnvironmentVariableViewModel> EnvironmentVariables { get; } = [];
@@ -236,11 +240,25 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial string GitFastForwardSummary { get; set; } = string.Empty;
 
+    [ObservableProperty]
+    public partial bool IsGitPushReviewAvailable { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRequestWorkspaceVisible))]
+    public partial bool IsGitPushVisible { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsGitPushBusy { get; set; }
+
+    [ObservableProperty]
+    public partial string GitPushSummary { get; set; } = string.Empty;
+
     public bool IsRequestWorkspaceVisible =>
         !IsGitDiffVisible
         && !IsGitCommitVisible
         && !IsGitRemoteVisible
-        && !IsGitFastForwardVisible;
+        && !IsGitFastForwardVisible
+        && !IsGitPushVisible;
 
     public bool IsGitCommitValidationVisible =>
         !string.IsNullOrEmpty(GitCommitValidationMessage);

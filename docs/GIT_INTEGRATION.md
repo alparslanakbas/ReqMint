@@ -1,6 +1,6 @@
 # Git integration
 
-ReqMint's Git collaboration panel detects whether a workspace is inside a Git repository and displays the repository root, active branch, ahead/behind counts, and changed ReqMint workspace files. Inspection remains read-only until the user explicitly reviews and confirms staging one eligible file.
+ReqMint's Git collaboration panel detects whether a workspace is inside a Git repository and displays the repository root, active branch, ahead/behind counts, and changed ReqMint workspace files. Every mutation or network operation requires its own review and explicit confirmation.
 
 The detailed list is intentionally limited to `reqmint.workspace.json` and JSON documents under `collections/`, `environments/`, and `data/`. Changes elsewhere in the repository are represented only by a count. This keeps the panel focused on ReqMint's responsibility without hiding the fact that the wider repository is dirty.
 
@@ -11,8 +11,8 @@ The detailed list is intentionally limited to `reqmint.workspace.json` and JSON 
 - Commands receive paths through process argument lists rather than shell command strings.
 - Credential prompts and optional Git file locks are disabled during status inspection.
 - Status commands have a bounded timeout and support cancellation.
-- ReqMint never commits, pulls, pushes, checks out branches, or modifies Git configuration automatically.
-- The only mutating workflow is explicit single-file staging for a ReqMint-managed path.
+- ReqMint never commits, fetches, updates, pushes, checks out branches, or modifies Git configuration automatically.
+- Mutating workflows are narrowly scoped, reviewed, revalidated at confirmation time, and fail closed.
 
 ## Secret preflight
 
@@ -50,4 +50,10 @@ After an explicit remote check reports incoming commits, ReqMint can build a bou
 
 Confirmation reruns the complete preflight and executes only `git merge --ff-only` against the configured upstream reference. ReqMint never stashes, creates a merge commit, rebases, fetches, or pushes as part of this action. Repository hooks are disabled to avoid hidden file mutations. After success the workspace is reloaded from disk; if reload fails, the UI explicitly reports that Git succeeded and asks the user to reopen the workspace.
 
-Push remains disabled pending its own safety review.
+## Guarded upstream push
+
+Push begins with a local-only preview of outgoing commit summaries and the union of changed paths. It requires a clean, conflict-free repository whose current branch has a configured upstream, is strictly ahead, and is not behind. Previews are capped at 50 commits, 200 changed paths, and 500 exact commit/file snapshots. Every path in every outgoing commit must remain inside ReqMint's managed workspace scope.
+
+The security scan inspects the exact file content in each outgoing commit, not just the current `HEAD`. Consequently, a credential introduced in one commit and removed in a later commit still blocks the push because the unsafe snapshot would remain in published history. Malformed, oversized, or otherwise unscannable snapshots also fail closed without exposing their content.
+
+Confirmation reruns the entire preflight, disables repository hooks, and sends one explicit refspec from `HEAD` to the current branch's configured upstream branch. Tags, follow-tags behavior, force push, other local branches, and interactive credential prompts are disabled. ReqMint does not fetch, merge, rebase, or alter local files as part of push. Network failures are sanitized before being shown in the UI.
