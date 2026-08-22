@@ -3,6 +3,7 @@ using ReqMint.App.ViewModels;
 using ReqMint.Core.Git;
 using ReqMint.Core.History;
 using ReqMint.Core.Requests;
+using ReqMint.Core.Runner;
 using ReqMint.Core.Security;
 using ReqMint.Core.Templates;
 using ReqMint.Core.Workspaces;
@@ -924,6 +925,53 @@ public sealed class MainViewModelWorkspaceTests
             reference => reference.Name == "Partner API");
     }
 
+    [Fact]
+    public async Task CollectionRunner_RequiresReviewAndShowsSafeResultSummary()
+    {
+        var snapshot = CreateSnapshot();
+        var request = snapshot.Collections[0].Requests[0];
+        var runner = new StubCollectionRunner
+        {
+            Result = new CollectionRunResult
+            {
+                CollectionId = snapshot.Collections[0].Id,
+                CollectionName = snapshot.Collections[0].Name,
+                Results =
+                [
+                    new CollectionRequestRunResult
+                    {
+                        RequestId = request.Id,
+                        RequestName = request.Name,
+                        State = CollectionRequestRunState.Passed,
+                        StatusCode = 201,
+                        Duration = TimeSpan.FromMilliseconds(12),
+                    },
+                ],
+            },
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = snapshot },
+            CreateWorkspacePath(),
+            collectionRunner: runner);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsCollectionRunAvailable);
+        viewModel.OpenCollectionRunnerCommand.Execute(null);
+
+        Assert.True(viewModel.IsCollectionRunnerVisible);
+        Assert.Equal(0, runner.CallCount);
+
+        await viewModel.StartCollectionRunCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, runner.CallCount);
+        Assert.Equal(snapshot.Workspace.Id, runner.Definition!.WorkspaceId);
+        var item = Assert.Single(viewModel.CollectionRunResults);
+        Assert.Equal("Create order", item.Name);
+        Assert.Equal("Passed", item.Status);
+        Assert.Equal("HTTP 201", item.Detail);
+        Assert.Equal("Completed · 1 passed · 0 failed", viewModel.CollectionRunSummary);
+    }
+
     [Theory]
     [InlineData(UnsavedChangesChoice.Cancel, "https://api.example.com/changed")]
     [InlineData(UnsavedChangesChoice.Discard, "")]
@@ -970,14 +1018,18 @@ public sealed class MainViewModelWorkspaceTests
         StubHistoryClearPrompt? historyClearPrompt = null,
         StubAppSettingsService? appSettings = null,
         StubGitService? gitService = null,
-        StubGitSecretScanner? gitSecretScanner = null)
+        StubGitSecretScanner? gitSecretScanner = null,
+        ICollectionRunner? collectionRunner = null)
     {
         vault ??= new RecordingSecretVault();
+        executor ??= new NoOpRequestExecutor();
+        var templateResolver = new RequestTemplateResolver(vault);
         return new MainViewModel(
-            executor ?? new NoOpRequestExecutor(),
+            executor,
+            collectionRunner ?? new CollectionRunner(executor, templateResolver),
             store,
             new StubFolderPicker(directory),
-            new RequestTemplateResolver(vault),
+            templateResolver,
             vault,
             localization: null!,
             prompt ?? new StubUnsavedChangesPrompt(),
@@ -1265,6 +1317,25 @@ public sealed class MainViewModelWorkspaceTests
             CancellationToken cancellationToken = default)
         {
             LastPaths = workspaceRelativePaths;
+            return Task.FromResult(Result);
+        }
+    }
+
+    private sealed class StubCollectionRunner : ICollectionRunner
+    {
+        public required CollectionRunResult Result { get; init; }
+
+        public int CallCount { get; private set; }
+
+        public CollectionRunDefinition? Definition { get; private set; }
+
+        public Task<CollectionRunResult> RunAsync(
+            CollectionRunDefinition definition,
+            IProgress<CollectionRunProgress>? progress = null,
+            CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            Definition = definition;
             return Task.FromResult(Result);
         }
     }

@@ -4,6 +4,7 @@ using Avalonia.Markup.Xaml;
 using ReqMint.App.Services;
 using ReqMint.App.ViewModels;
 using ReqMint.Core.Templates;
+using ReqMint.Core.Runner;
 using ReqMint.App.Views;
 using ReqMint.Http;
 using ReqMint.Platform.Security;
@@ -19,6 +20,9 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+#if DEBUG
+        this.AttachDeveloperTools();
+#endif
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -27,6 +31,7 @@ public partial class App : Application
         {
             _requestExecutor = new HttpRequestExecutor();
             var secretVault = PlatformSecretVaultFactory.Create();
+            var templateResolver = new RequestTemplateResolver(secretVault);
             var applicationData = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "ReqMint");
@@ -35,9 +40,10 @@ public partial class App : Application
             var mainWindow = new MainWindow();
             mainWindow.DataContext = new MainViewModel(
                 _requestExecutor,
+                new CollectionRunner(_requestExecutor, templateResolver),
                 new WorkspaceJsonStore(),
                 new AvaloniaWorkspaceFolderPicker(mainWindow),
-                new RequestTemplateResolver(secretVault),
+                templateResolver,
                 secretVault,
                 localization,
                 new AvaloniaUnsavedChangesPrompt(mainWindow, localization),

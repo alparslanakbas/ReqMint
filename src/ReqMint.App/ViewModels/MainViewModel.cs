@@ -7,6 +7,7 @@ using ReqMint.App.Services;
 using ReqMint.Core.Git;
 using ReqMint.Core.History;
 using ReqMint.Core.Requests;
+using ReqMint.Core.Runner;
 using ReqMint.Core.Security;
 using ReqMint.Core.Templates;
 using ReqMint.Core.Workspaces;
@@ -50,6 +51,8 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<string> GitPushCommits { get; } = [];
 
     public ObservableCollection<string> GitPushPaths { get; } = [];
+
+    public ObservableCollection<CollectionRunItemViewModel> CollectionRunResults { get; } = [];
 
     public ObservableCollection<string> EnvironmentNames { get; } = ["No environment"];
 
@@ -253,12 +256,35 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial string GitPushSummary { get; set; } = string.Empty;
 
+    [ObservableProperty]
+    public partial bool IsCollectionRunAvailable { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRequestWorkspaceVisible))]
+    public partial bool IsCollectionRunnerVisible { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsCollectionRunnerBusy { get; set; }
+
+    [ObservableProperty]
+    public partial bool CollectionRunStopOnFailure { get; set; }
+
+    [ObservableProperty]
+    public partial string CollectionRunTitle { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string CollectionRunSummary { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string CollectionRunProgress { get; set; } = string.Empty;
+
     public bool IsRequestWorkspaceVisible =>
         !IsGitDiffVisible
         && !IsGitCommitVisible
         && !IsGitRemoteVisible
         && !IsGitFastForwardVisible
-        && !IsGitPushVisible;
+        && !IsGitPushVisible
+        && !IsCollectionRunnerVisible;
 
     public bool IsGitCommitValidationVisible =>
         !string.IsNullOrEmpty(GitCommitValidationMessage);
@@ -292,6 +318,7 @@ public partial class MainViewModel : ViewModelBase
     public partial bool IsWorkspaceBusy { get; set; }
 
     private readonly IRequestExecutor _requestExecutor;
+    private readonly ICollectionRunner _collectionRunner;
     private readonly IWorkspaceStore _workspaceStore;
     private readonly IWorkspaceFolderPicker _folderPicker;
     private readonly RequestTemplateResolver _templateResolver;
@@ -314,6 +341,7 @@ public partial class MainViewModel : ViewModelBase
 
     public MainViewModel(
         IRequestExecutor requestExecutor,
+        ICollectionRunner collectionRunner,
         IWorkspaceStore workspaceStore,
         IWorkspaceFolderPicker folderPicker,
         RequestTemplateResolver templateResolver,
@@ -327,6 +355,7 @@ public partial class MainViewModel : ViewModelBase
         IGitSecretScanner gitSecretScanner)
     {
         _requestExecutor = requestExecutor;
+        _collectionRunner = collectionRunner;
         _workspaceStore = workspaceStore;
         _folderPicker = folderPicker;
         _templateResolver = templateResolver;
@@ -782,6 +811,7 @@ public partial class MainViewModel : ViewModelBase
         Guid? selectedCollectionId = null,
         Guid? selectedEnvironmentId = null)
     {
+        CloseCollectionRunner();
         _workspaceSnapshot = snapshot;
         _workspaceDirectory = directory;
         _selectedRequestId = selectedRequestId;
@@ -831,6 +861,7 @@ public partial class MainViewModel : ViewModelBase
         SaveEnvironmentCommand.NotifyCanExecuteChanged();
         CreateCollectionCommand.NotifyCanExecuteChanged();
         RenameCollectionCommand.NotifyCanExecuteChanged();
+        UpdateCollectionRunAvailability();
     }
 
     private async Task SelectCollection(Guid collectionId)
@@ -848,6 +879,7 @@ public partial class MainViewModel : ViewModelBase
 
         _selectedCollectionId = collection.Id;
         CollectionDraftName = collection.Name;
+        UpdateCollectionRunAvailability();
         WorkspaceStatus = collection.Name;
         ResetRequestDraft();
     }
