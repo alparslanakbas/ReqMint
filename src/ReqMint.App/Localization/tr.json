@@ -39,5 +39,10 @@
   "TextNewCollection": "Yeni koleksiyon",
   "TextRenameCollection": "Yeniden adlandır",
   "StatusCollectionCreated": "Koleksiyon oluşturuldu",
-  "StatusCollectionRenamed": "Koleksiyon yeniden adlandırıldı"
+  "StatusCollectionRenamed": "Koleksiyon yeniden adlandırıldı",
+  "UnsavedTitle": "Kaydedilmemiş değişiklikler",
+  "UnsavedMessage": "Devam etmeden önce '{0}' üzerindeki değişiklikler kaydedilsin mi?",
+  "UnsavedSave": "Kaydet",
+  "UnsavedDiscard": "Vazgeç",
+  "UnsavedCancel": "İptal"
 }

@@ -9,12 +9,12 @@ public sealed class CollectionItemViewModel
         Guid id,
         string name,
         IEnumerable<SavedRequestItemViewModel> requests,
-        Action<Guid> selectCollection)
+        Func<Guid, Task> selectCollection)
     {
         Id = id;
         Name = name;
         Requests = new ObservableCollection<SavedRequestItemViewModel>(requests);
-        SelectCommand = new RelayCommand(() => selectCollection(Id));
+        SelectCommand = new AsyncRelayCommand(() => selectCollection(Id));
     }
 
     public Guid Id { get; }
@@ -25,5 +25,5 @@ public sealed class CollectionItemViewModel
 
     public int RequestCount => Requests.Count;
 
-    public IRelayCommand SelectCommand { get; }
+    public IAsyncRelayCommand SelectCommand { get; }
 }

@@ -39,5 +39,10 @@
   "TextNewCollection": "New collection",
   "TextRenameCollection": "Rename",
   "StatusCollectionCreated": "Collection created",
-  "StatusCollectionRenamed": "Collection renamed"
+  "StatusCollectionRenamed": "Collection renamed",
+  "UnsavedTitle": "Unsaved changes",
+  "UnsavedMessage": "Save changes to '{0}' before continuing?",
+  "UnsavedSave": "Save",
+  "UnsavedDiscard": "Discard",
+  "UnsavedCancel": "Cancel"
 }

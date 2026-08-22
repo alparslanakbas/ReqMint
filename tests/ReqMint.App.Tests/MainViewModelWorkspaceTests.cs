@@ -35,7 +35,7 @@ public sealed class MainViewModelWorkspaceTests
         var viewModel = CreateViewModel(store, CreateWorkspacePath());
 
         await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
-        viewModel.Collections[0].Requests[0].OpenCommand.Execute(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
 
         Assert.Equal("Create order", viewModel.RequestName);
         Assert.Equal("POST", viewModel.SelectedMethod);
@@ -53,7 +53,7 @@ public sealed class MainViewModelWorkspaceTests
         var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
         var viewModel = CreateViewModel(store, CreateWorkspacePath());
         await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
-        viewModel.Collections[0].Requests[0].OpenCommand.Execute(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
         viewModel.RequestName = "Create mint order";
         viewModel.RequestBody = "{\"sku\":\"MINT-2\"}";
 
@@ -73,9 +73,9 @@ public sealed class MainViewModelWorkspaceTests
         var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
         var viewModel = CreateViewModel(store, CreateWorkspacePath());
         await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
-        viewModel.Collections[0].Requests[0].OpenCommand.Execute(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
 
-        viewModel.NewRequestCommand.Execute(null);
+        await viewModel.NewRequestCommand.ExecuteAsync(null);
         viewModel.RequestName = "List orders";
         viewModel.Url = "https://api.example.com/orders";
         await viewModel.SaveRequestCommand.ExecuteAsync(null);
@@ -155,7 +155,7 @@ public sealed class MainViewModelWorkspaceTests
         var executor = new RecordingRequestExecutor();
         var viewModel = CreateViewModel(store, CreateWorkspacePath(), executor, vault);
         await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
-        viewModel.Collections[0].Requests[0].OpenCommand.Execute(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
 
         await viewModel.SendCommand.ExecuteAsync(null);
 
@@ -187,11 +187,48 @@ public sealed class MainViewModelWorkspaceTests
             reference => reference.Name == "Partner API");
     }
 
+    [Theory]
+    [InlineData(UnsavedChangesChoice.Cancel, "https://api.example.com/changed")]
+    [InlineData(UnsavedChangesChoice.Discard, "")]
+    public async Task NewRequestCommand_ProtectsUnsavedChanges(
+        UnsavedChangesChoice choice,
+        string expectedUrl)
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var prompt = new StubUnsavedChangesPrompt { Choice = choice };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath(), prompt: prompt);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        viewModel.Url = "https://api.example.com/changed";
+
+        await viewModel.NewRequestCommand.ExecuteAsync(null);
+
+        Assert.Equal(expectedUrl, viewModel.Url);
+        Assert.Equal(1, prompt.CallCount);
+    }
+
+    [Fact]
+    public async Task NewRequestCommand_SavesDirtyRequestBeforeNavigating()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var prompt = new StubUnsavedChangesPrompt { Choice = UnsavedChangesChoice.Save };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath(), prompt: prompt);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        viewModel.Url = "https://api.example.com/changed";
+
+        await viewModel.NewRequestCommand.ExecuteAsync(null);
+
+        Assert.Equal("https://api.example.com/changed", store.SavedSnapshot!.Collections[0].Requests[0].Url);
+        Assert.Equal(string.Empty, viewModel.Url);
+    }
+
     private static MainViewModel CreateViewModel(
         RecordingWorkspaceStore store,
         string directory,
         IRequestExecutor? executor = null,
-        RecordingSecretVault? vault = null)
+        RecordingSecretVault? vault = null,
+        StubUnsavedChangesPrompt? prompt = null)
     {
         vault ??= new RecordingSecretVault();
         return new MainViewModel(
@@ -200,7 +237,8 @@ public sealed class MainViewModelWorkspaceTests
             new StubFolderPicker(directory),
             new RequestTemplateResolver(vault),
             vault,
-            localization: null!);
+            localization: null!,
+            prompt ?? new StubUnsavedChangesPrompt());
     }
 
     private static string CreateWorkspacePath() => Path.Combine(
@@ -243,6 +281,19 @@ public sealed class MainViewModelWorkspaceTests
     private sealed class StubFolderPicker(string directory) : IWorkspaceFolderPicker
     {
         public Task<string?> PickFolderAsync(string title) => Task.FromResult<string?>(directory);
+    }
+
+    private sealed class StubUnsavedChangesPrompt : IUnsavedChangesPrompt
+    {
+        public UnsavedChangesChoice Choice { get; init; } = UnsavedChangesChoice.Discard;
+
+        public int CallCount { get; private set; }
+
+        public Task<UnsavedChangesChoice> ShowAsync(string requestName, bool canSave)
+        {
+            CallCount++;
+            return Task.FromResult(Choice);
+        }
     }
 
     private sealed class RecordingWorkspaceStore : IWorkspaceStore

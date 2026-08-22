@@ -5,10 +5,10 @@ namespace ReqMint.App.ViewModels;
 
 public sealed class SavedRequestItemViewModel : ViewModelBase
 {
-    public SavedRequestItemViewModel(RequestDocument document, Action<RequestDocument> openRequest)
+    public SavedRequestItemViewModel(RequestDocument document, Func<RequestDocument, Task> openRequest)
     {
         Document = document;
-        OpenCommand = new RelayCommand(() => openRequest(Document));
+        OpenCommand = new AsyncRelayCommand(() => openRequest(Document));
     }
 
     public RequestDocument Document { get; }
@@ -17,5 +17,5 @@ public sealed class SavedRequestItemViewModel : ViewModelBase
 
     public string Method => Document.Method;
 
-    public IRelayCommand OpenCommand { get; }
+    public IAsyncRelayCommand OpenCommand { get; }
 }

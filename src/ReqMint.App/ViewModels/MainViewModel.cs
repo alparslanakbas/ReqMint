@@ -118,12 +118,14 @@ public partial class MainViewModel : ViewModelBase
     private readonly IWorkspaceFolderPicker _folderPicker;
     private readonly RequestTemplateResolver _templateResolver;
     private readonly ISecretVault _secretVault;
+    private readonly IUnsavedChangesPrompt _unsavedChangesPrompt;
     private WorkspaceSnapshot? _workspaceSnapshot;
     private string? _workspaceDirectory;
     private Guid? _selectedRequestId;
     private Guid? _selectedCollectionId;
     private EnvironmentDocument? _activeEnvironment;
     private Guid? _editingEnvironmentId;
+    private string _cleanRequestDraft;
 
     public bool IsBodyEnabled => SelectedBodyType != "None";
 
@@ -133,7 +135,8 @@ public partial class MainViewModel : ViewModelBase
         IWorkspaceFolderPicker folderPicker,
         RequestTemplateResolver templateResolver,
         ISecretVault secretVault,
-        LocalizationService localization)
+        LocalizationService localization,
+        IUnsavedChangesPrompt unsavedChangesPrompt)
     {
         _requestExecutor = requestExecutor;
         _workspaceStore = workspaceStore;
@@ -141,6 +144,8 @@ public partial class MainViewModel : ViewModelBase
         _templateResolver = templateResolver;
         _secretVault = secretVault;
         Localization = localization;
+        _unsavedChangesPrompt = unsavedChangesPrompt;
+        _cleanRequestDraft = CaptureRequestDraft();
     }
 
     partial void OnEnvironmentNameChanged(string value)
@@ -176,7 +181,17 @@ public partial class MainViewModel : ViewModelBase
     private void AddHeader() => Headers.Add(new RequestFieldViewModel());
 
     [RelayCommand(CanExecute = nameof(CanSaveRequest))]
-    private void NewRequest()
+    private async Task NewRequestAsync(CancellationToken cancellationToken)
+    {
+        if (!await ConfirmNavigationAsync(cancellationToken))
+        {
+            return;
+        }
+
+        ResetRequestDraft();
+    }
+
+    private void ResetRequestDraft()
     {
         _selectedRequestId = null;
         RequestName = "New request";
@@ -195,11 +210,17 @@ public partial class MainViewModel : ViewModelBase
         ResponseTime = "—";
         ResponseBody = "Compose and send a new request.";
         WorkspaceStatus = Localize("StatusNewRequest", "New request");
+        MarkRequestClean();
     }
 
     [RelayCommand(CanExecute = nameof(CanManageWorkspace))]
     private async Task CreateWorkspaceAsync(CancellationToken cancellationToken)
     {
+        if (!await ConfirmNavigationAsync(cancellationToken))
+        {
+            return;
+        }
+
         IsWorkspaceBusy = true;
         WorkspaceStatus = "Choose a workspace folder";
 
@@ -219,6 +240,7 @@ public partial class MainViewModel : ViewModelBase
             {
                 var existingSnapshot = await _workspaceStore.LoadAsync(directory, cancellationToken);
                 ApplyWorkspace(existingSnapshot, directory);
+                ResetRequestDraft();
                 WorkspaceStatus = "Existing workspace opened";
                 return;
             }
@@ -246,6 +268,7 @@ public partial class MainViewModel : ViewModelBase
 
             await _workspaceStore.SaveAsync(directory, snapshot, cancellationToken);
             ApplyWorkspace(snapshot, directory);
+            ResetRequestDraft();
             WorkspaceStatus = Localize("StatusWorkspaceCreated", "Workspace created");
         }
         catch (OperationCanceledException)
@@ -265,6 +288,11 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanManageWorkspace))]
     private async Task OpenWorkspaceAsync(CancellationToken cancellationToken)
     {
+        if (!await ConfirmNavigationAsync(cancellationToken))
+        {
+            return;
+        }
+
         IsWorkspaceBusy = true;
         WorkspaceStatus = "Choose a workspace folder";
 
@@ -280,6 +308,7 @@ public partial class MainViewModel : ViewModelBase
             WorkspaceStatus = "Opening workspace...";
             var snapshot = await _workspaceStore.LoadAsync(directory, cancellationToken);
             ApplyWorkspace(snapshot, directory);
+            ResetRequestDraft();
             WorkspaceStatus = Localize("StatusWorkspaceOpened", "Workspace opened");
         }
         catch (OperationCanceledException)
@@ -357,6 +386,7 @@ public partial class MainViewModel : ViewModelBase
 
             await _workspaceStore.SaveAsync(_workspaceDirectory, updatedSnapshot, cancellationToken);
             ApplyWorkspace(updatedSnapshot, _workspaceDirectory, document.Id, collection.Id);
+            MarkRequestClean();
             WorkspaceStatus = Localize("StatusSavedItem", "Saved {0}", document.Name);
         }
         catch (OperationCanceledException)
@@ -567,7 +597,7 @@ public partial class MainViewModel : ViewModelBase
         RenameCollectionCommand.NotifyCanExecuteChanged();
     }
 
-    private void SelectCollection(Guid collectionId)
+    private async Task SelectCollection(Guid collectionId)
     {
         var collection = _workspaceSnapshot?.Collections.FirstOrDefault(item => item.Id == collectionId);
         if (collection is null)
@@ -575,13 +605,24 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
+        if (!await ConfirmNavigationAsync(CancellationToken.None))
+        {
+            return;
+        }
+
         _selectedCollectionId = collection.Id;
         CollectionDraftName = collection.Name;
         WorkspaceStatus = collection.Name;
+        ResetRequestDraft();
     }
 
-    private void OpenRequest(RequestDocument request, Guid collectionId)
+    private async Task OpenRequest(RequestDocument request, Guid collectionId)
     {
+        if (!await ConfirmNavigationAsync(CancellationToken.None))
+        {
+            return;
+        }
+
         _selectedRequestId = request.Id;
         _selectedCollectionId = collectionId;
 
@@ -608,7 +649,41 @@ public partial class MainViewModel : ViewModelBase
         ResponseTime = "—";
         ResponseBody = "Send the saved request to inspect its response.";
         WorkspaceStatus = Localize("StatusOpenedItem", "Opened {0}", request.Name);
+        MarkRequestClean();
     }
+
+    private async Task<bool> ConfirmNavigationAsync(CancellationToken cancellationToken)
+    {
+        if (string.Equals(_cleanRequestDraft, CaptureRequestDraft(), StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        var choice = await _unsavedChangesPrompt.ShowAsync(
+            RequestName,
+            _workspaceSnapshot is not null);
+        if (choice == UnsavedChangesChoice.Save)
+        {
+            await SaveRequestAsync(cancellationToken);
+            return string.Equals(_cleanRequestDraft, CaptureRequestDraft(), StringComparison.Ordinal);
+        }
+
+        return choice == UnsavedChangesChoice.Discard;
+    }
+
+    private void MarkRequestClean() => _cleanRequestDraft = CaptureRequestDraft();
+
+    private string CaptureRequestDraft() => JsonSerializer.Serialize(new
+    {
+        RequestName,
+        SelectedMethod,
+        Url,
+        SelectedBodyType,
+        RequestBody,
+        TimeoutSeconds,
+        Query = QueryParameters.Select(field => new { field.IsEnabled, field.Name, field.Value }),
+        Headers = Headers.Select(field => new { field.IsEnabled, field.Name, field.Value }),
+    });
 
     private void ShowWorkspaceError(string title, Exception exception)
     {

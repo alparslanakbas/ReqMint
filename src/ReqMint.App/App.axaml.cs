@@ -34,7 +34,8 @@ public partial class App : Application
                 new AvaloniaWorkspaceFolderPicker(mainWindow),
                 new RequestTemplateResolver(secretVault),
                 secretVault,
-                localization);
+                localization,
+                new AvaloniaUnsavedChangesPrompt(mainWindow, localization));
             desktop.MainWindow = mainWindow;
             desktop.Exit += (_, _) => _requestExecutor.Dispose();
         }
