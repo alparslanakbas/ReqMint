@@ -39,6 +39,7 @@ docs/      product, architecture, and migration decisions
 - [Technical architecture](docs/ARCHITECTURE.md)
 - [Migration plan](docs/MIGRATION_PLAN.md)
 - [Collection Runner safety model](docs/COLLECTION_RUNNER.md)
+- [Collection Runner data files](docs/COLLECTION_RUN_DATA.md)
 - [Workspace format](docs/WORKSPACE_FORMAT.md)
 - [Localization](docs/LOCALIZATION.md)
 - [Git integration](docs/GIT_INTEGRATION.md)

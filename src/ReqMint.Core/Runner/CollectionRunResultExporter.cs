@@ -66,11 +66,13 @@ public sealed class CollectionRunResultExporter : ICollectionRunResultExporter
             result.EnvironmentId,
             DurationMilliseconds: ToMilliseconds(result.Duration),
             result.WasCancelled,
+            result.IterationCount,
             result.PassedCount,
             result.FailedCount,
             Requests: result.Results.Select(request => new JsonRequestReport(
                 request.RequestId,
                 request.RequestName,
+                request.IterationNumber,
                 request.State,
                 request.StatusCode,
                 DurationMilliseconds: ToMilliseconds(request.Duration),
@@ -116,7 +118,10 @@ public sealed class CollectionRunResultExporter : ICollectionRunResultExporter
                 new XAttribute("value", result.CollectionId)),
             new XElement("property",
                 new XAttribute("name", "reqmint.cancelled"),
-                new XAttribute("value", result.WasCancelled.ToString().ToLowerInvariant()))));
+                new XAttribute("value", result.WasCancelled.ToString().ToLowerInvariant())),
+            new XElement("property",
+                new XAttribute("name", "reqmint.iterationCount"),
+                new XAttribute("value", result.IterationCount))));
 
         foreach (var request in result.Results)
         {
@@ -124,11 +129,23 @@ public sealed class CollectionRunResultExporter : ICollectionRunResultExporter
             var testCase = new XElement(
                 "testcase",
                 new XAttribute("classname", result.CollectionName),
-                new XAttribute("name", request.RequestName),
+                new XAttribute(
+                    "name",
+                    result.IterationCount > 1
+                        ? $"{request.RequestName} [iteration {request.IterationNumber}]"
+                        : request.RequestName),
                 new XAttribute("time", ToSeconds(request.Duration)),
                 new XAttribute("reqmint-request-id", request.RequestId));
 
             var properties = new List<XElement>();
+            if (result.IterationCount > 1)
+            {
+                properties.Add(new XElement(
+                    "property",
+                    new XAttribute("name", "reqmint.iteration"),
+                    new XAttribute("value", request.IterationNumber)));
+            }
+
             if (request.StatusCode is { } statusCode)
             {
                 properties.Add(new XElement(
@@ -226,6 +243,7 @@ public sealed class CollectionRunResultExporter : ICollectionRunResultExporter
         Guid? EnvironmentId,
         double DurationMilliseconds,
         bool WasCancelled,
+        int IterationCount,
         int PassedCount,
         int FailedCount,
         IReadOnlyList<JsonRequestReport> Requests);
@@ -233,6 +251,7 @@ public sealed class CollectionRunResultExporter : ICollectionRunResultExporter
     private sealed record JsonRequestReport(
         Guid RequestId,
         string RequestName,
+        int IterationNumber,
         CollectionRequestRunState State,
         int? StatusCode,
         double DurationMilliseconds,

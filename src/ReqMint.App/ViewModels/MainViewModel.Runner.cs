@@ -7,6 +7,7 @@ public partial class MainViewModel
 {
     private CancellationTokenSource? _collectionRunCancellation;
     private CollectionRunResult? _latestCollectionRunResult;
+    private CollectionRunDataSet? _collectionRunDataSet;
 
     [RelayCommand]
     private void OpenCollectionRunner()
@@ -35,6 +36,7 @@ public partial class MainViewModel
         CollectionRunResults.Clear();
         _latestCollectionRunResult = null;
         HasCollectionRunResult = false;
+        ResetCollectionRunData();
         CollectionRunTitle = collection.Name;
         CollectionRunSummary = Localize(
             "CollectionRunReadySummary",
@@ -47,7 +49,7 @@ public partial class MainViewModel
     [RelayCommand]
     private void CloseCollectionRunner()
     {
-        if (IsCollectionRunnerBusy || IsCollectionRunExportBusy)
+        if (IsCollectionRunnerBusy || IsCollectionRunExportBusy || IsCollectionRunDataBusy)
         {
             return;
         }
@@ -59,6 +61,7 @@ public partial class MainViewModel
         CollectionRunResults.Clear();
         _latestCollectionRunResult = null;
         HasCollectionRunResult = false;
+        ResetCollectionRunData();
     }
 
     [RelayCommand]
@@ -69,6 +72,7 @@ public partial class MainViewModel
         if (!IsCollectionRunnerVisible
             || IsCollectionRunnerBusy
             || IsCollectionRunExportBusy
+            || IsCollectionRunDataBusy
             || snapshot is null
             || collection is null)
         {
@@ -102,6 +106,7 @@ public partial class MainViewModel
                     Collection = collection,
                     Environment = _activeEnvironment,
                     StopOnFailure = CollectionRunStopOnFailure,
+                    DataRows = _collectionRunDataSet?.Rows ?? [],
                 },
                 progress,
                 _collectionRunCancellation.Token);
@@ -109,7 +114,9 @@ public partial class MainViewModel
             CollectionRunResults.Clear();
             foreach (var requestResult in result.Results)
             {
-                CollectionRunResults.Add(CreateCollectionRunItem(requestResult));
+                CollectionRunResults.Add(CreateCollectionRunItem(
+                    requestResult,
+                    result.IterationCount > 1));
             }
 
             _latestCollectionRunResult = result;
@@ -151,6 +158,85 @@ public partial class MainViewModel
 
     [RelayCommand]
     private void CancelCollectionRun() => _collectionRunCancellation?.Cancel();
+
+    [RelayCommand]
+    private async Task SelectCollectionRunDataFileAsync(CancellationToken cancellationToken)
+    {
+        var collection = GetSelectedCollectionForRun();
+        if (collection is null
+            || !IsCollectionRunnerVisible
+            || !IsCollectionRunnerInteractionEnabled)
+        {
+            return;
+        }
+
+        IsCollectionRunDataBusy = true;
+        try
+        {
+            var selection = await _collectionRunDataFileService.LoadAsync(cancellationToken);
+            if (selection is null)
+            {
+                return;
+            }
+
+            var executionCount = (long)selection.DataSet.Rows.Count * collection.Requests.Count;
+            if (executionCount > CollectionRunner.MaximumExecutionCount)
+            {
+                throw new CollectionRunDataException(
+                    "The selected data would create too many request executions.");
+            }
+
+            _collectionRunDataSet = selection.DataSet;
+            HasCollectionRunData = true;
+            CollectionRunDataFileName = selection.FileName;
+            CollectionRunDataSummary = Localize(
+                "CollectionRunDataSummary",
+                "{0} rows · {1} request executions",
+                selection.DataSet.Rows.Count,
+                executionCount);
+            CollectionRunSummary = Localize(
+                "CollectionRunDataReadySummary",
+                "{0} requests will run across {1} data rows",
+                collection.Requests.Count,
+                selection.DataSet.Rows.Count);
+            WorkspaceStatus = Localize(
+                "CollectionRunDataLoaded",
+                "Collection run data loaded");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            WorkspaceStatus = Localize(
+                "CollectionRunDataInvalid",
+                "Run data could not be loaded safely");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+        finally
+        {
+            IsCollectionRunDataBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private void ClearCollectionRunData()
+    {
+        if (!IsCollectionRunnerInteractionEnabled)
+        {
+            return;
+        }
+
+        ResetCollectionRunData();
+        var collection = GetSelectedCollectionForRun();
+        if (collection is not null)
+        {
+            CollectionRunSummary = Localize(
+                "CollectionRunReadySummary",
+                "{0} saved requests are ready to run in order",
+                collection.Requests.Count);
+        }
+    }
 
     [RelayCommand]
     private Task ExportCollectionRunJsonAsync(CancellationToken cancellationToken) =>
@@ -228,7 +314,8 @@ public partial class MainViewModel
     }
 
     private CollectionRunItemViewModel CreateCollectionRunItem(
-        CollectionRequestRunResult result)
+        CollectionRequestRunResult result,
+        bool hasMultipleIterations)
     {
         var status = result.State switch
         {
@@ -257,6 +344,18 @@ public partial class MainViewModel
                 _ => string.Empty,
             };
 
+        var assertionSummary = CreateAssertionSummary(result.Assertions);
+        var iterationSummary = hasMultipleIterations
+            ? Localize(
+                "CollectionRunIteration",
+                "Iteration {0}",
+                result.IterationNumber)
+            : string.Empty;
+        var metadata = string.Join(
+            " · ",
+            new[] { iterationSummary, assertionSummary }.Where(value =>
+                !string.IsNullOrEmpty(value)));
+
         return new CollectionRunItemViewModel(
             result.RequestName,
             status,
@@ -264,7 +363,7 @@ public partial class MainViewModel
             result.Duration == TimeSpan.Zero
                 ? "—"
                 : $"{result.Duration.TotalMilliseconds:N0} ms",
-            CreateAssertionSummary(result.Assertions));
+            metadata);
     }
 
     private string CreateAssertionSummary(
@@ -304,5 +403,17 @@ public partial class MainViewModel
     private void UpdateCollectionRunAvailability()
     {
         IsCollectionRunAvailable = GetSelectedCollectionForRun()?.Requests.Count > 0;
+    }
+
+    private void ResetCollectionRunData()
+    {
+        _collectionRunDataSet = null;
+        HasCollectionRunData = false;
+        CollectionRunDataFileName = Localize(
+            "CollectionRunNoDataFile",
+            "No data file selected");
+        CollectionRunDataSummary = Localize(
+            "CollectionRunDataOptional",
+            "Optional · JSON or CSV · up to 100 rows");
     }
 }

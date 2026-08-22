@@ -55,7 +55,8 @@ public partial class App : Application
                 new AvaloniaCollectionRunExportService(
                     mainWindow,
                     new CollectionRunResultExporter(),
-                    localization));
+                    localization),
+                new AvaloniaCollectionRunDataFileService(mainWindow, localization));
             desktop.MainWindow = mainWindow;
             desktop.Exit += (_, _) => _requestExecutor.Dispose();
         }

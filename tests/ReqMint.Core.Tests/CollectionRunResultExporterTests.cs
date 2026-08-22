@@ -25,6 +25,7 @@ public sealed class CollectionRunResultExporterTests
         Assert.Equal("Commerce & Orders", root.GetProperty("collectionName").GetString());
         Assert.Equal(1, root.GetProperty("passedCount").GetInt32());
         Assert.Equal(2, root.GetProperty("failedCount").GetInt32());
+        Assert.Equal(2, root.GetProperty("iterationCount").GetInt32());
         var requests = root.GetProperty("requests");
         Assert.Equal(5, requests.GetArrayLength());
         Assert.Equal("passed", requests[0].GetProperty("state").GetString());
@@ -58,7 +59,7 @@ public sealed class CollectionRunResultExporterTests
         Assert.Equal("1", suite.Attribute("errors")?.Value);
         Assert.Equal("2", suite.Attribute("skipped")?.Value);
         var cases = suite.Elements("testcase").ToArray();
-        Assert.Equal("List <orders>", cases[0].Attribute("name")?.Value);
+        Assert.Equal("List <orders> [iteration 1]", cases[0].Attribute("name")?.Value);
         Assert.Null(cases[0].Element("failure"));
         Assert.NotNull(cases[1].Element("failure"));
         Assert.Equal("Timeout", cases[2].Element("error")?.Attribute("type")?.Value);
@@ -88,12 +89,14 @@ public sealed class CollectionRunResultExporterTests
         EnvironmentId = Guid.Parse("22222222-2222-2222-2222-222222222222"),
         Duration = TimeSpan.FromMilliseconds(1250),
         WasCancelled = true,
+        IterationCount = 2,
         Results =
         [
             CreateRequest(
                 "33333333-3333-3333-3333-333333333331",
                 "List <orders>",
                 CollectionRequestRunState.Passed,
+                iterationNumber: 1,
                 statusCode: 200,
                 assertions:
                 [
@@ -105,20 +108,24 @@ public sealed class CollectionRunResultExporterTests
                 "33333333-3333-3333-3333-333333333332",
                 "Reject invalid order",
                 CollectionRequestRunState.Failed,
+                iterationNumber: 1,
                 statusCode: 422),
             CreateRequest(
                 "33333333-3333-3333-3333-333333333333",
                 "Slow request",
                 CollectionRequestRunState.Error,
+                iterationNumber: 1,
                 errorKind: CollectionRunErrorKind.Timeout),
             CreateRequest(
                 "33333333-3333-3333-3333-333333333334",
                 "Cancelled request",
-                CollectionRequestRunState.Cancelled),
+                CollectionRequestRunState.Cancelled,
+                iterationNumber: 2),
             CreateRequest(
                 "33333333-3333-3333-3333-333333333335",
                 "Later request",
-                CollectionRequestRunState.NotRun),
+                CollectionRequestRunState.NotRun,
+                iterationNumber: 2),
         ],
     };
 
@@ -126,12 +133,14 @@ public sealed class CollectionRunResultExporterTests
         string id,
         string name,
         CollectionRequestRunState state,
+        int iterationNumber,
         int? statusCode = null,
         CollectionRunErrorKind errorKind = CollectionRunErrorKind.None,
         IReadOnlyList<CollectionAssertionResult>? assertions = null) => new()
         {
             RequestId = Guid.Parse(id),
             RequestName = name,
+            IterationNumber = iterationNumber,
             State = state,
             StatusCode = statusCode,
             ErrorKind = errorKind,

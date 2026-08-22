@@ -242,6 +242,83 @@ public sealed class CollectionRunnerTests
             Assert.Single(requestResult.Assertions).Outcome);
     }
 
+    [Fact]
+    public async Task RunAsync_ExecutesEveryDataRowWithIterationValuesTakingPrecedence()
+    {
+        var environment = new EnvironmentDocument
+        {
+            Id = Guid.NewGuid(),
+            Name = "Development",
+            Variables =
+            [
+                new EnvironmentVariable("BASE_URL", "https://environment.example.com"),
+                new EnvironmentVariable("shared", "environment"),
+            ],
+        };
+        var collection = CreateCollection(
+            CreateRequest("Order", "{{BASE_URL}}/orders/{{orderId}}?shared={{shared}}"),
+            CreateRequest("Audit", "{{BASE_URL}}/audit/{{orderId}}"));
+        var executor = new RecordingExecutor((_, _, _) => Task.FromResult(Response(200)));
+        var progress = new InlineProgress();
+        var runner = new CollectionRunner(
+            executor,
+            new RequestTemplateResolver(new StubSecretVault(null)));
+
+        var result = await runner.RunAsync(
+            new CollectionRunDefinition
+            {
+                WorkspaceId = Guid.NewGuid(),
+                Collection = collection,
+                Environment = environment,
+                DataRows =
+                [
+                    DataRow(("orderId", "A-1"), ("shared", "row-one")),
+                    DataRow(
+                        ("orderId", "A-2"),
+                        ("BASE_URL", "https://iteration.example.com"),
+                        ("shared", "row-two")),
+                ],
+            },
+            progress);
+
+        Assert.Equal(2, result.IterationCount);
+        Assert.Equal(4, result.Results.Count);
+        Assert.Equal([1, 1, 2, 2], result.Results.Select(item => item.IterationNumber));
+        Assert.Equal(
+            [
+                "https://environment.example.com/orders/A-1?shared=row-one",
+                "https://environment.example.com/audit/A-1",
+                "https://iteration.example.com/orders/A-2?shared=row-two",
+                "https://iteration.example.com/audit/A-2",
+            ],
+            executor.Requests.Select(request => request.Url.AbsoluteUri.TrimEnd('/')));
+        Assert.Equal([4, 4, 4, 4], progress.Items.Select(item => item.TotalRequestCount));
+        Assert.DoesNotContain("row-one", result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("row-two", result.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RunAsync_RejectsRunsAboveTheTotalExecutionLimit()
+    {
+        var requests = Enumerable.Range(0, 51)
+            .Select(index => CreateRequest($"Request {index}", $"https://api.example.com/{index}"))
+            .ToArray();
+        var rows = Enumerable.Range(0, 100)
+            .Select(index => DataRow(("id", index.ToString())))
+            .ToArray();
+        var runner = new CollectionRunner(
+            new RecordingExecutor((_, _, _) => Task.FromResult(Response(200))),
+            new RequestTemplateResolver(new StubSecretVault(null)));
+
+        await Assert.ThrowsAsync<ArgumentException>(() => runner.RunAsync(
+            new CollectionRunDefinition
+            {
+                WorkspaceId = Guid.NewGuid(),
+                Collection = CreateCollection(requests),
+                DataRows = rows,
+            }));
+    }
+
     private static CollectionDocument CreateCollection(params RequestDocument[] requests) => new()
     {
         Id = Guid.NewGuid(),
@@ -256,6 +333,15 @@ public sealed class CollectionRunnerTests
         Method = "GET",
         Url = url,
     };
+
+    private static CollectionRunDataRow DataRow(
+        params (string Name, string Value)[] variables) => new()
+        {
+            Variables = variables.ToDictionary(
+                variable => variable.Name,
+                variable => variable.Value,
+                StringComparer.OrdinalIgnoreCase),
+        };
 
     private static ApiResponse Response(
         int statusCode,

@@ -12,11 +12,12 @@ The runner continues after an HTTP or request-level failure by default so the us
 
 - Runs are sequential; the initial implementation does not create parallel network pressure.
 - A single run is limited to 1,000 requests and requires unique non-empty request identifiers.
+- Data-driven runs accept at most 100 rows and 5,000 total request executions.
 - The UI runs only persisted collection data. Unsaved request, collection, or environment editor changes must be saved or discarded first.
 - Secret values are retrieved from the platform vault through the existing template resolver and exist only in the resolved request passed to the HTTP executor.
 - Progress reports expose the completed count and the latest sanitized result only.
 
-Future slices can add data-file iterations and history retention without widening this sensitive-data boundary.
+Future slices can add history retention without widening this sensitive-data boundary.
 
 ## Declarative assertions
 
@@ -29,3 +30,9 @@ JSON assertions parse only the already bounded response preview with a maximum d
 Completed and cancelled runs can be exported locally as an indented JSON report or JUnit-compatible XML. Both formats are generated from the sanitized in-memory result model, so they contain collection and request identifiers and names, outcome categories, status codes, durations, and assertion outcomes only. They never contain resolved URLs, query values, headers, request or response bodies, environment values, vault secrets, stack traces, or raw exception messages.
 
 JSON reports carry an explicit schema version for future compatibility. JUnit reports map failed assertions to `failure`, safe request errors to `error`, and cancelled or unexecuted requests to `skipped`; error messages come from a fixed allowlist rather than runtime exception text. ReqMint asks the user to choose the destination and does not upload reports automatically.
+
+## Data-driven iterations
+
+The user may select a local UTF-8 JSON or CSV data file before starting a run. ReqMint executes the entire saved collection once for every data row. A matching data field has precedence over the selected environment for that iteration, while unmatched variables continue to resolve from the environment and platform vault. Iterations and requests remain strictly sequential, and stop-on-failure or cancellation marks every later execution as not run.
+
+The selected file is limited to 1 MiB, 100 rows, 100 fields per row, 4,096 characters per value, and 5,000 total request executions. Only flat strings, numbers, and booleans are accepted from JSON; CSV supports quoted commas, quotes, and line endings. Data values are held only for the active Runner screen and are never copied into result objects or exports. Reports include the non-sensitive one-based iteration number so duplicate request executions can be distinguished. See [Collection Runner data files](COLLECTION_RUN_DATA.md) for examples.

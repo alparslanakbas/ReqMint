@@ -688,7 +688,7 @@
                     </Grid>
                 </Border>
 
-                <Grid Grid.Row="1" Margin="24" RowDefinitions="Auto,12,Auto,16,*,16,Auto">
+                <Grid Grid.Row="1" Margin="24" RowDefinitions="Auto,12,Auto,12,Auto,16,*,16,Auto">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Spacing="4">
                             <TextBlock Text="{Binding CollectionRunSummary}"
@@ -710,6 +710,39 @@
                     <Border Grid.Row="2"
                             Padding="12"
                             CornerRadius="8"
+                            Background="{DynamicResource SurfaceRaisedBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Spacing="3">
+                                <TextBlock Text="{DynamicResource CollectionRunDataTitle}"
+                                           FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding CollectionRunDataFileName}"
+                                           Classes="secondary"
+                                           FontSize="11"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding CollectionRunDataSummary}"
+                                           Classes="secondary"
+                                           FontSize="10" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        Spacing="8">
+                                <Button Content="{DynamicResource CollectionRunDataClear}"
+                                        IsVisible="{Binding HasCollectionRunData}"
+                                        IsEnabled="{Binding IsCollectionRunnerInteractionEnabled}"
+                                        Command="{Binding ClearCollectionRunDataCommand}" />
+                                <Button Content="{DynamicResource CollectionRunDataChoose}"
+                                        IsEnabled="{Binding IsCollectionRunnerInteractionEnabled}"
+                                        Command="{Binding SelectCollectionRunDataFileCommand}" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="4"
+                            Padding="12"
+                            CornerRadius="8"
                             Background="{DynamicResource SurfaceRaisedBrush}">
                         <TextBlock Text="{DynamicResource CollectionRunSafetyNote}"
                                    Classes="secondary"
@@ -717,7 +750,7 @@
                                    TextWrapping="Wrap" />
                     </Border>
 
-                    <Border Grid.Row="4"
+                    <Border Grid.Row="6"
                             Padding="14"
                             CornerRadius="8"
                             Background="{DynamicResource SurfaceRaisedBrush}"
@@ -762,7 +795,7 @@
                         </Grid>
                     </Border>
 
-                    <StackPanel Grid.Row="6"
+                    <StackPanel Grid.Row="8"
                                 Orientation="Horizontal"
                                 HorizontalAlignment="Right"
                                 Spacing="8">

@@ -304,8 +304,23 @@ public partial class MainViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsCollectionRunnerInteractionEnabled))]
     public partial bool IsCollectionRunExportBusy { get; set; }
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCollectionRunnerInteractionEnabled))]
+    public partial bool IsCollectionRunDataBusy { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasCollectionRunData { get; set; }
+
+    [ObservableProperty]
+    public partial string CollectionRunDataFileName { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string CollectionRunDataSummary { get; set; } = string.Empty;
+
     public bool IsCollectionRunnerInteractionEnabled =>
-        !IsCollectionRunnerBusy && !IsCollectionRunExportBusy;
+        !IsCollectionRunnerBusy
+        && !IsCollectionRunExportBusy
+        && !IsCollectionRunDataBusy;
 
     public bool IsRequestWorkspaceVisible =>
         !IsGitDiffVisible
@@ -359,6 +374,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly IGitService _gitService;
     private readonly IGitSecretScanner _gitSecretScanner;
     private readonly ICollectionRunExportService _collectionRunExportService;
+    private readonly ICollectionRunDataFileService _collectionRunDataFileService;
     private WorkspaceSnapshot? _workspaceSnapshot;
     private string? _workspaceDirectory;
     private Guid? _selectedRequestId;
@@ -383,7 +399,8 @@ public partial class MainViewModel : ViewModelBase
         IAppSettingsService appSettings,
         IGitService gitService,
         IGitSecretScanner gitSecretScanner,
-        ICollectionRunExportService collectionRunExportService)
+        ICollectionRunExportService collectionRunExportService,
+        ICollectionRunDataFileService collectionRunDataFileService)
     {
         _requestExecutor = requestExecutor;
         _collectionRunner = collectionRunner;
@@ -400,6 +417,7 @@ public partial class MainViewModel : ViewModelBase
         _gitService = gitService;
         _gitSecretScanner = gitSecretScanner;
         _collectionRunExportService = collectionRunExportService;
+        _collectionRunDataFileService = collectionRunDataFileService;
         HistoryRetentionLimit = appSettings.Current.HistoryRetentionLimit;
         ResponsePreviewLimitMegabytes = appSettings.Current.ResponsePreviewLimitMegabytes;
         _cleanRequestDraft = CaptureRequestDraft();

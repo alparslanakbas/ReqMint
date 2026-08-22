@@ -1055,6 +1055,72 @@ public sealed class MainViewModelWorkspaceTests
         Assert.Equal("JSON run report exported", viewModel.WorkspaceStatus);
     }
 
+    [Fact]
+    public async Task CollectionRunner_LoadsBoundedIterationDataForTheNextRun()
+    {
+        const string sensitiveValue = "iteration-value-must-not-be-shown";
+        var snapshot = CreateSnapshot();
+        var runner = new StubCollectionRunner
+        {
+            Result = new CollectionRunResult
+            {
+                CollectionId = snapshot.Collections[0].Id,
+                CollectionName = snapshot.Collections[0].Name,
+                IterationCount = 2,
+                Results =
+                [
+                    new CollectionRequestRunResult
+                    {
+                        RequestId = snapshot.Collections[0].Requests[0].Id,
+                        RequestName = "Create order",
+                        IterationNumber = 1,
+                        State = CollectionRequestRunState.Passed,
+                    },
+                    new CollectionRequestRunResult
+                    {
+                        RequestId = snapshot.Collections[0].Requests[0].Id,
+                        RequestName = "Create order",
+                        IterationNumber = 2,
+                        State = CollectionRequestRunState.Passed,
+                    },
+                ],
+            },
+        };
+        var dataService = new StubCollectionRunDataFileService
+        {
+            Selection = new CollectionRunDataFile(
+                "orders.json",
+                new CollectionRunDataSet
+                {
+                    Rows =
+                    [
+                        DataRow(("orderId", "A-1")),
+                        DataRow(("orderId", sensitiveValue)),
+                    ],
+                }),
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = snapshot },
+            CreateWorkspacePath(),
+            collectionRunner: runner,
+            collectionRunDataFileService: dataService);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        viewModel.OpenCollectionRunnerCommand.Execute(null);
+
+        await viewModel.SelectCollectionRunDataFileCommand.ExecuteAsync(null);
+        await viewModel.StartCollectionRunCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.HasCollectionRunData);
+        Assert.Equal("orders.json", viewModel.CollectionRunDataFileName);
+        Assert.Equal(2, runner.Definition!.DataRows.Count);
+        Assert.Equal("Iteration 1", viewModel.CollectionRunResults[0].Assertions);
+        Assert.Equal("Iteration 2", viewModel.CollectionRunResults[1].Assertions);
+        Assert.DoesNotContain(
+            sensitiveValue,
+            string.Join('|', viewModel.CollectionRunResults),
+            StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(UnsavedChangesChoice.Cancel, "https://api.example.com/changed")]
     [InlineData(UnsavedChangesChoice.Discard, "")]
@@ -1103,7 +1169,8 @@ public sealed class MainViewModelWorkspaceTests
         StubGitService? gitService = null,
         StubGitSecretScanner? gitSecretScanner = null,
         ICollectionRunner? collectionRunner = null,
-        ICollectionRunExportService? collectionRunExportService = null)
+        ICollectionRunExportService? collectionRunExportService = null,
+        ICollectionRunDataFileService? collectionRunDataFileService = null)
     {
         vault ??= new RecordingSecretVault();
         executor ??= new NoOpRequestExecutor();
@@ -1122,7 +1189,8 @@ public sealed class MainViewModelWorkspaceTests
             appSettings ?? new StubAppSettingsService(),
             gitService ?? new StubGitService(),
             gitSecretScanner ?? new StubGitSecretScanner(),
-            collectionRunExportService ?? new RecordingCollectionRunExportService());
+            collectionRunExportService ?? new RecordingCollectionRunExportService(),
+            collectionRunDataFileService ?? new StubCollectionRunDataFileService());
     }
 
     private static string CreateWorkspacePath() => Path.Combine(
@@ -1181,6 +1249,15 @@ public sealed class MainViewModelWorkspaceTests
                 Method = method,
                 Url = $"https://api.example.com/{name.Replace(' ', '-').ToLowerInvariant()}",
             },
+        };
+
+    private static CollectionRunDataRow DataRow(
+        params (string Name, string Value)[] variables) => new()
+        {
+            Variables = variables.ToDictionary(
+                variable => variable.Name,
+                variable => variable.Value,
+                StringComparer.OrdinalIgnoreCase),
         };
 
     private sealed class StubFolderPicker(string directory) : IWorkspaceFolderPicker
@@ -1444,6 +1521,14 @@ public sealed class MainViewModelWorkspaceTests
             SuggestedFileName = suggestedFileName;
             return Task.FromResult(true);
         }
+    }
+
+    private sealed class StubCollectionRunDataFileService : ICollectionRunDataFileService
+    {
+        public CollectionRunDataFile? Selection { get; init; }
+
+        public Task<CollectionRunDataFile?> LoadAsync(
+            CancellationToken cancellationToken = default) => Task.FromResult(Selection);
     }
 
     private sealed class RecordingWorkspaceStore : IWorkspaceStore

@@ -10,6 +10,18 @@ public sealed class RequestTemplateResolver(ISecretVault secretVault)
         Guid workspaceId,
         EnvironmentDocument? environment,
         RequestDocument request,
+        CancellationToken cancellationToken = default) => await ResolveAsync(
+            workspaceId,
+            environment,
+            request,
+            iterationVariables: null,
+            cancellationToken);
+
+    public async Task<ApiRequest> ResolveAsync(
+        Guid workspaceId,
+        EnvironmentDocument? environment,
+        RequestDocument request,
+        IReadOnlyDictionary<string, string>? iterationVariables,
         CancellationToken cancellationToken = default)
     {
         var variableNames = RequestTemplate.FindVariables(GetTemplateValues(request));
@@ -17,6 +29,7 @@ public sealed class RequestTemplateResolver(ISecretVault secretVault)
             workspaceId,
             environment,
             variableNames,
+            iterationVariables,
             cancellationToken);
 
         return ApiRequest.Create(
@@ -46,6 +59,7 @@ public sealed class RequestTemplateResolver(ISecretVault secretVault)
         Guid workspaceId,
         EnvironmentDocument? environment,
         IReadOnlySet<string> variableNames,
+        IReadOnlyDictionary<string, string>? iterationVariables,
         CancellationToken cancellationToken)
     {
         var definitions = environment?.Variables.ToDictionary(
@@ -57,6 +71,12 @@ public sealed class RequestTemplateResolver(ISecretVault secretVault)
 
         foreach (var variableName in variableNames)
         {
+            if (iterationVariables?.TryGetValue(variableName, out var iterationValue) == true)
+            {
+                values[variableName] = iterationValue;
+                continue;
+            }
+
             if (!definitions.TryGetValue(variableName, out var definition))
             {
                 missingVariables.Add(variableName);

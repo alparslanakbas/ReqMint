@@ -18,6 +18,8 @@ public sealed class CollectionRunner(
     RequestTemplateResolver templateResolver) : ICollectionRunner
 {
     public const int MaximumRequestCount = 1000;
+    public const int MaximumIterationCount = CollectionRunDataParser.MaximumRowCount;
+    public const int MaximumExecutionCount = 5000;
 
     public async Task<CollectionRunResult> RunAsync(
         CollectionRunDefinition definition,
@@ -27,17 +29,25 @@ public sealed class CollectionRunner(
         ArgumentNullException.ThrowIfNull(definition);
         Validate(definition);
 
+        var iterations = CreateIterations(definition.DataRows);
+        var executions = CreateExecutions(definition.Collection.Requests, iterations);
         var runTimer = Stopwatch.StartNew();
-        var results = new List<CollectionRequestRunResult>(definition.Collection.Requests.Count);
-        for (var index = 0; index < definition.Collection.Requests.Count; index++)
+        var results = new List<CollectionRequestRunResult>(executions.Count);
+        for (var index = 0; index < executions.Count; index++)
         {
             if (cancellationToken.IsCancellationRequested)
             {
-                AddNotRunResults(definition.Collection.Requests, index, results);
-                return CreateResult(definition, results, runTimer.Elapsed, wasCancelled: true);
+                AddNotRunResults(executions, index, results);
+                return CreateResult(
+                    definition,
+                    results,
+                    runTimer.Elapsed,
+                    iterations.Count,
+                    wasCancelled: true);
             }
 
-            var request = definition.Collection.Requests[index];
+            var execution = executions[index];
+            var request = execution.Request;
             var requestTimer = Stopwatch.StartNew();
             CollectionRequestRunResult result;
             try
@@ -46,6 +56,7 @@ public sealed class CollectionRunner(
                     definition.WorkspaceId,
                     definition.Environment,
                     request,
+                    execution.Variables,
                     cancellationToken);
                 var response = await requestExecutor.ExecuteAsync(
                     resolvedRequest,
@@ -61,6 +72,7 @@ public sealed class CollectionRunner(
                 {
                     RequestId = request.Id,
                     RequestName = request.Name,
+                    IterationNumber = execution.IterationNumber,
                     State = passed
                         ? CollectionRequestRunState.Passed
                         : CollectionRequestRunState.Failed,
@@ -72,22 +84,27 @@ public sealed class CollectionRunner(
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 result = ErrorResult(
-                    request,
+                    execution,
                     CollectionRequestRunState.Cancelled,
                     CollectionRunErrorKind.None,
                     requestTimer.Elapsed);
                 results.Add(result);
                 progress?.Report(new CollectionRunProgress(
                     index + 1,
-                    definition.Collection.Requests.Count,
+                    executions.Count,
                     result));
-                AddNotRunResults(definition.Collection.Requests, index + 1, results);
-                return CreateResult(definition, results, runTimer.Elapsed, wasCancelled: true);
+                AddNotRunResults(executions, index + 1, results);
+                return CreateResult(
+                    definition,
+                    results,
+                    runTimer.Elapsed,
+                    iterations.Count,
+                    wasCancelled: true);
             }
             catch (RequestTemplateResolutionException)
             {
                 result = ErrorResult(
-                    request,
+                    execution,
                     CollectionRequestRunState.Error,
                     CollectionRunErrorKind.MissingVariables,
                     requestTimer.Elapsed);
@@ -95,7 +112,7 @@ public sealed class CollectionRunner(
             catch (TimeoutException)
             {
                 result = ErrorResult(
-                    request,
+                    execution,
                     CollectionRequestRunState.Error,
                     CollectionRunErrorKind.Timeout,
                     requestTimer.Elapsed);
@@ -103,7 +120,7 @@ public sealed class CollectionRunner(
             catch (HttpRequestException)
             {
                 result = ErrorResult(
-                    request,
+                    execution,
                     CollectionRequestRunState.Error,
                     CollectionRunErrorKind.Transport,
                     requestTimer.Elapsed);
@@ -111,7 +128,7 @@ public sealed class CollectionRunner(
             catch (Exception exception) when (IsInvalidRequestException(exception))
             {
                 result = ErrorResult(
-                    request,
+                    execution,
                     CollectionRequestRunState.Error,
                     CollectionRunErrorKind.InvalidRequest,
                     requestTimer.Elapsed);
@@ -120,18 +137,23 @@ public sealed class CollectionRunner(
             results.Add(result);
             progress?.Report(new CollectionRunProgress(
                 index + 1,
-                definition.Collection.Requests.Count,
+                executions.Count,
                 result));
 
             if (definition.StopOnFailure && result.State is
                 CollectionRequestRunState.Failed or CollectionRequestRunState.Error)
             {
-                AddNotRunResults(definition.Collection.Requests, index + 1, results);
+                AddNotRunResults(executions, index + 1, results);
                 break;
             }
         }
 
-        return CreateResult(definition, results, runTimer.Elapsed, wasCancelled: false);
+        return CreateResult(
+            definition,
+            results,
+            runTimer.Elapsed,
+            iterations.Count,
+            wasCancelled: false);
     }
 
     private static void Validate(CollectionRunDefinition definition)
@@ -145,6 +167,25 @@ public sealed class CollectionRunner(
         {
             throw new ArgumentException(
                 $"A collection run is limited to {MaximumRequestCount} requests.",
+                nameof(definition));
+        }
+
+        if (definition.DataRows.Count > 0)
+        {
+            var dataError = CollectionRunDataValidator.GetValidationError(definition.DataRows);
+            if (dataError is not null)
+            {
+                throw new ArgumentException(
+                    $"Collection run data is invalid: {dataError}",
+                    nameof(definition));
+            }
+        }
+
+        var iterationCount = Math.Max(1, definition.DataRows.Count);
+        if ((long)definition.Collection.Requests.Count * iterationCount > MaximumExecutionCount)
+        {
+            throw new ArgumentException(
+                $"A collection run is limited to {MaximumExecutionCount} total request executions.",
                 nameof(definition));
         }
 
@@ -173,27 +214,28 @@ public sealed class CollectionRunner(
         ArgumentException or InvalidOperationException or NotSupportedException or FormatException;
 
     private static CollectionRequestRunResult ErrorResult(
-        RequestDocument request,
+        RunExecution execution,
         CollectionRequestRunState state,
         CollectionRunErrorKind errorKind,
         TimeSpan duration) => new()
         {
-            RequestId = request.Id,
-            RequestName = request.Name,
+            RequestId = execution.Request.Id,
+            RequestName = execution.Request.Name,
+            IterationNumber = execution.IterationNumber,
             State = state,
             ErrorKind = errorKind,
             Duration = duration,
         };
 
     private static void AddNotRunResults(
-        IReadOnlyList<RequestDocument> requests,
+        IReadOnlyList<RunExecution> executions,
         int startIndex,
         ICollection<CollectionRequestRunResult> results)
     {
-        for (var index = startIndex; index < requests.Count; index++)
+        for (var index = startIndex; index < executions.Count; index++)
         {
             results.Add(ErrorResult(
-                requests[index],
+                executions[index],
                 CollectionRequestRunState.NotRun,
                 CollectionRunErrorKind.None,
                 TimeSpan.Zero));
@@ -204,6 +246,7 @@ public sealed class CollectionRunner(
         CollectionRunDefinition definition,
         IReadOnlyList<CollectionRequestRunResult> results,
         TimeSpan duration,
+        int iterationCount,
         bool wasCancelled) => new()
         {
             CollectionId = definition.Collection.Id,
@@ -211,8 +254,44 @@ public sealed class CollectionRunner(
             EnvironmentId = definition.Environment?.Id,
             Results = results,
             Duration = duration,
+            IterationCount = iterationCount,
             WasCancelled = wasCancelled,
         };
+
+    private static IReadOnlyList<CollectionRunDataRow> CreateIterations(
+        IReadOnlyList<CollectionRunDataRow> dataRows) => dataRows.Count == 0
+            ?
+            [
+                new CollectionRunDataRow
+                {
+                    Variables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                },
+            ]
+            : dataRows;
+
+    private static IReadOnlyList<RunExecution> CreateExecutions(
+        IReadOnlyList<RequestDocument> requests,
+        IReadOnlyList<CollectionRunDataRow> iterations)
+    {
+        var executions = new List<RunExecution>(requests.Count * iterations.Count);
+        for (var iterationIndex = 0; iterationIndex < iterations.Count; iterationIndex++)
+        {
+            var variables = new Dictionary<string, string>(
+                iterations[iterationIndex].Variables,
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var request in requests)
+            {
+                executions.Add(new RunExecution(request, iterationIndex + 1, variables));
+            }
+        }
+
+        return executions;
+    }
+
+    private sealed record RunExecution(
+        RequestDocument Request,
+        int IterationNumber,
+        IReadOnlyDictionary<string, string> Variables);
 }
 
 public sealed record CollectionRunDefinition
@@ -224,6 +303,8 @@ public sealed record CollectionRunDefinition
     public EnvironmentDocument? Environment { get; init; }
 
     public bool StopOnFailure { get; init; }
+
+    public IReadOnlyList<CollectionRunDataRow> DataRows { get; init; } = [];
 }
 
 public sealed record CollectionRunResult
@@ -240,6 +321,8 @@ public sealed record CollectionRunResult
 
     public bool WasCancelled { get; init; }
 
+    public int IterationCount { get; init; } = 1;
+
     public int PassedCount => Results.Count(result => result.State == CollectionRequestRunState.Passed);
 
     public int FailedCount => Results.Count(result => result.State is
@@ -253,6 +336,8 @@ public sealed record CollectionRequestRunResult
     public required Guid RequestId { get; init; }
 
     public required string RequestName { get; init; }
+
+    public int IterationNumber { get; init; } = 1;
 
     public CollectionRequestRunState State { get; init; } = CollectionRequestRunState.NotRun;
 
