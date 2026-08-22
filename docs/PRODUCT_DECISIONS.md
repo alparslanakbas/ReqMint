@@ -20,6 +20,15 @@ This document records the product decisions approved before implementation. It i
 6. Progressive complexity: the first-run experience stays simple while advanced features remain discoverable.
 7. No forced telemetry: diagnostics require explicit consent and must redact secrets.
 
+## Guided onboarding
+
+- First launch will offer an optional, localized, step-by-step product tour rather than opening into an unexplained empty workspace.
+- The tutorial will create a disposable sample workspace and guide the user through sending a small API request, reading status/headers/body, using an environment variable, and saving the request to a collection.
+- The sample API must be deterministic and local-first. Prefer a temporary loopback tutorial service so onboarding does not require an account, internet access, or sending user data to a third party.
+- Users can skip, resume, or restart the tutorial from Help at any time. Progress is stored locally and the normal application remains usable throughout.
+- Advanced Git, runner, and secret-vault concepts are introduced progressively after the first successful request, not placed in the initial path.
+- Tutorial analytics remain disabled unless the user explicitly opts into privacy-preserving diagnostics.
+
 ## Platforms and distribution
 
 ### Windows

@@ -92,13 +92,16 @@ Exit: deterministic runner tests verify totals, failures, cancellation, and reda
 
 ### Phase 7 — Packaging and public beta
 
+- implement the optional guided first-run tutorial with a disposable sample workspace and local sample API
+- support skip, resume, restart, localization, keyboard navigation, and screen-reader guidance
+- verify that tutorial progress and sample data remain local and can be removed cleanly
 - generate Windows MSIX/MSIXBundle and reserve the Microsoft Store identity
 - add macOS bundles/signing/notarization pipeline
 - add Linux portable package and validate target distributions
 - run accessibility, security, migration, clean-install, update, and uninstall tests
 - update public documentation, privacy policy, screenshots, and release notes
 
-Exit: signed beta artifacts are installable and updateable on every supported platform.
+Exit: a new user can complete their first API request without external documentation, and signed beta artifacts are installable and updateable on every supported platform.
 
 ### Phase 8 — Store release and commercial layer
 
