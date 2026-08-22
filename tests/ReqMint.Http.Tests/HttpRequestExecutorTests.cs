@@ -54,11 +54,82 @@ public class HttpRequestExecutorTests
         Assert.True(response.IsBodyTruncated);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_ComposesMethodQueryHeadersAndBody()
+    {
+        string? observedMethod = null;
+        Uri? observedUri = null;
+        string? observedHeader = null;
+        string? observedBody = null;
+        string? observedContentType = null;
+
+        using var executor = new HttpRequestExecutor(new AsyncStubHandler(async (request, cancellationToken) =>
+        {
+            observedMethod = request.Method.Method;
+            observedUri = request.RequestUri;
+            observedHeader = request.Headers.GetValues("X-Client").Single();
+            observedBody = await request.Content!.ReadAsStringAsync(cancellationToken);
+            observedContentType = request.Content.Headers.ContentType?.MediaType;
+
+            return new HttpResponseMessage(HttpStatusCode.Created)
+            {
+                Content = new StringContent("created"),
+            };
+        }));
+
+        var request = ApiRequest.Create("POST", "https://example.com/orders?existing=true") with
+        {
+            QueryParameters =
+            [
+                new RequestField("include", "items & totals"),
+                new RequestField("include", "customer"),
+            ],
+            Headers = [new RequestField("X-Client", "ReqMint")],
+            Body = new ApiRequestBody("{\"name\":\"Sample\"}", "application/json"),
+        };
+
+        await executor.ExecuteAsync(request);
+
+        Assert.Equal("POST", observedMethod);
+        Assert.Equal(
+            "https://example.com/orders?existing=true&include=items%20%26%20totals&include=customer",
+            observedUri?.AbsoluteUri);
+        Assert.Equal("ReqMint", observedHeader);
+        Assert.Equal("{\"name\":\"Sample\"}", observedBody);
+        Assert.Equal("application/json", observedContentType);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ThrowsTimeoutExceptionWhenRequestExceedsLimit()
+    {
+        using var executor = new HttpRequestExecutor(new AsyncStubHandler(async (_, cancellationToken) =>
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        }));
+
+        var request = ApiRequest.Create("GET", "https://example.com/slow") with
+        {
+            Timeout = TimeSpan.FromMilliseconds(50),
+        };
+
+        await Assert.ThrowsAsync<TimeoutException>(() => executor.ExecuteAsync(request));
+    }
+
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> responder)
         : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken) => Task.FromResult(responder(request));
+    }
+
+    private sealed class AsyncStubHandler(
+        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> responder)
+        : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) => responder(request, cancellationToken);
     }
 }

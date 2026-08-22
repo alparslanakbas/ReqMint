@@ -2,18 +2,17 @@ namespace ReqMint.Core.Requests;
 
 public sealed record ApiRequest
 {
-    private static readonly IReadOnlyDictionary<string, string> EmptyHeaders =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
     public required string Method { get; init; }
 
     public required Uri Url { get; init; }
 
-    public IReadOnlyDictionary<string, string> Headers { get; init; } = EmptyHeaders;
+    public IReadOnlyList<RequestField> QueryParameters { get; init; } = [];
 
-    public string? Body { get; init; }
+    public IReadOnlyList<RequestField> Headers { get; init; } = [];
 
-    public string? ContentType { get; init; }
+    public ApiRequestBody? Body { get; init; }
+
+    public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(30);
 
     public static ApiRequest Create(string method, string url)
     {
@@ -32,3 +31,7 @@ public sealed record ApiRequest
         };
     }
 }
+
+public sealed record RequestField(string Name, string Value);
+
+public sealed record ApiRequestBody(string Content, string ContentType);

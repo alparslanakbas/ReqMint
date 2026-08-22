@@ -142,10 +142,10 @@
             </Border>
 
             <!-- Request workspace -->
-            <Grid Grid.Column="2" RowDefinitions="44,72,42,*,38">
+            <Grid Grid.Column="2" RowDefinitions="44,72,*,38">
                 <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
                     <StackPanel Orientation="Horizontal" Margin="14,0" VerticalAlignment="Center" Spacing="10">
-                        <TextBlock Text="GET" Foreground="{DynamicResource MethodGetBrush}" FontSize="11" FontWeight="Bold" />
+                        <TextBlock Text="{Binding SelectedMethod}" Foreground="{DynamicResource MethodGetBrush}" FontSize="11" FontWeight="Bold" />
                         <TextBlock Text="Get Order" FontWeight="SemiBold" />
                         <TextBlock Text="×" Classes="secondary" />
                     </StackPanel>
@@ -163,34 +163,92 @@
                             Command="{Binding SendCommand}" />
                 </Grid>
 
-                <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-                    <StackPanel Orientation="Horizontal" Margin="18,0" Spacing="26" VerticalAlignment="Center">
-                        <TextBlock Text="Params" Classes="secondary" />
-                        <TextBlock Text="Authorization" Classes="secondary" />
-                        <TextBlock Text="Headers" Classes="secondary" />
-                        <TextBlock Text="Body" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
-                        <TextBlock Text="Tests" Classes="secondary" />
-                    </StackPanel>
-                </Border>
+                <Grid Grid.Row="2" RowDefinitions="2*,42,3*">
+                    <TabControl Grid.Row="0" Background="{DynamicResource AppBackgroundBrush}">
+                        <TabItem Header="Params">
+                            <Grid RowDefinitions="*,Auto" Margin="18,12">
+                                <ScrollViewer Grid.Row="0">
+                                    <ItemsControl ItemsSource="{Binding QueryParameters}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:RequestFieldViewModel">
+                                                <Grid ColumnDefinitions="32,220,12,*" Margin="0,0,0,8">
+                                                    <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" />
+                                                    <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="Parameter name" />
+                                                    <TextBox Grid.Column="3" Text="{Binding Value}" PlaceholderText="Value" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                                <Button Grid.Row="1"
+                                        HorizontalAlignment="Left"
+                                        Content="＋ Add parameter"
+                                        Command="{Binding AddQueryParameterCommand}" />
+                            </Grid>
+                        </TabItem>
 
-                <Grid Grid.Row="3" RowDefinitions="42,*,42,*">
-                    <Border Grid.Row="0" Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-                        <Grid Margin="16,0" ColumnDefinitions="*,Auto">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="22">
-                                <TextBlock Text="Request body" FontWeight="SemiBold" />
-                                <TextBlock Text="JSON" Classes="secondary" />
+                        <TabItem Header="Headers">
+                            <Grid RowDefinitions="*,Auto" Margin="18,12">
+                                <ScrollViewer Grid.Row="0">
+                                    <ItemsControl ItemsSource="{Binding Headers}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:RequestFieldViewModel">
+                                                <Grid ColumnDefinitions="32,220,12,*" Margin="0,0,0,8">
+                                                    <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" />
+                                                    <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="Header name" />
+                                                    <TextBox Grid.Column="3" Text="{Binding Value}" PlaceholderText="Value" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                                <Button Grid.Row="1"
+                                        HorizontalAlignment="Left"
+                                        Content="＋ Add header"
+                                        Command="{Binding AddHeaderCommand}" />
+                            </Grid>
+                        </TabItem>
+
+                        <TabItem Header="Body">
+                            <Grid RowDefinitions="Auto,12,*" Margin="18,12">
+                                <Grid Grid.Row="0" ColumnDefinitions="180,16,*">
+                                    <ComboBox ItemsSource="{Binding BodyTypes}"
+                                              SelectedItem="{Binding SelectedBodyType}" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="Body content is sent with the selected media type."
+                                               Classes="secondary"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                                <TextBox Grid.Row="2"
+                                         Text="{Binding RequestBody}"
+                                         IsEnabled="{Binding IsBodyEnabled}"
+                                         AcceptsReturn="True"
+                                         TextWrapping="NoWrap"
+                                         VerticalContentAlignment="Top"
+                                         FontFamily="Cascadia Mono, Consolas"
+                                         PlaceholderText="Select a body type, then enter request content..." />
+                            </Grid>
+                        </TabItem>
+
+                        <TabItem Header="Settings">
+                            <StackPanel Margin="18" Spacing="10" MaxWidth="560" HorizontalAlignment="Left">
+                                <TextBlock Text="Request timeout" FontWeight="SemiBold" />
+                                <Grid ColumnDefinitions="160,10,Auto">
+                                    <NumericUpDown Grid.Column="0"
+                                                   Minimum="1"
+                                                   Maximum="600"
+                                                   Increment="1"
+                                                   Value="{Binding TimeoutSeconds}" />
+                                    <TextBlock Grid.Column="2" Text="seconds" Classes="secondary" VerticalAlignment="Center" />
+                                </Grid>
+                                <TextBlock Text="The request and response preview are cancelled when this limit is reached."
+                                           Classes="secondary"
+                                           TextWrapping="Wrap" />
                             </StackPanel>
-                            <TextBlock Grid.Column="1" Text="Pretty  ·  Raw  ·  Preview" Classes="secondary" VerticalAlignment="Center" />
-                        </Grid>
-                    </Border>
+                        </TabItem>
+                    </TabControl>
 
-                    <Border Grid.Row="1" Padding="18" Background="{DynamicResource AppBackgroundBrush}">
-                        <TextBlock FontFamily="Cascadia Mono, Consolas"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   Text="GET requests do not require a body.&#10;&#10;Choose another method to compose JSON, form, multipart, or raw content." />
-                    </Border>
-
-                    <Border Grid.Row="2" Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1">
+                    <Border Grid.Row="1" Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1">
                         <Grid Margin="16,0" ColumnDefinitions="Auto,18,Auto,*,Auto,18,Auto">
                             <TextBlock Text="Response" FontWeight="SemiBold" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="2" Text="{Binding ResponseStatus}" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
@@ -199,7 +257,7 @@
                         </Grid>
                     </Border>
 
-                    <Border Grid.Row="3" Padding="18" Background="{DynamicResource AppBackgroundBrush}">
+                    <Border Grid.Row="2" Padding="18" Background="{DynamicResource AppBackgroundBrush}">
                         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                             <TextBlock Text="{Binding ResponseBody}"
                                        FontFamily="Cascadia Mono, Consolas"
@@ -209,7 +267,7 @@
                     </Border>
                 </Grid>
 
-                <Border Grid.Row="4" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+                <Border Grid.Row="3" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
                     <Grid Margin="14,0" ColumnDefinitions="Auto,18,Auto,*,Auto">
                         <TextBlock Text="main" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="2" Text="Local only · No cloud sync" Classes="secondary" VerticalAlignment="Center" />

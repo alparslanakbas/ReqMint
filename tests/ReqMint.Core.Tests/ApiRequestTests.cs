@@ -11,6 +11,7 @@ public class ApiRequestTests
 
         Assert.Equal("GET", request.Method);
         Assert.Equal(new Uri("https://example.com/orders/42"), request.Url);
+        Assert.Equal(TimeSpan.FromSeconds(30), request.Timeout);
     }
 
     [Theory]

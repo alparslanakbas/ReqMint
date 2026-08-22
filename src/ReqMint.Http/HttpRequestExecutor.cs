@@ -40,26 +40,40 @@ public sealed class HttpRequestExecutor : IRequestExecutor, IDisposable
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        if (request.Timeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(request), "Request timeout must be greater than zero.");
+        }
+
         using var message = CreateMessage(request);
+        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutSource.CancelAfter(request.Timeout);
         var stopwatch = Stopwatch.StartNew();
 
-        using var response = await _client.SendAsync(
-            message,
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
+        try
+        {
+            using var response = await _client.SendAsync(
+                message,
+                HttpCompletionOption.ResponseHeadersRead,
+                timeoutSource.Token);
 
-        var (body, isTruncated) = await ReadPreviewAsync(response.Content, cancellationToken);
-        stopwatch.Stop();
-        var headers = MergeHeaders(response);
+            var (body, isTruncated) = await ReadPreviewAsync(response.Content, timeoutSource.Token);
+            stopwatch.Stop();
+            var headers = MergeHeaders(response);
 
-        return new ApiResponse(
-            (int)response.StatusCode,
-            response.ReasonPhrase ?? string.Empty,
-            headers,
-            body,
-            response.Content.Headers.ContentType?.ToString(),
-            stopwatch.Elapsed,
-            isTruncated);
+            return new ApiResponse(
+                (int)response.StatusCode,
+                response.ReasonPhrase ?? string.Empty,
+                headers,
+                body,
+                response.Content.Headers.ContentType?.ToString(),
+                stopwatch.Elapsed,
+                isTruncated);
+        }
+        catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException($"The request exceeded the {request.Timeout.TotalSeconds:N0} second timeout.", exception);
+        }
     }
 
     public void Dispose() => _client.Dispose();
@@ -75,7 +89,7 @@ public sealed class HttpRequestExecutor : IRequestExecutor, IDisposable
 
     private static HttpRequestMessage CreateMessage(ApiRequest request)
     {
-        var message = new HttpRequestMessage(new HttpMethod(request.Method), request.Url)
+        var message = new HttpRequestMessage(new HttpMethod(request.Method), BuildUri(request))
         {
             Version = HttpVersion.Version20,
             VersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
@@ -84,21 +98,54 @@ public sealed class HttpRequestExecutor : IRequestExecutor, IDisposable
         if (request.Body is not null)
         {
             message.Content = new StringContent(
-                request.Body,
+                request.Body.Content,
                 Encoding.UTF8,
-                request.ContentType ?? "application/json");
+                request.Body.ContentType);
         }
 
         foreach (var header in request.Headers)
         {
-            if (!message.Headers.TryAddWithoutValidation(header.Key, header.Value))
+            if (string.IsNullOrWhiteSpace(header.Name))
+            {
+                continue;
+            }
+
+            if (!message.Headers.TryAddWithoutValidation(header.Name, header.Value))
             {
                 message.Content ??= new ByteArrayContent([]);
-                message.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                message.Content.Headers.TryAddWithoutValidation(header.Name, header.Value);
             }
         }
 
         return message;
+    }
+
+    private static Uri BuildUri(ApiRequest request)
+    {
+        var queryParts = new List<string>();
+        var existingQuery = request.Url.Query.TrimStart('?');
+
+        if (!string.IsNullOrWhiteSpace(existingQuery))
+        {
+            queryParts.Add(existingQuery);
+        }
+
+        queryParts.AddRange(request.QueryParameters
+            .Where(parameter => !string.IsNullOrWhiteSpace(parameter.Name))
+            .Select(parameter =>
+                $"{Uri.EscapeDataString(parameter.Name)}={Uri.EscapeDataString(parameter.Value)}"));
+
+        if (queryParts.Count == 0)
+        {
+            return request.Url;
+        }
+
+        var builder = new UriBuilder(request.Url)
+        {
+            Query = string.Join("&", queryParts),
+        };
+
+        return builder.Uri;
     }
 
     private async Task<(string Body, bool IsTruncated)> ReadPreviewAsync(
