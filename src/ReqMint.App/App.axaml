@@ -1,0 +1,86 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ReqMint.App.App"
+             RequestedThemeVariant="Dark">
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <Color x:Key="Graphite950">#08110F</Color>
+            <Color x:Key="Graphite900">#0D1715</Color>
+            <Color x:Key="Graphite850">#111D1B</Color>
+            <Color x:Key="Graphite800">#162321</Color>
+            <Color x:Key="Graphite700">#263734</Color>
+            <Color x:Key="TextPrimary">#EEF7F4</Color>
+            <Color x:Key="TextSecondary">#91A49F</Color>
+            <Color x:Key="Mint500">#21D6A0</Color>
+            <Color x:Key="Mint700">#0D6B53</Color>
+            <Color x:Key="Blue500">#4B9BFF</Color>
+
+            <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource Graphite950}" />
+            <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource Graphite900}" />
+            <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="{StaticResource Graphite850}" />
+            <SolidColorBrush x:Key="SurfaceHoverBrush" Color="{StaticResource Graphite800}" />
+            <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource Graphite700}" />
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimary}" />
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}" />
+            <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource Mint500}" />
+            <SolidColorBrush x:Key="AccentMutedBrush" Color="{StaticResource Mint700}" />
+            <SolidColorBrush x:Key="MethodGetBrush" Color="{StaticResource Blue500}" />
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme DensityStyle="Compact" />
+
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{DynamicResource AppBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontFamily" Value="avares://Avalonia.Fonts.Inter/Assets#Inter" />
+        </Style>
+
+        <Style Selector="TextBlock.secondary">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        </Style>
+
+        <Style Selector="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="12,7" />
+        </Style>
+
+        <Style Selector="Button:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+        </Style>
+
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AppBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <Style Selector="Button.rail">
+            <Setter Property="Width" Value="42" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="17" />
+        </Style>
+
+        <Style Selector="Button.rail.selected">
+            <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+        </Style>
+
+        <Style Selector="TextBox, ComboBox">
+            <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+    </Application.Styles>
+</Application>

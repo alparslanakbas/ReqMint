@@ -1,0 +1,234 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ReqMint.App.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        x:Class="ReqMint.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        mc:Ignorable="d"
+        d:DesignWidth="1440"
+        d:DesignHeight="900"
+        Title="ReqMint — API work, without the weight."
+        Width="1440"
+        Height="900"
+        MinWidth="1080"
+        MinHeight="680"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid RowDefinitions="58,*,30">
+        <!-- Top bar -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid Margin="16,0" ColumnDefinitions="Auto,18,220,*,360,18,190">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+                    <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource AccentBrush}">
+                        <TextBlock Text="R➜"
+                                   Foreground="{DynamicResource AppBackgroundBrush}"
+                                   FontSize="12"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="ReqMint" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <Button Grid.Column="2" HorizontalContentAlignment="Stretch">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="Acme Commerce" />
+                        <TextBlock Grid.Column="1" Text="⌄" Classes="secondary" />
+                    </Grid>
+                </Button>
+
+                <TextBox Grid.Column="4"
+                         Height="34"
+                         VerticalAlignment="Center"
+                         PlaceholderText="Search or run a command..." />
+
+                <Button Grid.Column="6" HorizontalContentAlignment="Stretch">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Ellipse Width="7" Height="7" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="Development" Margin="9,0" />
+                        <TextBlock Grid.Column="2" Text="⌄" Classes="secondary" />
+                    </Grid>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Workspace -->
+        <Grid Grid.Row="1" ColumnDefinitions="64,264,*">
+            <Border Grid.Column="0"
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,1,0">
+                <Grid RowDefinitions="*,Auto" Margin="0,12">
+                    <StackPanel Grid.Row="0" Spacing="8" HorizontalAlignment="Center">
+                        <Button Classes="rail selected" ToolTip.Tip="Requests" Content="➤" />
+                        <Button Classes="rail" ToolTip.Tip="Collections" Content="▣" />
+                        <Button Classes="rail" ToolTip.Tip="History" Content="◷" />
+                        <Button Classes="rail" ToolTip.Tip="Environments" Content="◇" />
+                        <Button Classes="rail" ToolTip.Tip="Runner" Content="▶" />
+                        <Button Classes="rail" ToolTip.Tip="Git" Content="⑂" />
+                    </StackPanel>
+                    <Button Grid.Row="1" Classes="rail" ToolTip.Tip="Settings" Content="⚙" />
+                </Grid>
+            </Border>
+
+            <!-- Collection tree -->
+            <Border Grid.Column="1"
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,1,0">
+                <Grid RowDefinitions="Auto,Auto,*,Auto">
+                    <Grid Grid.Row="0" Margin="16,16,16,10" ColumnDefinitions="*,Auto">
+                        <TextBlock Text="Workspace" FontSize="17" FontWeight="SemiBold" />
+                        <Button Grid.Column="1" Content="＋" Width="30" Height="30" Padding="0" />
+                    </Grid>
+
+                    <TextBox Grid.Row="1" Margin="12,0,12,12" PlaceholderText="Filter requests..." />
+
+                    <ScrollViewer Grid.Row="2">
+                        <StackPanel Margin="8,0" Spacing="3">
+                            <Button HorizontalContentAlignment="Stretch" BorderThickness="0">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Text="⌄" Classes="secondary" />
+                                    <TextBlock Grid.Column="1" Text="Commerce API" Margin="8,0" FontWeight="SemiBold" />
+                                    <TextBlock Grid.Column="2" Text="6" Classes="secondary" />
+                                </Grid>
+                            </Button>
+                            <Button Margin="14,0,0,0" HorizontalContentAlignment="Stretch" BorderThickness="0">
+                                <Grid ColumnDefinitions="48,*">
+                                    <TextBlock Text="GET" Foreground="{DynamicResource MethodGetBrush}" FontSize="11" FontWeight="Bold" />
+                                    <TextBlock Grid.Column="1" Text="Get Orders" />
+                                </Grid>
+                            </Button>
+                            <Button Margin="14,0,0,0" HorizontalContentAlignment="Stretch" BorderThickness="0" Background="{DynamicResource SurfaceHoverBrush}">
+                                <Grid ColumnDefinitions="48,*">
+                                    <TextBlock Text="GET" Foreground="{DynamicResource MethodGetBrush}" FontSize="11" FontWeight="Bold" />
+                                    <TextBlock Grid.Column="1" Text="Get Order" />
+                                </Grid>
+                            </Button>
+                            <Button Margin="14,0,0,0" HorizontalContentAlignment="Stretch" BorderThickness="0">
+                                <Grid ColumnDefinitions="48,*">
+                                    <TextBlock Text="POST" Foreground="{DynamicResource AccentBrush}" FontSize="11" FontWeight="Bold" />
+                                    <TextBlock Grid.Column="1" Text="Create Order" />
+                                </Grid>
+                            </Button>
+                            <Button HorizontalContentAlignment="Stretch" BorderThickness="0">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Text="›" Classes="secondary" />
+                                    <TextBlock Grid.Column="1" Text="Authentication" Margin="8,0" FontWeight="SemiBold" />
+                                    <TextBlock Grid.Column="2" Text="2" Classes="secondary" />
+                                </Grid>
+                            </Button>
+                            <Button HorizontalContentAlignment="Stretch" BorderThickness="0">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Text="›" Classes="secondary" />
+                                    <TextBlock Grid.Column="1" Text="Users" Margin="8,0" FontWeight="SemiBold" />
+                                    <TextBlock Grid.Column="2" Text="4" Classes="secondary" />
+                                </Grid>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Border Grid.Row="3" Margin="12" Padding="10" CornerRadius="6" Background="{DynamicResource SurfaceRaisedBrush}">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Local workspace" FontWeight="SemiBold" />
+                            <TextBlock Text="No account · No cloud sync" Classes="secondary" FontSize="11" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Request workspace -->
+            <Grid Grid.Column="2" RowDefinitions="44,72,42,*,38">
+                <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                    <StackPanel Orientation="Horizontal" Margin="14,0" VerticalAlignment="Center" Spacing="10">
+                        <TextBlock Text="GET" Foreground="{DynamicResource MethodGetBrush}" FontSize="11" FontWeight="Bold" />
+                        <TextBlock Text="Get Order" FontWeight="SemiBold" />
+                        <TextBlock Text="×" Classes="secondary" />
+                    </StackPanel>
+                </Border>
+
+                <Grid Grid.Row="1" Margin="16,14" ColumnDefinitions="108,12,*,12,104">
+                    <ComboBox Grid.Column="0"
+                              ItemsSource="{Binding Methods}"
+                              SelectedItem="{Binding SelectedMethod}"
+                              HorizontalContentAlignment="Stretch" />
+                    <TextBox Grid.Column="2" Text="{Binding Url}" PlaceholderText="Enter an HTTP or HTTPS URL" />
+                    <Button Grid.Column="4"
+                            Classes="primary"
+                            Content="Send"
+                            Command="{Binding SendCommand}" />
+                </Grid>
+
+                <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                    <StackPanel Orientation="Horizontal" Margin="18,0" Spacing="26" VerticalAlignment="Center">
+                        <TextBlock Text="Params" Classes="secondary" />
+                        <TextBlock Text="Authorization" Classes="secondary" />
+                        <TextBlock Text="Headers" Classes="secondary" />
+                        <TextBlock Text="Body" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
+                        <TextBlock Text="Tests" Classes="secondary" />
+                    </StackPanel>
+                </Border>
+
+                <Grid Grid.Row="3" RowDefinitions="42,*,42,*">
+                    <Border Grid.Row="0" Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                        <Grid Margin="16,0" ColumnDefinitions="*,Auto">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="22">
+                                <TextBlock Text="Request body" FontWeight="SemiBold" />
+                                <TextBlock Text="JSON" Classes="secondary" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="Pretty  ·  Raw  ·  Preview" Classes="secondary" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="1" Padding="18" Background="{DynamicResource AppBackgroundBrush}">
+                        <TextBlock FontFamily="Cascadia Mono, Consolas"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Text="GET requests do not require a body.&#10;&#10;Choose another method to compose JSON, form, multipart, or raw content." />
+                    </Border>
+
+                    <Border Grid.Row="2" Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1">
+                        <Grid Margin="16,0" ColumnDefinitions="Auto,18,Auto,*,Auto,18,Auto">
+                            <TextBlock Text="Response" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="2" Text="{Binding ResponseStatus}" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="4" Text="{Binding ResponseTime}" Classes="secondary" VerticalAlignment="Center" />
+                            <Button Grid.Column="6" Content="Copy" Padding="10,4" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="3" Padding="18" Background="{DynamicResource AppBackgroundBrush}">
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                            <TextBlock Text="{Binding ResponseBody}"
+                                       FontFamily="Cascadia Mono, Consolas"
+                                       FontSize="13"
+                                       TextWrapping="NoWrap" />
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+
+                <Border Grid.Row="4" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+                    <Grid Margin="14,0" ColumnDefinitions="Auto,18,Auto,*,Auto">
+                        <TextBlock Text="main" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="Local only · No cloud sync" Classes="secondary" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                            <Ellipse Width="7" Height="7" Fill="{DynamicResource AccentBrush}" />
+                            <TextBlock Text="{Binding ResponseStatus}" Classes="secondary" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Global status -->
+        <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+            <Grid Margin="14,0" ColumnDefinitions="Auto,16,Auto,*,Auto">
+                <TextBlock Text="ReqMint preview" Classes="secondary" VerticalAlignment="Center" FontSize="11" />
+                <TextBlock Grid.Column="2" Text="API work, without the weight." Classes="secondary" VerticalAlignment="Center" FontSize="11" />
+                <TextBlock Grid.Column="4" Text="Ready" Classes="secondary" VerticalAlignment="Center" FontSize="11" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
