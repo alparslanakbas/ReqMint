@@ -17,7 +17,7 @@ The runner continues after an HTTP or request-level failure by default so the us
 - Secret values are retrieved from the platform vault through the existing template resolver and exist only in the resolved request passed to the HTTP executor.
 - Progress reports expose the completed count and the latest sanitized result only.
 
-Future slices can add history retention without widening this sensitive-data boundary.
+The same sensitive-data boundary applies to local run history.
 
 ## Declarative assertions
 
@@ -36,3 +36,9 @@ JSON reports carry an explicit schema version for future compatibility. JUnit re
 The user may select a local UTF-8 JSON or CSV data file before starting a run. ReqMint executes the entire saved collection once for every data row. A matching data field has precedence over the selected environment for that iteration, while unmatched variables continue to resolve from the environment and platform vault. Iterations and requests remain strictly sequential, and stop-on-failure or cancellation marks every later execution as not run.
 
 The selected file is limited to 1 MiB, 100 rows, 100 fields per row, 4,096 characters per value, and 5,000 total request executions. Only flat strings, numbers, and booleans are accepted from JSON; CSV supports quoted commas, quotes, and line endings. Data values are held only for the active Runner screen and are never copied into result objects or exports. Reports include the non-sensitive one-based iteration number so duplicate request executions can be distinguished. See [Collection Runner data files](COLLECTION_RUN_DATA.md) for examples.
+
+## Local run history
+
+ReqMint stores a separate, sanitized history for each collection in the local application database. A history entry contains only collection and request identifiers and names, recording time, outcome categories, status codes, durations, iteration numbers, and assertion outcomes. The table and its serialized request-result model do not have fields for URLs, query values, headers, request or response bodies, data-file values, environment values, secrets, stack traces, or raw exception messages.
+
+The retention setting keeps between 10 and 200 reports per collection and defaults to 50. New entries are inserted and older entries outside the configured limit are deleted in one transaction. A single serialized result is capped at 2 MiB so unusually large runs cannot grow the database without bound; the completed result remains available for immediate export when this history cap is exceeded. Previous runs can be reopened and exported through the same sanitized JSON and JUnit pipeline. Clearing history requires explicit confirmation, is scoped to the selected workspace and collection, and also removes the displayed in-memory report.

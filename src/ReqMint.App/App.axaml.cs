@@ -38,6 +38,7 @@ public partial class App : Application
             var settings = new JsonAppSettingsService(applicationData);
             var localization = new LocalizationService(settings);
             var mainWindow = new MainWindow();
+            var databasePath = Path.Combine(applicationData, "reqmint.db");
             mainWindow.DataContext = new MainViewModel(
                 _requestExecutor,
                 new CollectionRunner(_requestExecutor, templateResolver),
@@ -47,7 +48,7 @@ public partial class App : Application
                 secretVault,
                 localization,
                 new AvaloniaUnsavedChangesPrompt(mainWindow, localization),
-                new SqliteRequestHistoryStore(Path.Combine(applicationData, "reqmint.db")),
+                new SqliteRequestHistoryStore(databasePath),
                 new AvaloniaHistoryClearPrompt(mainWindow, localization),
                 settings,
                 new SystemGitService(),
@@ -56,7 +57,9 @@ public partial class App : Application
                     mainWindow,
                     new CollectionRunResultExporter(),
                     localization),
-                new AvaloniaCollectionRunDataFileService(mainWindow, localization));
+                new AvaloniaCollectionRunDataFileService(mainWindow, localization),
+                new SqliteCollectionRunHistoryStore(databasePath),
+                new AvaloniaCollectionRunHistoryClearPrompt(mainWindow, localization));
             desktop.MainWindow = mainWindow;
             desktop.Exit += (_, _) => _requestExecutor.Dispose();
         }

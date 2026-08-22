@@ -999,7 +999,7 @@ public sealed class MainViewModelWorkspaceTests
         await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
 
         Assert.True(viewModel.IsCollectionRunAvailable);
-        viewModel.OpenCollectionRunnerCommand.Execute(null);
+        await viewModel.OpenCollectionRunnerCommand.ExecuteAsync(null);
 
         Assert.True(viewModel.IsCollectionRunnerVisible);
         Assert.Equal(0, runner.CallCount);
@@ -1043,7 +1043,7 @@ public sealed class MainViewModelWorkspaceTests
             collectionRunner: new StubCollectionRunner { Result = runResult },
             collectionRunExportService: exportService);
         await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
-        viewModel.OpenCollectionRunnerCommand.Execute(null);
+        await viewModel.OpenCollectionRunnerCommand.ExecuteAsync(null);
         await viewModel.StartCollectionRunCommand.ExecuteAsync(null);
 
         await viewModel.ExportCollectionRunJsonCommand.ExecuteAsync(null);
@@ -1105,7 +1105,7 @@ public sealed class MainViewModelWorkspaceTests
             collectionRunner: runner,
             collectionRunDataFileService: dataService);
         await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
-        viewModel.OpenCollectionRunnerCommand.Execute(null);
+        await viewModel.OpenCollectionRunnerCommand.ExecuteAsync(null);
 
         await viewModel.SelectCollectionRunDataFileCommand.ExecuteAsync(null);
         await viewModel.StartCollectionRunCommand.ExecuteAsync(null);
@@ -1119,6 +1119,92 @@ public sealed class MainViewModelWorkspaceTests
             sensitiveValue,
             string.Join('|', viewModel.CollectionRunResults),
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CollectionRunner_SavesAndReopensSanitizedRunHistory()
+    {
+        var snapshot = CreateSnapshot();
+        var request = snapshot.Collections[0].Requests[0];
+        var result = new CollectionRunResult
+        {
+            CollectionId = snapshot.Collections[0].Id,
+            CollectionName = snapshot.Collections[0].Name,
+            Results =
+            [
+                new CollectionRequestRunResult
+                {
+                    RequestId = request.Id,
+                    RequestName = request.Name,
+                    State = CollectionRequestRunState.Passed,
+                    StatusCode = 201,
+                    Duration = TimeSpan.FromMilliseconds(15),
+                },
+            ],
+        };
+        var historyStore = new RecordingCollectionRunHistoryStore();
+        var settings = new StubAppSettingsService();
+        settings.Update(settings.Current with { CollectionRunHistoryRetentionLimit = 75 });
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = snapshot },
+            CreateWorkspacePath(),
+            collectionRunner: new StubCollectionRunner { Result = result },
+            appSettings: settings,
+            collectionRunHistoryStore: historyStore);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.OpenCollectionRunnerCommand.ExecuteAsync(null);
+
+        await viewModel.StartCollectionRunCommand.ExecuteAsync(null);
+
+        var saved = Assert.Single(historyStore.Entries);
+        Assert.Equal(75, historyStore.LastRetentionLimit);
+        Assert.Equal(snapshot.Workspace.Id, saved.WorkspaceId);
+        Assert.Equal(201, Assert.Single(saved.Requests).StatusCode);
+        Assert.Single(viewModel.CollectionRunHistory);
+
+        viewModel.SelectedCollectionRunHistoryItem = viewModel.CollectionRunHistory[0];
+
+        Assert.Equal("Previous run · 1 passed · 0 failed", viewModel.CollectionRunSummary);
+        Assert.Equal("HTTP 201", Assert.Single(viewModel.CollectionRunResults).Detail);
+    }
+
+    [Fact]
+    public async Task CollectionRunner_ClearHistoryRequiresConfirmation()
+    {
+        var snapshot = CreateSnapshot();
+        var entry = CollectionRunHistoryEntry.Create(
+            snapshot.Workspace.Id,
+            new CollectionRunResult
+            {
+                CollectionId = snapshot.Collections[0].Id,
+                CollectionName = snapshot.Collections[0].Name,
+                Results =
+                [
+                    new CollectionRequestRunResult
+                    {
+                        RequestId = snapshot.Collections[0].Requests[0].Id,
+                        RequestName = "Create order",
+                        State = CollectionRequestRunState.Passed,
+                    },
+                ],
+            },
+            DateTimeOffset.UtcNow);
+        var historyStore = new RecordingCollectionRunHistoryStore([entry]);
+        var prompt = new StubCollectionRunHistoryClearPrompt { Confirmed = true };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = snapshot },
+            CreateWorkspacePath(),
+            collectionRunHistoryStore: historyStore,
+            collectionRunHistoryClearPrompt: prompt);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.OpenCollectionRunnerCommand.ExecuteAsync(null);
+
+        await viewModel.ClearCollectionRunHistoryCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, prompt.CallCount);
+        Assert.Empty(historyStore.Entries);
+        Assert.Empty(viewModel.CollectionRunHistory);
+        Assert.Equal("Run history cleared", viewModel.CollectionRunHistoryStatus);
     }
 
     [Theory]
@@ -1170,7 +1256,9 @@ public sealed class MainViewModelWorkspaceTests
         StubGitSecretScanner? gitSecretScanner = null,
         ICollectionRunner? collectionRunner = null,
         ICollectionRunExportService? collectionRunExportService = null,
-        ICollectionRunDataFileService? collectionRunDataFileService = null)
+        ICollectionRunDataFileService? collectionRunDataFileService = null,
+        RecordingCollectionRunHistoryStore? collectionRunHistoryStore = null,
+        StubCollectionRunHistoryClearPrompt? collectionRunHistoryClearPrompt = null)
     {
         vault ??= new RecordingSecretVault();
         executor ??= new NoOpRequestExecutor();
@@ -1190,7 +1278,9 @@ public sealed class MainViewModelWorkspaceTests
             gitService ?? new StubGitService(),
             gitSecretScanner ?? new StubGitSecretScanner(),
             collectionRunExportService ?? new RecordingCollectionRunExportService(),
-            collectionRunDataFileService ?? new StubCollectionRunDataFileService());
+            collectionRunDataFileService ?? new StubCollectionRunDataFileService(),
+            collectionRunHistoryStore ?? new RecordingCollectionRunHistoryStore(),
+            collectionRunHistoryClearPrompt ?? new StubCollectionRunHistoryClearPrompt());
     }
 
     private static string CreateWorkspacePath() => Path.Combine(
@@ -1529,6 +1619,64 @@ public sealed class MainViewModelWorkspaceTests
 
         public Task<CollectionRunDataFile?> LoadAsync(
             CancellationToken cancellationToken = default) => Task.FromResult(Selection);
+    }
+
+    private sealed class RecordingCollectionRunHistoryStore(
+        IEnumerable<CollectionRunHistoryEntry>? initialEntries = null) : ICollectionRunHistoryStore
+    {
+        public List<CollectionRunHistoryEntry> Entries { get; } =
+            initialEntries?.ToList() ?? [];
+
+        public int? LastRetentionLimit { get; private set; }
+
+        public Task AddAsync(
+            CollectionRunHistoryEntry entry,
+            int retentionLimit = 50,
+            CancellationToken cancellationToken = default)
+        {
+            LastRetentionLimit = retentionLimit;
+            Entries.Insert(0, entry);
+            if (Entries.Count > retentionLimit)
+            {
+                Entries.RemoveRange(retentionLimit, Entries.Count - retentionLimit);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<CollectionRunHistoryEntry>> ListAsync(
+            Guid workspaceId,
+            Guid collectionId,
+            int take = 50,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<CollectionRunHistoryEntry>>(Entries
+                .Where(entry => entry.WorkspaceId == workspaceId
+                    && entry.CollectionId == collectionId)
+                .Take(take)
+                .ToArray());
+
+        public Task ClearAsync(
+            Guid workspaceId,
+            Guid collectionId,
+            CancellationToken cancellationToken = default)
+        {
+            Entries.RemoveAll(entry => entry.WorkspaceId == workspaceId
+                && entry.CollectionId == collectionId);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class StubCollectionRunHistoryClearPrompt : ICollectionRunHistoryClearPrompt
+    {
+        public bool Confirmed { get; init; }
+
+        public int CallCount { get; private set; }
+
+        public Task<bool> ShowAsync(string collectionName, int entryCount)
+        {
+            CallCount++;
+            return Task.FromResult(Confirmed);
+        }
     }
 
     private sealed class RecordingWorkspaceStore : IWorkspaceStore

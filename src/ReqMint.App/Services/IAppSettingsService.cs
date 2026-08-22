@@ -13,5 +13,7 @@ public sealed record AppSettings
 
     public int HistoryRetentionLimit { get; init; } = 200;
 
+    public int CollectionRunHistoryRetentionLimit { get; init; } = 50;
+
     public int ResponsePreviewLimitMegabytes { get; init; } = 2;
 }

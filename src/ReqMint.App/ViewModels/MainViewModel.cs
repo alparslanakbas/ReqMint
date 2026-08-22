@@ -54,6 +54,8 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<CollectionRunItemViewModel> CollectionRunResults { get; } = [];
 
+    public ObservableCollection<CollectionRunHistoryItemViewModel> CollectionRunHistory { get; } = [];
+
     public ObservableCollection<string> EnvironmentNames { get; } = ["No environment"];
 
     public ObservableCollection<EnvironmentVariableViewModel> EnvironmentVariables { get; } = [];
@@ -317,6 +319,17 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial string CollectionRunDataSummary { get; set; } = string.Empty;
 
+    [ObservableProperty]
+    public partial CollectionRunHistoryItemViewModel? SelectedCollectionRunHistoryItem { get; set; }
+
+    [ObservableProperty]
+    public partial string CollectionRunHistoryStatus { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial decimal CollectionRunHistoryRetentionLimit { get; set; } = 50;
+
+    public bool IsCollectionRunHistoryEmpty => CollectionRunHistory.Count == 0;
+
     public bool IsCollectionRunnerInteractionEnabled =>
         !IsCollectionRunnerBusy
         && !IsCollectionRunExportBusy
@@ -375,6 +388,8 @@ public partial class MainViewModel : ViewModelBase
     private readonly IGitSecretScanner _gitSecretScanner;
     private readonly ICollectionRunExportService _collectionRunExportService;
     private readonly ICollectionRunDataFileService _collectionRunDataFileService;
+    private readonly ICollectionRunHistoryStore _collectionRunHistoryStore;
+    private readonly ICollectionRunHistoryClearPrompt _collectionRunHistoryClearPrompt;
     private WorkspaceSnapshot? _workspaceSnapshot;
     private string? _workspaceDirectory;
     private Guid? _selectedRequestId;
@@ -400,7 +415,9 @@ public partial class MainViewModel : ViewModelBase
         IGitService gitService,
         IGitSecretScanner gitSecretScanner,
         ICollectionRunExportService collectionRunExportService,
-        ICollectionRunDataFileService collectionRunDataFileService)
+        ICollectionRunDataFileService collectionRunDataFileService,
+        ICollectionRunHistoryStore collectionRunHistoryStore,
+        ICollectionRunHistoryClearPrompt collectionRunHistoryClearPrompt)
     {
         _requestExecutor = requestExecutor;
         _collectionRunner = collectionRunner;
@@ -418,7 +435,10 @@ public partial class MainViewModel : ViewModelBase
         _gitSecretScanner = gitSecretScanner;
         _collectionRunExportService = collectionRunExportService;
         _collectionRunDataFileService = collectionRunDataFileService;
+        _collectionRunHistoryStore = collectionRunHistoryStore;
+        _collectionRunHistoryClearPrompt = collectionRunHistoryClearPrompt;
         HistoryRetentionLimit = appSettings.Current.HistoryRetentionLimit;
+        CollectionRunHistoryRetentionLimit = appSettings.Current.CollectionRunHistoryRetentionLimit;
         ResponsePreviewLimitMegabytes = appSettings.Current.ResponsePreviewLimitMegabytes;
         _cleanRequestDraft = CaptureRequestDraft();
     }

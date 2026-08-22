@@ -6,6 +6,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 {
     public const int MinimumHistoryRetentionLimit = 25;
     public const int MaximumHistoryRetentionLimit = 2000;
+    public const int MinimumCollectionRunHistoryRetentionLimit = 10;
+    public const int MaximumCollectionRunHistoryRetentionLimit = 200;
     public const int MinimumResponsePreviewLimitMegabytes = 1;
     public const int MaximumResponsePreviewLimitMegabytes = 20;
 
@@ -75,6 +77,10 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             settings.HistoryRetentionLimit,
             MinimumHistoryRetentionLimit,
             MaximumHistoryRetentionLimit),
+        CollectionRunHistoryRetentionLimit = Math.Clamp(
+            settings.CollectionRunHistoryRetentionLimit,
+            MinimumCollectionRunHistoryRetentionLimit,
+            MaximumCollectionRunHistoryRetentionLimit),
         ResponsePreviewLimitMegabytes = Math.Clamp(
             settings.ResponsePreviewLimitMegabytes,
             MinimumResponsePreviewLimitMegabytes,

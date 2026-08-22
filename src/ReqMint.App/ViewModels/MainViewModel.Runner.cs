@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.Input;
+using ReqMint.App.Services;
 using ReqMint.Core.Runner;
 
 namespace ReqMint.App.ViewModels;
@@ -10,7 +11,7 @@ public partial class MainViewModel
     private CollectionRunDataSet? _collectionRunDataSet;
 
     [RelayCommand]
-    private void OpenCollectionRunner()
+    private async Task OpenCollectionRunnerAsync(CancellationToken cancellationToken)
     {
         var collection = GetSelectedCollectionForRun();
         if (!IsCollectionRunAvailable || collection is null || IsCollectionRunnerBusy)
@@ -44,6 +45,7 @@ public partial class MainViewModel
             collection.Requests.Count);
         CollectionRunProgress = string.Empty;
         IsCollectionRunnerVisible = true;
+        await LoadCollectionRunHistoryAsync(cancellationToken);
     }
 
     [RelayCommand]
@@ -62,6 +64,10 @@ public partial class MainViewModel
         _latestCollectionRunResult = null;
         HasCollectionRunResult = false;
         ResetCollectionRunData();
+        SelectedCollectionRunHistoryItem = null;
+        CollectionRunHistory.Clear();
+        CollectionRunHistoryStatus = string.Empty;
+        OnPropertyChanged(nameof(IsCollectionRunHistoryEmpty));
     }
 
     [RelayCommand]
@@ -91,6 +97,7 @@ public partial class MainViewModel
         CollectionRunResults.Clear();
         _latestCollectionRunResult = null;
         HasCollectionRunResult = false;
+        SelectedCollectionRunHistoryItem = null;
         CollectionRunSummary = Localize(
             "CollectionRunRunning",
             "Running saved requests sequentially");
@@ -111,16 +118,7 @@ public partial class MainViewModel
                 progress,
                 _collectionRunCancellation.Token);
 
-            CollectionRunResults.Clear();
-            foreach (var requestResult in result.Results)
-            {
-                CollectionRunResults.Add(CreateCollectionRunItem(
-                    requestResult,
-                    result.IterationCount > 1));
-            }
-
-            _latestCollectionRunResult = result;
-            HasCollectionRunResult = result.Results.Count > 0;
+            DisplayCollectionRunResult(result);
 
             CollectionRunSummary = result.WasCancelled
                 ? Localize(
@@ -135,6 +133,10 @@ public partial class MainViewModel
             WorkspaceStatus = result.WasCancelled
                 ? Localize("CollectionRunCancelled", "Collection run cancelled")
                 : Localize("CollectionRunCompleted", "Collection run completed");
+            await SaveCollectionRunHistoryAsync(
+                snapshot.Workspace.Id,
+                result,
+                cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -239,6 +241,63 @@ public partial class MainViewModel
     }
 
     [RelayCommand]
+    private Task RefreshCollectionRunHistoryAsync(CancellationToken cancellationToken) =>
+        LoadCollectionRunHistoryAsync(cancellationToken);
+
+    [RelayCommand]
+    private async Task ClearCollectionRunHistoryAsync(CancellationToken cancellationToken)
+    {
+        var snapshot = _workspaceSnapshot;
+        var collection = GetSelectedCollectionForRun();
+        if (snapshot is null
+            || collection is null
+            || CollectionRunHistory.Count == 0
+            || !IsCollectionRunnerInteractionEnabled)
+        {
+            return;
+        }
+
+        if (!await _collectionRunHistoryClearPrompt.ShowAsync(
+            collection.Name,
+            CollectionRunHistory.Count))
+        {
+            return;
+        }
+
+        try
+        {
+            await _collectionRunHistoryStore.ClearAsync(
+                snapshot.Workspace.Id,
+                collection.Id,
+                cancellationToken);
+            SelectedCollectionRunHistoryItem = null;
+            CollectionRunHistory.Clear();
+            CollectionRunResults.Clear();
+            _latestCollectionRunResult = null;
+            HasCollectionRunResult = false;
+            CollectionRunProgress = string.Empty;
+            CollectionRunSummary = Localize(
+                "CollectionRunReadySummary",
+                "{0} saved requests are ready to run in order",
+                collection.Requests.Count);
+            CollectionRunHistoryStatus = Localize(
+                "CollectionRunHistoryCleared",
+                "Run history cleared");
+            OnPropertyChanged(nameof(IsCollectionRunHistoryEmpty));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            CollectionRunHistoryStatus = Localize(
+                "CollectionRunHistoryClearFailed",
+                "Run history could not be cleared");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+    }
+
+    [RelayCommand]
     private Task ExportCollectionRunJsonAsync(CancellationToken cancellationToken) =>
         ExportCollectionRunAsync(CollectionRunExportFormat.Json, cancellationToken);
 
@@ -311,6 +370,145 @@ public partial class MainViewModel
             "{0} / {1} completed",
             progress.CompletedRequestCount,
             progress.TotalRequestCount);
+    }
+
+    partial void OnSelectedCollectionRunHistoryItemChanged(
+        CollectionRunHistoryItemViewModel? value)
+    {
+        if (value is null || !IsCollectionRunnerInteractionEnabled)
+        {
+            return;
+        }
+
+        var result = value.Entry.ToRunResult();
+        DisplayCollectionRunResult(result);
+        CollectionRunProgress = string.Empty;
+        CollectionRunSummary = Localize(
+            "CollectionRunHistorySelectedSummary",
+            "Previous run · {0} passed · {1} failed",
+            result.PassedCount,
+            result.FailedCount);
+        WorkspaceStatus = Localize(
+            "CollectionRunHistoryOpened",
+            "Previous collection run opened");
+    }
+
+    partial void OnCollectionRunHistoryRetentionLimitChanged(decimal value)
+    {
+        var limit = (int)Math.Clamp(
+            value,
+            JsonAppSettingsService.MinimumCollectionRunHistoryRetentionLimit,
+            JsonAppSettingsService.MaximumCollectionRunHistoryRetentionLimit);
+        if (value != limit)
+        {
+            CollectionRunHistoryRetentionLimit = limit;
+            return;
+        }
+
+        if (_appSettings is not null
+            && _appSettings.Current.CollectionRunHistoryRetentionLimit != limit)
+        {
+            _appSettings.Update(_appSettings.Current with
+            {
+                CollectionRunHistoryRetentionLimit = limit,
+            });
+        }
+    }
+
+    private void DisplayCollectionRunResult(CollectionRunResult result)
+    {
+        CollectionRunResults.Clear();
+        foreach (var requestResult in result.Results)
+        {
+            CollectionRunResults.Add(CreateCollectionRunItem(
+                requestResult,
+                result.IterationCount > 1));
+        }
+
+        _latestCollectionRunResult = result;
+        HasCollectionRunResult = result.Results.Count > 0;
+    }
+
+    private async Task SaveCollectionRunHistoryAsync(
+        Guid workspaceId,
+        CollectionRunResult result,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var entry = CollectionRunHistoryEntry.Create(
+                workspaceId,
+                result,
+                DateTimeOffset.UtcNow);
+            await _collectionRunHistoryStore.AddAsync(
+                entry,
+                (int)CollectionRunHistoryRetentionLimit,
+                cancellationToken);
+            await LoadCollectionRunHistoryAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            CollectionRunHistoryStatus = Localize(
+                "CollectionRunHistorySaveFailed",
+                "Run completed but history could not be saved");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+    }
+
+    private async Task LoadCollectionRunHistoryAsync(CancellationToken cancellationToken)
+    {
+        var snapshot = _workspaceSnapshot;
+        var collection = GetSelectedCollectionForRun();
+        if (snapshot is null || collection is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var entries = await _collectionRunHistoryStore.ListAsync(
+                snapshot.Workspace.Id,
+                collection.Id,
+                (int)CollectionRunHistoryRetentionLimit,
+                cancellationToken);
+            SelectedCollectionRunHistoryItem = null;
+            CollectionRunHistory.Clear();
+            foreach (var entry in entries)
+            {
+                CollectionRunHistory.Add(new CollectionRunHistoryItemViewModel(
+                    entry.RecordedAtUtc.ToLocalTime().ToString("g"),
+                    Localize(
+                        "CollectionRunHistoryItemSummary",
+                        "{0} passed · {1} failed",
+                        entry.PassedCount,
+                        entry.FailedCount),
+                    entry));
+            }
+
+            CollectionRunHistoryStatus = entries.Count == 0
+                ? Localize("CollectionRunHistoryEmpty", "No previous runs")
+                : Localize(
+                    "CollectionRunHistoryCount",
+                    "{0} previous runs stored locally",
+                    entries.Count);
+            OnPropertyChanged(nameof(IsCollectionRunHistoryEmpty));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            SelectedCollectionRunHistoryItem = null;
+            CollectionRunHistory.Clear();
+            CollectionRunHistoryStatus = Localize(
+                "CollectionRunHistoryUnavailable",
+                "Run history is unavailable");
+            OnPropertyChanged(nameof(IsCollectionRunHistoryEmpty));
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
     }
 
     private CollectionRunItemViewModel CreateCollectionRunItem(

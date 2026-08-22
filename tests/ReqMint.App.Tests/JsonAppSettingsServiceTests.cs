@@ -15,12 +15,14 @@ public sealed class JsonAppSettingsServiceTests
         {
             Language = "tr",
             HistoryRetentionLimit = 350,
+            CollectionRunHistoryRetentionLimit = 80,
             ResponsePreviewLimitMegabytes = 7,
         });
         var reloaded = new JsonAppSettingsService(directory.Path);
 
         Assert.Equal("tr", reloaded.Current.Language);
         Assert.Equal(350, reloaded.Current.HistoryRetentionLimit);
+        Assert.Equal(80, reloaded.Current.CollectionRunHistoryRetentionLimit);
         Assert.Equal(7, reloaded.Current.ResponsePreviewLimitMegabytes);
     }
 
@@ -57,6 +59,25 @@ public sealed class JsonAppSettingsServiceTests
         var store = new JsonAppSettingsService(directory.Path);
 
         Assert.Equal(expected, store.Current.ResponsePreviewLimitMegabytes);
+    }
+
+    [Theory]
+    [InlineData(1, JsonAppSettingsService.MinimumCollectionRunHistoryRetentionLimit)]
+    [InlineData(500, JsonAppSettingsService.MaximumCollectionRunHistoryRetentionLimit)]
+    public void LoadingSettings_ClampsInvalidCollectionRunHistoryRetention(
+        int value,
+        int expected)
+    {
+        using var directory = new TemporaryDirectory();
+        var path = System.IO.Path.Combine(directory.Path, "ui-settings.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new AppSettings
+        {
+            CollectionRunHistoryRetentionLimit = value,
+        }));
+
+        var store = new JsonAppSettingsService(directory.Path);
+
+        Assert.Equal(expected, store.Current.CollectionRunHistoryRetentionLimit);
     }
 
     private sealed class TemporaryDirectory : IDisposable
