@@ -6,6 +6,7 @@ namespace ReqMint.App.ViewModels;
 public partial class MainViewModel
 {
     private CancellationTokenSource? _collectionRunCancellation;
+    private CollectionRunResult? _latestCollectionRunResult;
 
     [RelayCommand]
     private void OpenCollectionRunner()
@@ -32,6 +33,8 @@ public partial class MainViewModel
         CloseGitFastForward();
         CloseGitPush();
         CollectionRunResults.Clear();
+        _latestCollectionRunResult = null;
+        HasCollectionRunResult = false;
         CollectionRunTitle = collection.Name;
         CollectionRunSummary = Localize(
             "CollectionRunReadySummary",
@@ -44,7 +47,7 @@ public partial class MainViewModel
     [RelayCommand]
     private void CloseCollectionRunner()
     {
-        if (IsCollectionRunnerBusy)
+        if (IsCollectionRunnerBusy || IsCollectionRunExportBusy)
         {
             return;
         }
@@ -54,6 +57,8 @@ public partial class MainViewModel
         CollectionRunSummary = string.Empty;
         CollectionRunProgress = string.Empty;
         CollectionRunResults.Clear();
+        _latestCollectionRunResult = null;
+        HasCollectionRunResult = false;
     }
 
     [RelayCommand]
@@ -63,6 +68,7 @@ public partial class MainViewModel
         var collection = GetSelectedCollectionForRun();
         if (!IsCollectionRunnerVisible
             || IsCollectionRunnerBusy
+            || IsCollectionRunExportBusy
             || snapshot is null
             || collection is null)
         {
@@ -79,6 +85,8 @@ public partial class MainViewModel
 
         IsCollectionRunnerBusy = true;
         CollectionRunResults.Clear();
+        _latestCollectionRunResult = null;
+        HasCollectionRunResult = false;
         CollectionRunSummary = Localize(
             "CollectionRunRunning",
             "Running saved requests sequentially");
@@ -103,6 +111,9 @@ public partial class MainViewModel
             {
                 CollectionRunResults.Add(CreateCollectionRunItem(requestResult));
             }
+
+            _latestCollectionRunResult = result;
+            HasCollectionRunResult = result.Results.Count > 0;
 
             CollectionRunSummary = result.WasCancelled
                 ? Localize(
@@ -140,6 +151,72 @@ public partial class MainViewModel
 
     [RelayCommand]
     private void CancelCollectionRun() => _collectionRunCancellation?.Cancel();
+
+    [RelayCommand]
+    private Task ExportCollectionRunJsonAsync(CancellationToken cancellationToken) =>
+        ExportCollectionRunAsync(CollectionRunExportFormat.Json, cancellationToken);
+
+    [RelayCommand]
+    private Task ExportCollectionRunJUnitAsync(CancellationToken cancellationToken) =>
+        ExportCollectionRunAsync(CollectionRunExportFormat.JUnitXml, cancellationToken);
+
+    private async Task ExportCollectionRunAsync(
+        CollectionRunExportFormat format,
+        CancellationToken cancellationToken)
+    {
+        var result = _latestCollectionRunResult;
+        if (result is null
+            || !HasCollectionRunResult
+            || IsCollectionRunnerBusy
+            || IsCollectionRunExportBusy)
+        {
+            return;
+        }
+
+        IsCollectionRunExportBusy = true;
+        try
+        {
+            var extension = format == CollectionRunExportFormat.Json ? "json" : "xml";
+            var saved = await _collectionRunExportService.ExportAsync(
+                result,
+                format,
+                $"{CreateSafeExportName(result.CollectionName)}-run.{extension}",
+                cancellationToken);
+            if (saved)
+            {
+                WorkspaceStatus = format == CollectionRunExportFormat.Json
+                    ? Localize("CollectionRunJsonExported", "JSON run report exported")
+                    : Localize("CollectionRunJUnitExported", "JUnit XML run report exported");
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            WorkspaceStatus = Localize(
+                "CollectionRunExportFailed",
+                "Run report could not be exported safely");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+        finally
+        {
+            IsCollectionRunExportBusy = false;
+        }
+    }
+
+    private static string CreateSafeExportName(string collectionName)
+    {
+        var invalidCharacters = Path.GetInvalidFileNameChars().ToHashSet();
+        invalidCharacters.Add('/');
+        invalidCharacters.Add('\\');
+        var safeName = new string(collectionName
+            .Trim()
+            .Take(80)
+            .Select(character => invalidCharacters.Contains(character) ? '-' : character)
+            .ToArray()).Trim(' ', '.', '-');
+        return string.IsNullOrEmpty(safeName) ? "reqmint-collection" : safeName;
+    }
 
     private void UpdateCollectionRunProgress(CollectionRunProgress progress)
     {

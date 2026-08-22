@@ -16,10 +16,16 @@ The runner continues after an HTTP or request-level failure by default so the us
 - Secret values are retrieved from the platform vault through the existing template resolver and exist only in the resolved request passed to the HTTP executor.
 - Progress reports expose the completed count and the latest sanitized result only.
 
-Future slices can add data-file iterations, result export, and history retention without widening this sensitive-data boundary.
+Future slices can add data-file iterations and history retention without widening this sensitive-data boundary.
 
 ## Declarative assertions
 
 Saved requests can define up to 50 bounded assertions. The first supported rules are an exact HTTP status code, a maximum response duration in milliseconds, and JSON-field existence through RFC 6901 JSON Pointer syntax. A request with assertions passes only when every assertion passes; this allows an expected non-success response such as HTTP 404 to be treated as a successful test. Requests without assertions retain the normal 2xx success rule.
 
 JSON assertions parse only the already bounded response preview with a maximum depth of 64. A truncated or malformed body cannot produce a false pass and is reported as not evaluated. Result objects retain only the assertion kind and outcome; expected values, JSON content, resolved request data, and exception messages are not copied into reports.
+
+## Safe result export
+
+Completed and cancelled runs can be exported locally as an indented JSON report or JUnit-compatible XML. Both formats are generated from the sanitized in-memory result model, so they contain collection and request identifiers and names, outcome categories, status codes, durations, and assertion outcomes only. They never contain resolved URLs, query values, headers, request or response bodies, environment values, vault secrets, stack traces, or raw exception messages.
+
+JSON reports carry an explicit schema version for future compatibility. JUnit reports map failed assertions to `failure`, safe request errors to `error`, and cancelled or unexecuted requests to `skipped`; error messages come from a fixed allowlist rather than runtime exception text. ReqMint asks the user to choose the destination and does not upload reports automatically.

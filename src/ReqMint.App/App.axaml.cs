@@ -51,7 +51,11 @@ public partial class App : Application
                 new AvaloniaHistoryClearPrompt(mainWindow, localization),
                 settings,
                 new SystemGitService(),
-                new WorkspaceGitSecretScanner());
+                new WorkspaceGitSecretScanner(),
+                new AvaloniaCollectionRunExportService(
+                    mainWindow,
+                    new CollectionRunResultExporter(),
+                    localization));
             desktop.MainWindow = mainWindow;
             desktop.Exit += (_, _) => _requestExecutor.Dispose();
         }

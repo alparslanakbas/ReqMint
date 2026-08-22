@@ -282,6 +282,7 @@ public partial class MainViewModel : ViewModelBase
     public partial bool IsCollectionRunnerVisible { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCollectionRunnerInteractionEnabled))]
     public partial bool IsCollectionRunnerBusy { get; set; }
 
     [ObservableProperty]
@@ -295,6 +296,16 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial string CollectionRunProgress { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial bool HasCollectionRunResult { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCollectionRunnerInteractionEnabled))]
+    public partial bool IsCollectionRunExportBusy { get; set; }
+
+    public bool IsCollectionRunnerInteractionEnabled =>
+        !IsCollectionRunnerBusy && !IsCollectionRunExportBusy;
 
     public bool IsRequestWorkspaceVisible =>
         !IsGitDiffVisible
@@ -347,6 +358,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly IAppSettingsService _appSettings;
     private readonly IGitService _gitService;
     private readonly IGitSecretScanner _gitSecretScanner;
+    private readonly ICollectionRunExportService _collectionRunExportService;
     private WorkspaceSnapshot? _workspaceSnapshot;
     private string? _workspaceDirectory;
     private Guid? _selectedRequestId;
@@ -370,7 +382,8 @@ public partial class MainViewModel : ViewModelBase
         IHistoryClearPrompt historyClearPrompt,
         IAppSettingsService appSettings,
         IGitService gitService,
-        IGitSecretScanner gitSecretScanner)
+        IGitSecretScanner gitSecretScanner,
+        ICollectionRunExportService collectionRunExportService)
     {
         _requestExecutor = requestExecutor;
         _collectionRunner = collectionRunner;
@@ -386,6 +399,7 @@ public partial class MainViewModel : ViewModelBase
         _appSettings = appSettings;
         _gitService = gitService;
         _gitSecretScanner = gitSecretScanner;
+        _collectionRunExportService = collectionRunExportService;
         HistoryRetentionLimit = appSettings.Current.HistoryRetentionLimit;
         ResponsePreviewLimitMegabytes = appSettings.Current.ResponsePreviewLimitMegabytes;
         _cleanRequestDraft = CaptureRequestDraft();

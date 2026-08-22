@@ -683,7 +683,7 @@
                                 Width="30"
                                 Height="30"
                                 Padding="0"
-                                IsEnabled="{Binding !IsCollectionRunnerBusy}"
+                                IsEnabled="{Binding IsCollectionRunnerInteractionEnabled}"
                                 Command="{Binding CloseCollectionRunnerCommand}" />
                     </Grid>
                 </Border>
@@ -703,7 +703,7 @@
                         <CheckBox Grid.Column="1"
                                   Content="{DynamicResource CollectionRunStopOnFailure}"
                                   IsChecked="{Binding CollectionRunStopOnFailure}"
-                                  IsEnabled="{Binding !IsCollectionRunnerBusy}"
+                                  IsEnabled="{Binding IsCollectionRunnerInteractionEnabled}"
                                   VerticalAlignment="Center" />
                     </Grid>
 
@@ -767,13 +767,22 @@
                                 HorizontalAlignment="Right"
                                 Spacing="8">
                         <Button Content="{DynamicResource CollectionRunClose}"
-                                IsEnabled="{Binding !IsCollectionRunnerBusy}"
+                                IsEnabled="{Binding IsCollectionRunnerInteractionEnabled}"
                                 Command="{Binding CloseCollectionRunnerCommand}" />
+                        <Button Content="{DynamicResource CollectionRunExportJson}"
+                                IsVisible="{Binding HasCollectionRunResult}"
+                                IsEnabled="{Binding IsCollectionRunnerInteractionEnabled}"
+                                Command="{Binding ExportCollectionRunJsonCommand}" />
+                        <Button Content="{DynamicResource CollectionRunExportJUnit}"
+                                IsVisible="{Binding HasCollectionRunResult}"
+                                IsEnabled="{Binding IsCollectionRunnerInteractionEnabled}"
+                                Command="{Binding ExportCollectionRunJUnitCommand}" />
                         <Button Content="{DynamicResource CollectionRunCancel}"
                                 IsVisible="{Binding IsCollectionRunnerBusy}"
                                 Command="{Binding CancelCollectionRunCommand}" />
                         <Button Content="{DynamicResource CollectionRunStart}"
                                 IsVisible="{Binding !IsCollectionRunnerBusy}"
+                                IsEnabled="{Binding IsCollectionRunnerInteractionEnabled}"
                                 Command="{Binding StartCollectionRunCommand}" />
                     </StackPanel>
                 </Grid>

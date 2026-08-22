@@ -1016,6 +1016,45 @@ public sealed class MainViewModelWorkspaceTests
         Assert.Equal("Completed · 1 passed · 0 failed", viewModel.CollectionRunSummary);
     }
 
+    [Fact]
+    public async Task CollectionRunner_ExportsTheLatestSanitizedResult()
+    {
+        var snapshot = CreateSnapshot();
+        var runResult = new CollectionRunResult
+        {
+            CollectionId = snapshot.Collections[0].Id,
+            CollectionName = "Commerce/API",
+            Results =
+            [
+                new CollectionRequestRunResult
+                {
+                    RequestId = snapshot.Collections[0].Requests[0].Id,
+                    RequestName = "Create order",
+                    State = CollectionRequestRunState.Passed,
+                    StatusCode = 201,
+                    Duration = TimeSpan.FromMilliseconds(12),
+                },
+            ],
+        };
+        var exportService = new RecordingCollectionRunExportService();
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = snapshot },
+            CreateWorkspacePath(),
+            collectionRunner: new StubCollectionRunner { Result = runResult },
+            collectionRunExportService: exportService);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        viewModel.OpenCollectionRunnerCommand.Execute(null);
+        await viewModel.StartCollectionRunCommand.ExecuteAsync(null);
+
+        await viewModel.ExportCollectionRunJsonCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.HasCollectionRunResult);
+        Assert.Same(runResult, exportService.Result);
+        Assert.Equal(CollectionRunExportFormat.Json, exportService.Format);
+        Assert.Equal("Commerce-API-run.json", exportService.SuggestedFileName);
+        Assert.Equal("JSON run report exported", viewModel.WorkspaceStatus);
+    }
+
     [Theory]
     [InlineData(UnsavedChangesChoice.Cancel, "https://api.example.com/changed")]
     [InlineData(UnsavedChangesChoice.Discard, "")]
@@ -1063,7 +1102,8 @@ public sealed class MainViewModelWorkspaceTests
         StubAppSettingsService? appSettings = null,
         StubGitService? gitService = null,
         StubGitSecretScanner? gitSecretScanner = null,
-        ICollectionRunner? collectionRunner = null)
+        ICollectionRunner? collectionRunner = null,
+        ICollectionRunExportService? collectionRunExportService = null)
     {
         vault ??= new RecordingSecretVault();
         executor ??= new NoOpRequestExecutor();
@@ -1081,7 +1121,8 @@ public sealed class MainViewModelWorkspaceTests
             historyClearPrompt ?? new StubHistoryClearPrompt(),
             appSettings ?? new StubAppSettingsService(),
             gitService ?? new StubGitService(),
-            gitSecretScanner ?? new StubGitSecretScanner());
+            gitSecretScanner ?? new StubGitSecretScanner(),
+            collectionRunExportService ?? new RecordingCollectionRunExportService());
     }
 
     private static string CreateWorkspacePath() => Path.Combine(
@@ -1381,6 +1422,27 @@ public sealed class MainViewModelWorkspaceTests
             CallCount++;
             Definition = definition;
             return Task.FromResult(Result);
+        }
+    }
+
+    private sealed class RecordingCollectionRunExportService : ICollectionRunExportService
+    {
+        public CollectionRunResult? Result { get; private set; }
+
+        public CollectionRunExportFormat? Format { get; private set; }
+
+        public string? SuggestedFileName { get; private set; }
+
+        public Task<bool> ExportAsync(
+            CollectionRunResult result,
+            CollectionRunExportFormat format,
+            string suggestedFileName,
+            CancellationToken cancellationToken = default)
+        {
+            Result = result;
+            Format = format;
+            SuggestedFileName = suggestedFileName;
+            return Task.FromResult(true);
         }
     }
 
