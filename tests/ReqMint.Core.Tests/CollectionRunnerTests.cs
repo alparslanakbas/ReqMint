@@ -319,6 +319,64 @@ public sealed class CollectionRunnerTests
             }));
     }
 
+    [Fact]
+    public async Task RunAsync_RerunsOnlySelectedExecutionsInOriginalOrder()
+    {
+        var first = CreateRequest("First", "https://api.example.com/{{id}}/first");
+        var second = CreateRequest("Second", "https://api.example.com/{{id}}/second");
+        var executor = new RecordingExecutor((_, _, _) => Task.FromResult(Response(200)));
+        var runner = new CollectionRunner(
+            executor,
+            new RequestTemplateResolver(new StubSecretVault(null)));
+
+        var result = await runner.RunAsync(new CollectionRunDefinition
+        {
+            WorkspaceId = Guid.NewGuid(),
+            Collection = CreateCollection(first, second),
+            DataRows =
+            [
+                DataRow(("id", "row-1")),
+                DataRow(("id", "row-2")),
+            ],
+            ExecutionSelection =
+            [
+                new CollectionRunExecutionKey(first.Id, 2),
+                new CollectionRunExecutionKey(second.Id, 1),
+            ],
+        });
+
+        Assert.True(result.WasRerun);
+        Assert.True(result.UsedDataFile);
+        Assert.Equal(2, result.IterationCount);
+        Assert.Equal(
+            [
+                "https://api.example.com/row-1/second",
+                "https://api.example.com/row-2/first",
+            ],
+            executor.Requests.Select(request => request.Url.AbsoluteUri.TrimEnd('/')));
+        Assert.Equal(
+            [(second.Id, 1), (first.Id, 2)],
+            result.Results.Select(item => (item.RequestId, item.IterationNumber)));
+    }
+
+    [Fact]
+    public async Task RunAsync_RejectsDuplicateRerunSelections()
+    {
+        var request = CreateRequest("First", "https://api.example.com/first");
+        var key = new CollectionRunExecutionKey(request.Id, 1);
+        var runner = new CollectionRunner(
+            new RecordingExecutor((_, _, _) => Task.FromResult(Response(200))),
+            new RequestTemplateResolver(new StubSecretVault(null)));
+
+        await Assert.ThrowsAsync<ArgumentException>(() => runner.RunAsync(
+            new CollectionRunDefinition
+            {
+                WorkspaceId = Guid.NewGuid(),
+                Collection = CreateCollection(request),
+                ExecutionSelection = [key, key],
+            }));
+    }
+
     private static CollectionDocument CreateCollection(params RequestDocument[] requests) => new()
     {
         Id = Guid.NewGuid(),

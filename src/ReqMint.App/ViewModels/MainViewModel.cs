@@ -328,6 +328,24 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial decimal CollectionRunHistoryRetentionLimit { get; set; } = 50;
 
+    [ObservableProperty]
+    public partial CollectionRunResultFilter SelectedCollectionRunResultFilter { get; set; }
+
+    [ObservableProperty]
+    public partial string CollectionRunResultFilterStatus { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial bool HasFailedCollectionRunResults { get; set; }
+
+    [ObservableProperty]
+    public partial bool CanRerunFailedCollectionResults { get; set; }
+
+    [ObservableProperty]
+    public partial string CollectionRunRerunFailedLabel { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string CollectionRunRerunUnavailableReason { get; set; } = string.Empty;
+
     public bool IsCollectionRunHistoryEmpty => CollectionRunHistory.Count == 0;
 
     public bool IsCollectionRunnerInteractionEnabled =>

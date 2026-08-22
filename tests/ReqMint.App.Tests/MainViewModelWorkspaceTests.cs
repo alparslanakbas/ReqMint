@@ -1169,6 +1169,113 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task CollectionRunner_FiltersResultsAndRerunsOnlyFailedExecutions()
+    {
+        var snapshot = CreateSnapshot();
+        var request = snapshot.Collections[0].Requests[0];
+        var runner = new StubCollectionRunner
+        {
+            Result = new CollectionRunResult
+            {
+                CollectionId = snapshot.Collections[0].Id,
+                CollectionName = snapshot.Collections[0].Name,
+                IterationCount = 3,
+                Results =
+                [
+                    new CollectionRequestRunResult
+                    {
+                        RequestId = request.Id,
+                        RequestName = request.Name,
+                        IterationNumber = 1,
+                        State = CollectionRequestRunState.Passed,
+                    },
+                    new CollectionRequestRunResult
+                    {
+                        RequestId = request.Id,
+                        RequestName = request.Name,
+                        IterationNumber = 2,
+                        State = CollectionRequestRunState.Failed,
+                    },
+                    new CollectionRequestRunResult
+                    {
+                        RequestId = request.Id,
+                        RequestName = request.Name,
+                        IterationNumber = 3,
+                        State = CollectionRequestRunState.Error,
+                        ErrorKind = CollectionRunErrorKind.Timeout,
+                    },
+                ],
+            },
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = snapshot },
+            CreateWorkspacePath(),
+            collectionRunner: runner);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.OpenCollectionRunnerCommand.ExecuteAsync(null);
+        await viewModel.StartCollectionRunCommand.ExecuteAsync(null);
+
+        viewModel.ShowFailedCollectionRunResultsCommand.Execute(null);
+
+        Assert.Equal(2, viewModel.CollectionRunResults.Count);
+        Assert.All(viewModel.CollectionRunResults, item => Assert.True(item.State is
+            CollectionRequestRunState.Failed or CollectionRequestRunState.Error));
+        Assert.Equal("Showing 2 of 3", viewModel.CollectionRunResultFilterStatus);
+        Assert.True(viewModel.CanRerunFailedCollectionResults);
+
+        await viewModel.RerunFailedCollectionRequestsCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, runner.CallCount);
+        Assert.Equal(
+            [
+                new CollectionRunExecutionKey(request.Id, 2),
+                new CollectionRunExecutionKey(request.Id, 3),
+            ],
+            runner.Definition!.ExecutionSelection);
+    }
+
+    [Fact]
+    public async Task CollectionRunner_DoesNotRerunHistoricalDataDrivenResultWithoutInputs()
+    {
+        var snapshot = CreateSnapshot();
+        var request = snapshot.Collections[0].Requests[0];
+        var entry = CollectionRunHistoryEntry.Create(
+            snapshot.Workspace.Id,
+            new CollectionRunResult
+            {
+                CollectionId = snapshot.Collections[0].Id,
+                CollectionName = snapshot.Collections[0].Name,
+                IterationCount = 2,
+                UsedDataFile = true,
+                Results =
+                [
+                    new CollectionRequestRunResult
+                    {
+                        RequestId = request.Id,
+                        RequestName = request.Name,
+                        IterationNumber = 2,
+                        State = CollectionRequestRunState.Failed,
+                    },
+                ],
+            },
+            DateTimeOffset.UtcNow);
+        var historyStore = new RecordingCollectionRunHistoryStore([entry]);
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = snapshot },
+            CreateWorkspacePath(),
+            collectionRunHistoryStore: historyStore);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.OpenCollectionRunnerCommand.ExecuteAsync(null);
+
+        viewModel.SelectedCollectionRunHistoryItem = Assert.Single(
+            viewModel.CollectionRunHistory);
+
+        Assert.True(viewModel.HasFailedCollectionRunResults);
+        Assert.False(viewModel.CanRerunFailedCollectionResults);
+        Assert.NotEmpty(viewModel.CollectionRunRerunUnavailableReason);
+    }
+
+    [Fact]
     public async Task CollectionRunner_ClearHistoryRequiresConfirmation()
     {
         var snapshot = CreateSnapshot();

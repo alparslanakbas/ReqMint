@@ -37,6 +37,10 @@ public sealed record CollectionRunHistoryEntry
 
     public bool WasCancelled { get; init; }
 
+    public bool WasRerun { get; init; }
+
+    public bool UsedDataFile { get; init; }
+
     public int IterationCount { get; init; } = 1;
 
     public IReadOnlyList<CollectionRunHistoryRequest> Requests { get; init; } = [];
@@ -63,6 +67,8 @@ public sealed record CollectionRunHistoryEntry
             EnvironmentId = result.EnvironmentId,
             DurationMilliseconds = Math.Max(0, result.Duration.TotalMilliseconds),
             WasCancelled = result.WasCancelled,
+            WasRerun = result.WasRerun,
+            UsedDataFile = result.UsedDataFile,
             IterationCount = result.IterationCount,
             Requests = result.Results.Select(request => new CollectionRunHistoryRequest
             {
@@ -91,6 +97,8 @@ public sealed record CollectionRunHistoryEntry
             EnvironmentId = EnvironmentId,
             Duration = TimeSpan.FromMilliseconds(DurationMilliseconds),
             WasCancelled = WasCancelled,
+            WasRerun = WasRerun,
+            UsedDataFile = UsedDataFile,
             IterationCount = IterationCount,
             Results = Requests.Select(request => new CollectionRequestRunResult
             {

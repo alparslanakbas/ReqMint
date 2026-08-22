@@ -42,3 +42,11 @@ The selected file is limited to 1 MiB, 100 rows, 100 fields per row, 4,096 chara
 ReqMint stores a separate, sanitized history for each collection in the local application database. A history entry contains only collection and request identifiers and names, recording time, outcome categories, status codes, durations, iteration numbers, and assertion outcomes. The table and its serialized request-result model do not have fields for URLs, query values, headers, request or response bodies, data-file values, environment values, secrets, stack traces, or raw exception messages.
 
 The retention setting keeps between 10 and 200 reports per collection and defaults to 50. New entries are inserted and older entries outside the configured limit are deleted in one transaction. A single serialized result is capped at 2 MiB so unusually large runs cannot grow the database without bound; the completed result remains available for immediate export when this history cap is exceeded. Previous runs can be reopened and exported through the same sanitized JSON and JUnit pipeline. Clearing history requires explicit confirmation, is scoped to the selected workspace and collection, and also removes the displayed in-memory report.
+
+## Filtering and rerunning failures
+
+The result view can show all, passed, failed, or skipped executions without changing the underlying report. The failed filter includes both assertion/HTTP failures and safe request errors; the skipped filter includes cancelled and not-run executions.
+
+ReqMint can rerun only failed or errored execution keys while preserving their original collection and iteration order. The runner validates every request identifier, iteration number, and duplicate selection before sending any request. Reruns are marked explicitly in sanitized history and JSON/JUnit exports.
+
+Data-driven reruns are available only while the original bounded data set remains in memory on the active Runner screen. Data values are deliberately excluded from results and local history, so a historical data-driven run cannot reconstruct its inputs; the UI asks the user to select the data file and run the full collection again instead of silently using incomplete or changed values.

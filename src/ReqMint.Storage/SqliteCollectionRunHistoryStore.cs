@@ -63,10 +63,12 @@ public sealed class SqliteCollectionRunHistoryStore : ICollectionRunHistoryStore
                 """
                 INSERT INTO collection_run_history (
                     id, workspace_id, recorded_at_utc, collection_id, collection_name,
-                    environment_id, duration_ms, was_cancelled, iteration_count, requests_json)
+                    environment_id, duration_ms, was_cancelled, was_rerun,
+                    used_data_file, iteration_count, requests_json)
                 VALUES (
                     $id, $workspaceId, $recordedAtUtc, $collectionId, $collectionName,
-                    $environmentId, $durationMs, $wasCancelled, $iterationCount, $requestsJson);
+                    $environmentId, $durationMs, $wasCancelled, $wasRerun,
+                    $usedDataFile, $iterationCount, $requestsJson);
                 """;
             insert.Parameters.AddWithValue("$id", entry.Id.ToString("D"));
             insert.Parameters.AddWithValue("$workspaceId", entry.WorkspaceId.ToString("D"));
@@ -82,6 +84,8 @@ public sealed class SqliteCollectionRunHistoryStore : ICollectionRunHistoryStore
                     : DBNull.Value);
             insert.Parameters.AddWithValue("$durationMs", entry.DurationMilliseconds);
             insert.Parameters.AddWithValue("$wasCancelled", entry.WasCancelled ? 1 : 0);
+            insert.Parameters.AddWithValue("$wasRerun", entry.WasRerun ? 1 : 0);
+            insert.Parameters.AddWithValue("$usedDataFile", entry.UsedDataFile ? 1 : 0);
             insert.Parameters.AddWithValue("$iterationCount", entry.IterationCount);
             insert.Parameters.AddWithValue(
                 "$requestsJson",
@@ -131,7 +135,8 @@ public sealed class SqliteCollectionRunHistoryStore : ICollectionRunHistoryStore
         command.CommandText =
             """
             SELECT id, workspace_id, recorded_at_utc, collection_id, collection_name,
-                   environment_id, duration_ms, was_cancelled, iteration_count, requests_json
+                   environment_id, duration_ms, was_cancelled, was_rerun,
+                   used_data_file, iteration_count, requests_json
             FROM collection_run_history
             WHERE workspace_id = $workspaceId
               AND collection_id = $collectionId
@@ -147,7 +152,7 @@ public sealed class SqliteCollectionRunHistoryStore : ICollectionRunHistoryStore
         while (await reader.ReadAsync(cancellationToken))
         {
             var requests = JsonSerializer.Deserialize<CollectionRunHistoryRequest[]>(
-                reader.GetString(9),
+                reader.GetString(11),
                 JsonOptions) ?? throw new InvalidDataException(
                     "The collection run history result is invalid.");
             var entry = new CollectionRunHistoryEntry
@@ -162,7 +167,9 @@ public sealed class SqliteCollectionRunHistoryStore : ICollectionRunHistoryStore
                 EnvironmentId = reader.IsDBNull(5) ? null : Guid.Parse(reader.GetString(5)),
                 DurationMilliseconds = reader.GetDouble(6),
                 WasCancelled = reader.GetInt32(7) != 0,
-                IterationCount = reader.GetInt32(8),
+                WasRerun = reader.GetInt32(8) != 0,
+                UsedDataFile = reader.GetInt32(9) != 0,
+                IterationCount = reader.GetInt32(10),
                 Requests = requests,
             };
             CollectionRunHistoryValidator.Validate(entry);
@@ -224,6 +231,8 @@ public sealed class SqliteCollectionRunHistoryStore : ICollectionRunHistoryStore
                     environment_id TEXT NULL,
                     duration_ms REAL NOT NULL,
                     was_cancelled INTEGER NOT NULL,
+                    was_rerun INTEGER NOT NULL DEFAULT 0,
+                    used_data_file INTEGER NOT NULL DEFAULT 0,
                     iteration_count INTEGER NOT NULL,
                     requests_json TEXT NOT NULL
                 );
@@ -232,11 +241,52 @@ public sealed class SqliteCollectionRunHistoryStore : ICollectionRunHistoryStore
                         workspace_id, collection_id, recorded_at_utc DESC);
                 """;
             await command.ExecuteNonQueryAsync(cancellationToken);
+            if (!await HasColumnAsync(
+                connection,
+                "was_rerun",
+                cancellationToken))
+            {
+                await using var migration = connection.CreateCommand();
+                migration.CommandText =
+                    "ALTER TABLE collection_run_history ADD COLUMN was_rerun INTEGER NOT NULL DEFAULT 0;";
+                await migration.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            if (!await HasColumnAsync(
+                connection,
+                "used_data_file",
+                cancellationToken))
+            {
+                await using var migration = connection.CreateCommand();
+                migration.CommandText =
+                    "ALTER TABLE collection_run_history ADD COLUMN used_data_file INTEGER NOT NULL DEFAULT 0;";
+                await migration.ExecuteNonQueryAsync(cancellationToken);
+            }
+
             _isInitialized = true;
         }
         finally
         {
             _initializationLock.Release();
         }
+    }
+
+    private static async Task<bool> HasColumnAsync(
+        SqliteConnection connection,
+        string columnName,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA table_info(collection_run_history);";
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

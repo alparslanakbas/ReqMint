@@ -106,6 +106,54 @@ public sealed class SqliteCollectionRunHistoryStoreTests
         Assert.DoesNotContain("secret", schema, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task AddAsync_MigratesHistoryCreatedBeforeRerunMetadata()
+    {
+        using var database = new TemporaryDatabase();
+        await using (var connection = new SqliteConnection(
+            $"Data Source={database.Path};Pooling=False"))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                """
+                CREATE TABLE collection_run_history (
+                    id TEXT PRIMARY KEY,
+                    workspace_id TEXT NOT NULL,
+                    recorded_at_utc TEXT NOT NULL,
+                    collection_id TEXT NOT NULL,
+                    collection_name TEXT NOT NULL,
+                    environment_id TEXT NULL,
+                    duration_ms REAL NOT NULL,
+                    was_cancelled INTEGER NOT NULL,
+                    iteration_count INTEGER NOT NULL,
+                    requests_json TEXT NOT NULL
+                );
+                """;
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var workspaceId = Guid.NewGuid();
+        var collectionId = Guid.NewGuid();
+        var entry = CreateEntry(
+            workspaceId,
+            collectionId,
+            DateTimeOffset.UtcNow,
+            "Rerun",
+            422) with
+        {
+            WasRerun = true,
+            UsedDataFile = true,
+        };
+        var store = new SqliteCollectionRunHistoryStore(database.Path);
+
+        await store.AddAsync(entry);
+        var migrated = Assert.Single(await store.ListAsync(workspaceId, collectionId));
+
+        Assert.True(migrated.WasRerun);
+        Assert.True(migrated.UsedDataFile);
+    }
+
     private static CollectionRunHistoryEntry CreateEntry(
         Guid workspaceId,
         Guid collectionId,

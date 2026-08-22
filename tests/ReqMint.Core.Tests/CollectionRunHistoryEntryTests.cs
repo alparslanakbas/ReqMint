@@ -16,6 +16,8 @@ public sealed class CollectionRunHistoryEntryTests
             EnvironmentId = Guid.NewGuid(),
             Duration = TimeSpan.FromMilliseconds(42),
             IterationCount = 2,
+            WasRerun = true,
+            UsedDataFile = true,
             Results =
             [
                 new CollectionRequestRunResult
@@ -46,6 +48,8 @@ public sealed class CollectionRunHistoryEntryTests
         Assert.Equal(result.CollectionId, restored.CollectionId);
         Assert.Equal(result.EnvironmentId, restored.EnvironmentId);
         Assert.Equal(2, restored.IterationCount);
+        Assert.True(restored.WasRerun);
+        Assert.True(restored.UsedDataFile);
         var request = Assert.Single(restored.Results);
         Assert.Equal(2, request.IterationNumber);
         Assert.Equal(422, request.StatusCode);

@@ -9,6 +9,8 @@ public partial class MainViewModel
     private CancellationTokenSource? _collectionRunCancellation;
     private CollectionRunResult? _latestCollectionRunResult;
     private CollectionRunDataSet? _collectionRunDataSet;
+    private CollectionRunDataSet? _latestCollectionRunDataSet;
+    private readonly List<CollectionRunItemViewModel> _allCollectionRunResultItems = [];
 
     [RelayCommand]
     private async Task OpenCollectionRunnerAsync(CancellationToken cancellationToken)
@@ -34,9 +36,7 @@ public partial class MainViewModel
         CloseGitRemote();
         CloseGitFastForward();
         CloseGitPush();
-        CollectionRunResults.Clear();
-        _latestCollectionRunResult = null;
-        HasCollectionRunResult = false;
+        ResetCollectionRunResultState();
         ResetCollectionRunData();
         CollectionRunTitle = collection.Name;
         CollectionRunSummary = Localize(
@@ -60,9 +60,7 @@ public partial class MainViewModel
         CollectionRunTitle = string.Empty;
         CollectionRunSummary = string.Empty;
         CollectionRunProgress = string.Empty;
-        CollectionRunResults.Clear();
-        _latestCollectionRunResult = null;
-        HasCollectionRunResult = false;
+        ResetCollectionRunResultState();
         ResetCollectionRunData();
         SelectedCollectionRunHistoryItem = null;
         CollectionRunHistory.Clear();
@@ -71,7 +69,48 @@ public partial class MainViewModel
     }
 
     [RelayCommand]
-    private async Task StartCollectionRunAsync(CancellationToken cancellationToken)
+    private Task StartCollectionRunAsync(CancellationToken cancellationToken) =>
+        RunCollectionAsync([], _collectionRunDataSet, cancellationToken);
+
+    [RelayCommand]
+    private async Task RerunFailedCollectionRequestsAsync(CancellationToken cancellationToken)
+    {
+        var result = _latestCollectionRunResult;
+        var collection = GetSelectedCollectionForRun();
+        if (result is null
+            || collection is null
+            || !CanRerunFailedCollectionResults
+            || !IsCollectionRunnerInteractionEnabled)
+        {
+            return;
+        }
+
+        var requestIds = collection.Requests.Select(request => request.Id).ToHashSet();
+        var selection = result.Results
+            .Where(request => request.State is
+                CollectionRequestRunState.Failed or CollectionRequestRunState.Error)
+            .Select(request => new CollectionRunExecutionKey(
+                request.RequestId,
+                request.IterationNumber))
+            .Where(key => requestIds.Contains(key.RequestId))
+            .Distinct()
+            .ToArray();
+        if (selection.Length != result.FailedCount || selection.Length == 0)
+        {
+            CanRerunFailedCollectionResults = false;
+            CollectionRunRerunUnavailableReason = Localize(
+                "CollectionRunRerunCollectionChanged",
+                "The saved collection changed; run the full collection again");
+            return;
+        }
+
+        await RunCollectionAsync(selection, _latestCollectionRunDataSet, cancellationToken);
+    }
+
+    private async Task RunCollectionAsync(
+        IReadOnlyList<CollectionRunExecutionKey> executionSelection,
+        CollectionRunDataSet? dataSet,
+        CancellationToken cancellationToken)
     {
         var snapshot = _workspaceSnapshot;
         var collection = GetSelectedCollectionForRun();
@@ -94,13 +133,15 @@ public partial class MainViewModel
         }
 
         IsCollectionRunnerBusy = true;
-        CollectionRunResults.Clear();
-        _latestCollectionRunResult = null;
-        HasCollectionRunResult = false;
+        ResetCollectionRunResultState();
         SelectedCollectionRunHistoryItem = null;
-        CollectionRunSummary = Localize(
-            "CollectionRunRunning",
-            "Running saved requests sequentially");
+        CollectionRunSummary = executionSelection.Count == 0
+            ? Localize(
+                "CollectionRunRunning",
+                "Running saved requests sequentially")
+            : Localize(
+                "CollectionRunRerunRunning",
+                "Rerunning failed requests sequentially");
         _collectionRunCancellation = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken);
         var progress = new Progress<CollectionRunProgress>(UpdateCollectionRunProgress);
@@ -113,23 +154,33 @@ public partial class MainViewModel
                     Collection = collection,
                     Environment = _activeEnvironment,
                     StopOnFailure = CollectionRunStopOnFailure,
-                    DataRows = _collectionRunDataSet?.Rows ?? [],
+                    DataRows = dataSet?.Rows ?? [],
+                    ExecutionSelection = executionSelection,
                 },
                 progress,
                 _collectionRunCancellation.Token);
 
-            DisplayCollectionRunResult(result);
+            DisplayCollectionRunResult(
+                result,
+                dataSet,
+                allowRerun: true);
 
             CollectionRunSummary = result.WasCancelled
                 ? Localize(
                     "CollectionRunCancelledSummary",
                     "Run cancelled · {0} completed",
                     result.CompletedCount)
-                : Localize(
-                    "CollectionRunCompletedSummary",
-                    "Completed · {0} passed · {1} failed",
-                    result.PassedCount,
-                    result.FailedCount);
+                : result.WasRerun
+                    ? Localize(
+                        "CollectionRunRerunCompletedSummary",
+                        "Rerun completed · {0} passed · {1} failed",
+                        result.PassedCount,
+                        result.FailedCount)
+                    : Localize(
+                        "CollectionRunCompletedSummary",
+                        "Completed · {0} passed · {1} failed",
+                        result.PassedCount,
+                        result.FailedCount);
             WorkspaceStatus = result.WasCancelled
                 ? Localize("CollectionRunCancelled", "Collection run cancelled")
                 : Localize("CollectionRunCompleted", "Collection run completed");
@@ -162,6 +213,22 @@ public partial class MainViewModel
     private void CancelCollectionRun() => _collectionRunCancellation?.Cancel();
 
     [RelayCommand]
+    private void ShowAllCollectionRunResults() =>
+        SetCollectionRunResultFilter(CollectionRunResultFilter.All);
+
+    [RelayCommand]
+    private void ShowPassedCollectionRunResults() =>
+        SetCollectionRunResultFilter(CollectionRunResultFilter.Passed);
+
+    [RelayCommand]
+    private void ShowFailedCollectionRunResults() =>
+        SetCollectionRunResultFilter(CollectionRunResultFilter.Failed);
+
+    [RelayCommand]
+    private void ShowSkippedCollectionRunResults() =>
+        SetCollectionRunResultFilter(CollectionRunResultFilter.Skipped);
+
+    [RelayCommand]
     private async Task SelectCollectionRunDataFileAsync(CancellationToken cancellationToken)
     {
         var collection = GetSelectedCollectionForRun();
@@ -189,6 +256,7 @@ public partial class MainViewModel
             }
 
             _collectionRunDataSet = selection.DataSet;
+            InvalidateCollectionRunRerun();
             HasCollectionRunData = true;
             CollectionRunDataFileName = selection.FileName;
             CollectionRunDataSummary = Localize(
@@ -230,6 +298,7 @@ public partial class MainViewModel
         }
 
         ResetCollectionRunData();
+        InvalidateCollectionRunRerun();
         var collection = GetSelectedCollectionForRun();
         if (collection is not null)
         {
@@ -272,9 +341,7 @@ public partial class MainViewModel
                 cancellationToken);
             SelectedCollectionRunHistoryItem = null;
             CollectionRunHistory.Clear();
-            CollectionRunResults.Clear();
-            _latestCollectionRunResult = null;
-            HasCollectionRunResult = false;
+            ResetCollectionRunResultState();
             CollectionRunProgress = string.Empty;
             CollectionRunSummary = Localize(
                 "CollectionRunReadySummary",
@@ -381,7 +448,10 @@ public partial class MainViewModel
         }
 
         var result = value.Entry.ToRunResult();
-        DisplayCollectionRunResult(result);
+        DisplayCollectionRunResult(
+            result,
+            dataSet: null,
+            allowRerun: !result.UsedDataFile);
         CollectionRunProgress = string.Empty;
         CollectionRunSummary = Localize(
             "CollectionRunHistorySelectedSummary",
@@ -415,18 +485,38 @@ public partial class MainViewModel
         }
     }
 
-    private void DisplayCollectionRunResult(CollectionRunResult result)
+    private void DisplayCollectionRunResult(
+        CollectionRunResult result,
+        CollectionRunDataSet? dataSet,
+        bool allowRerun)
     {
-        CollectionRunResults.Clear();
+        _allCollectionRunResultItems.Clear();
         foreach (var requestResult in result.Results)
         {
-            CollectionRunResults.Add(CreateCollectionRunItem(
+            _allCollectionRunResultItems.Add(CreateCollectionRunItem(
                 requestResult,
                 result.IterationCount > 1));
         }
 
         _latestCollectionRunResult = result;
+        _latestCollectionRunDataSet = dataSet;
         HasCollectionRunResult = result.Results.Count > 0;
+        HasFailedCollectionRunResults = result.FailedCount > 0;
+        CollectionRunRerunFailedLabel = Localize(
+            "CollectionRunRerunFailed",
+            "Rerun failed ({0})",
+            result.FailedCount);
+        CanRerunFailedCollectionResults = HasFailedCollectionRunResults
+            && allowRerun
+            && (!result.UsedDataFile
+                || dataSet?.Rows.Count == result.IterationCount);
+        CollectionRunRerunUnavailableReason = HasFailedCollectionRunResults
+            && !CanRerunFailedCollectionResults
+                ? Localize(
+                    "CollectionRunRerunDataUnavailable",
+                    "The original iteration data is not stored; run the full collection with its data file")
+                : string.Empty;
+        SetCollectionRunResultFilter(CollectionRunResultFilter.All);
     }
 
     private async Task SaveCollectionRunHistoryAsync(
@@ -480,11 +570,17 @@ public partial class MainViewModel
             {
                 CollectionRunHistory.Add(new CollectionRunHistoryItemViewModel(
                     entry.RecordedAtUtc.ToLocalTime().ToString("g"),
-                    Localize(
-                        "CollectionRunHistoryItemSummary",
-                        "{0} passed · {1} failed",
-                        entry.PassedCount,
-                        entry.FailedCount),
+                    entry.WasRerun
+                        ? Localize(
+                            "CollectionRunHistoryRerunItemSummary",
+                            "Rerun · {0} passed · {1} failed",
+                            entry.PassedCount,
+                            entry.FailedCount)
+                        : Localize(
+                            "CollectionRunHistoryItemSummary",
+                            "{0} passed · {1} failed",
+                            entry.PassedCount,
+                            entry.FailedCount),
                     entry));
             }
 
@@ -561,7 +657,8 @@ public partial class MainViewModel
             result.Duration == TimeSpan.Zero
                 ? "—"
                 : $"{result.Duration.TotalMilliseconds:N0} ms",
-            metadata);
+            metadata,
+            result.State);
     }
 
     private string CreateAssertionSummary(
@@ -601,6 +698,64 @@ public partial class MainViewModel
     private void UpdateCollectionRunAvailability()
     {
         IsCollectionRunAvailable = GetSelectedCollectionForRun()?.Requests.Count > 0;
+    }
+
+    private void SetCollectionRunResultFilter(CollectionRunResultFilter filter)
+    {
+        SelectedCollectionRunResultFilter = filter;
+        var items = filter switch
+        {
+            CollectionRunResultFilter.Passed => _allCollectionRunResultItems.Where(item =>
+                item.State == CollectionRequestRunState.Passed),
+            CollectionRunResultFilter.Failed => _allCollectionRunResultItems.Where(item =>
+                item.State is CollectionRequestRunState.Failed or CollectionRequestRunState.Error),
+            CollectionRunResultFilter.Skipped => _allCollectionRunResultItems.Where(item =>
+                item.State is CollectionRequestRunState.Cancelled or CollectionRequestRunState.NotRun),
+            _ => _allCollectionRunResultItems,
+        };
+
+        CollectionRunResults.Clear();
+        foreach (var item in items)
+        {
+            CollectionRunResults.Add(item);
+        }
+
+        CollectionRunResultFilterStatus = _allCollectionRunResultItems.Count == 0
+            ? string.Empty
+            : Localize(
+                "CollectionRunFilterStatus",
+                "Showing {0} of {1}",
+                CollectionRunResults.Count,
+                _allCollectionRunResultItems.Count);
+    }
+
+    private void ResetCollectionRunResultState()
+    {
+        CollectionRunResults.Clear();
+        _allCollectionRunResultItems.Clear();
+        _latestCollectionRunResult = null;
+        _latestCollectionRunDataSet = null;
+        HasCollectionRunResult = false;
+        HasFailedCollectionRunResults = false;
+        CanRerunFailedCollectionResults = false;
+        CollectionRunRerunFailedLabel = string.Empty;
+        CollectionRunRerunUnavailableReason = string.Empty;
+        SelectedCollectionRunResultFilter = CollectionRunResultFilter.All;
+        CollectionRunResultFilterStatus = string.Empty;
+    }
+
+    private void InvalidateCollectionRunRerun()
+    {
+        _latestCollectionRunDataSet = null;
+        if (!HasFailedCollectionRunResults)
+        {
+            return;
+        }
+
+        CanRerunFailedCollectionResults = false;
+        CollectionRunRerunUnavailableReason = Localize(
+            "CollectionRunRerunInputsChanged",
+            "Iteration inputs changed; run the full collection before rerunning failures");
     }
 
     private void ResetCollectionRunData()

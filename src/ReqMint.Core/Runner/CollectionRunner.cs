@@ -30,7 +30,10 @@ public sealed class CollectionRunner(
         Validate(definition);
 
         var iterations = CreateIterations(definition.DataRows);
-        var executions = CreateExecutions(definition.Collection.Requests, iterations);
+        var executions = CreateExecutions(
+            definition.Collection.Requests,
+            iterations,
+            definition.ExecutionSelection);
         var runTimer = Stopwatch.StartNew();
         var results = new List<CollectionRequestRunResult>(executions.Count);
         for (var index = 0; index < executions.Count; index++)
@@ -198,6 +201,30 @@ public sealed class CollectionRunner(
                 nameof(definition));
         }
 
+        if (definition.ExecutionSelection.Count > MaximumExecutionCount
+            || definition.ExecutionSelection.Any(selection =>
+                selection.RequestId == Guid.Empty
+                || selection.IterationNumber < 1
+                || selection.IterationNumber > iterationCount)
+            || definition.ExecutionSelection.Distinct().Count()
+                != definition.ExecutionSelection.Count)
+        {
+            throw new ArgumentException(
+                "The collection run execution selection is invalid.",
+                nameof(definition));
+        }
+
+        var requestIds = definition.Collection.Requests
+            .Select(request => request.Id)
+            .ToHashSet();
+        if (definition.ExecutionSelection.Any(selection =>
+            !requestIds.Contains(selection.RequestId)))
+        {
+            throw new ArgumentException(
+                "The collection run selection contains an unknown request.",
+                nameof(definition));
+        }
+
         foreach (var request in definition.Collection.Requests)
         {
             var assertionError = RequestAssertionValidator.GetValidationError(request.Assertions);
@@ -256,6 +283,8 @@ public sealed class CollectionRunner(
             Duration = duration,
             IterationCount = iterationCount,
             WasCancelled = wasCancelled,
+            WasRerun = definition.ExecutionSelection.Count > 0,
+            UsedDataFile = definition.DataRows.Count > 0,
         };
 
     private static IReadOnlyList<CollectionRunDataRow> CreateIterations(
@@ -271,9 +300,13 @@ public sealed class CollectionRunner(
 
     private static IReadOnlyList<RunExecution> CreateExecutions(
         IReadOnlyList<RequestDocument> requests,
-        IReadOnlyList<CollectionRunDataRow> iterations)
+        IReadOnlyList<CollectionRunDataRow> iterations,
+        IReadOnlyList<CollectionRunExecutionKey> executionSelection)
     {
         var executions = new List<RunExecution>(requests.Count * iterations.Count);
+        var selectedExecutions = executionSelection.Count == 0
+            ? null
+            : executionSelection.ToHashSet();
         for (var iterationIndex = 0; iterationIndex < iterations.Count; iterationIndex++)
         {
             var variables = new Dictionary<string, string>(
@@ -281,6 +314,14 @@ public sealed class CollectionRunner(
                 StringComparer.OrdinalIgnoreCase);
             foreach (var request in requests)
             {
+                if (selectedExecutions is not null
+                    && !selectedExecutions.Contains(new CollectionRunExecutionKey(
+                        request.Id,
+                        iterationIndex + 1)))
+                {
+                    continue;
+                }
+
                 executions.Add(new RunExecution(request, iterationIndex + 1, variables));
             }
         }
@@ -305,6 +346,8 @@ public sealed record CollectionRunDefinition
     public bool StopOnFailure { get; init; }
 
     public IReadOnlyList<CollectionRunDataRow> DataRows { get; init; } = [];
+
+    public IReadOnlyList<CollectionRunExecutionKey> ExecutionSelection { get; init; } = [];
 }
 
 public sealed record CollectionRunResult
@@ -321,6 +364,10 @@ public sealed record CollectionRunResult
 
     public bool WasCancelled { get; init; }
 
+    public bool WasRerun { get; init; }
+
+    public bool UsedDataFile { get; init; }
+
     public int IterationCount { get; init; } = 1;
 
     public int PassedCount => Results.Count(result => result.State == CollectionRequestRunState.Passed);
@@ -330,6 +377,10 @@ public sealed record CollectionRunResult
 
     public int CompletedCount => PassedCount + FailedCount;
 }
+
+public readonly record struct CollectionRunExecutionKey(
+    Guid RequestId,
+    int IterationNumber);
 
 public sealed record CollectionRequestRunResult
 {

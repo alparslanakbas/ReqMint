@@ -26,6 +26,8 @@ public sealed class CollectionRunResultExporterTests
         Assert.Equal(1, root.GetProperty("passedCount").GetInt32());
         Assert.Equal(2, root.GetProperty("failedCount").GetInt32());
         Assert.Equal(2, root.GetProperty("iterationCount").GetInt32());
+        Assert.True(root.GetProperty("wasRerun").GetBoolean());
+        Assert.True(root.GetProperty("usedDataFile").GetBoolean());
         var requests = root.GetProperty("requests");
         Assert.Equal(5, requests.GetArrayLength());
         Assert.Equal("passed", requests[0].GetProperty("state").GetString());
@@ -89,6 +91,8 @@ public sealed class CollectionRunResultExporterTests
         EnvironmentId = Guid.Parse("22222222-2222-2222-2222-222222222222"),
         Duration = TimeSpan.FromMilliseconds(1250),
         WasCancelled = true,
+        WasRerun = true,
+        UsedDataFile = true,
         IterationCount = 2,
         Results =
         [

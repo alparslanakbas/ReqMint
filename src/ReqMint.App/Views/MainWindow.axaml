@@ -769,7 +769,7 @@
                             Background="{DynamicResource SurfaceRaisedBrush}"
                             BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1">
-                        <Grid RowDefinitions="Auto,10,*">
+                        <Grid RowDefinitions="Auto,8,Auto,10,*">
                             <Grid ColumnDefinitions="Auto,12,*,260,8,Auto,8,Auto">
                                 <TextBlock Text="{DynamicResource CollectionRunResults}"
                                            FontWeight="SemiBold"
@@ -807,7 +807,32 @@
                                         Command="{Binding ClearCollectionRunHistoryCommand}"
                                         ToolTip.Tip="{DynamicResource CollectionRunHistoryClear}" />
                             </Grid>
-                            <ListBox Grid.Row="2"
+                            <Grid Grid.Row="2" ColumnDefinitions="Auto,6,Auto,6,Auto,6,Auto,12,Auto,*">
+                                <Button Content="{DynamicResource CollectionRunFilterAll}"
+                                        Command="{Binding ShowAllCollectionRunResultsCommand}" />
+                                <Button Grid.Column="2"
+                                        Content="{DynamicResource CollectionRunFilterPassed}"
+                                        Command="{Binding ShowPassedCollectionRunResultsCommand}" />
+                                <Button Grid.Column="4"
+                                        Content="{DynamicResource CollectionRunFilterFailed}"
+                                        Command="{Binding ShowFailedCollectionRunResultsCommand}" />
+                                <Button Grid.Column="6"
+                                        Content="{DynamicResource CollectionRunFilterSkipped}"
+                                        Command="{Binding ShowSkippedCollectionRunResultsCommand}" />
+                                <TextBlock Grid.Column="8"
+                                           Text="{Binding CollectionRunResultFilterStatus}"
+                                           Classes="secondary"
+                                           FontSize="10"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="9"
+                                           Text="{Binding CollectionRunRerunUnavailableReason}"
+                                           Classes="secondary"
+                                           FontSize="10"
+                                           TextAlignment="Right"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                            <ListBox Grid.Row="4"
                                      ItemsSource="{Binding CollectionRunResults}"
                                      Background="Transparent"
                                      BorderThickness="0">
@@ -850,6 +875,10 @@
                         <Button Content="{DynamicResource CollectionRunClose}"
                                 IsEnabled="{Binding IsCollectionRunnerInteractionEnabled}"
                                 Command="{Binding CloseCollectionRunnerCommand}" />
+                        <Button Content="{Binding CollectionRunRerunFailedLabel}"
+                                IsVisible="{Binding HasFailedCollectionRunResults}"
+                                IsEnabled="{Binding CanRerunFailedCollectionResults}"
+                                Command="{Binding RerunFailedCollectionRequestsCommand}" />
                         <Button Content="{DynamicResource CollectionRunExportJson}"
                                 IsVisible="{Binding HasCollectionRunResult}"
                                 IsEnabled="{Binding IsCollectionRunnerInteractionEnabled}"
