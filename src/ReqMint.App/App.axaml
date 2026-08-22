@@ -16,6 +16,9 @@
             <Color x:Key="Mint700">#0D6B53</Color>
             <Color x:Key="Blue500">#4B9BFF</Color>
             <Color x:Key="Warning500">#FFB454</Color>
+            <Color x:Key="DiffAdded500">#4ADE80</Color>
+            <Color x:Key="DiffRemoved500">#FB7185</Color>
+            <Color x:Key="DiffHunk500">#60A5FA</Color>
 
             <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource Graphite950}" />
             <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource Graphite900}" />
@@ -28,6 +31,9 @@
             <SolidColorBrush x:Key="AccentMutedBrush" Color="{StaticResource Mint700}" />
             <SolidColorBrush x:Key="MethodGetBrush" Color="{StaticResource Blue500}" />
             <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource Warning500}" />
+            <SolidColorBrush x:Key="DiffAddedBrush" Color="{StaticResource DiffAdded500}" />
+            <SolidColorBrush x:Key="DiffRemovedBrush" Color="{StaticResource DiffRemoved500}" />
+            <SolidColorBrush x:Key="DiffHunkBrush" Color="{StaticResource DiffHunk500}" />
         </ResourceDictionary>
     </Application.Resources>
 
@@ -46,6 +52,23 @@
 
         <Style Selector="TextBlock.warning">
             <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.diffAdded">
+            <Setter Property="Foreground" Value="{DynamicResource DiffAddedBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.diffRemoved">
+            <Setter Property="Foreground" Value="{DynamicResource DiffRemovedBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.diffHunk">
+            <Setter Property="Foreground" Value="{DynamicResource DiffHunkBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.diffHeader">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
         <Style Selector="Button">

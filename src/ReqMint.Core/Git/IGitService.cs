@@ -5,6 +5,12 @@ public interface IGitService
     Task<GitRepositoryStatus?> GetStatusAsync(
         string workspaceDirectory,
         CancellationToken cancellationToken = default);
+
+    Task<GitDiffPreview> GetDiffAsync(
+        string workspaceDirectory,
+        string workspaceRelativePath,
+        GitDiffScope scope,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record GitRepositoryStatus
@@ -24,7 +30,44 @@ public sealed record GitRepositoryStatus
     public bool IsClean => Changes.Count == 0;
 }
 
-public sealed record GitFileChange(string Path, string Status);
+public sealed record GitFileChange(string Path, string Status)
+{
+    public bool HasStagedChanges =>
+        Status.Length > 0 && Status[0] is not (' ' or '?' or '!');
+
+    public bool HasWorkingTreeChanges =>
+        Status == "??" || (Status.Length > 1 && Status[1] != ' ');
+}
+
+public sealed record GitDiffPreview
+{
+    public required string Path { get; init; }
+
+    public required GitDiffScope Scope { get; init; }
+
+    public GitDiffPreviewState State { get; init; } = GitDiffPreviewState.Available;
+
+    public string Content { get; init; } = string.Empty;
+
+    public bool IsTruncated { get; init; }
+
+    public int SecurityWarningCount { get; init; }
+
+    public int UnscannedFileCount { get; init; }
+}
+
+public enum GitDiffScope
+{
+    WorkingTree,
+    Staged,
+}
+
+public enum GitDiffPreviewState
+{
+    Available,
+    BlockedBySecurity,
+    Unavailable,
+}
 
 public sealed class GitUnavailableException(string message, Exception? innerException = null)
     : Exception(message, innerException);

@@ -39,6 +39,8 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<GitChangeItemViewModel> GitChanges { get; } = [];
 
+    public ObservableCollection<GitDiffLineViewModel> GitDiffLines { get; } = [];
+
     public ObservableCollection<string> EnvironmentNames { get; } = ["No environment"];
 
     public ObservableCollection<EnvironmentVariableViewModel> EnvironmentVariables { get; } = [];
@@ -132,6 +134,29 @@ public partial class MainViewModel : ViewModelBase
     public bool IsGitChangeListEmpty => GitChanges.Count == 0;
 
     public bool IsGitSecuritySummaryVisible => !string.IsNullOrEmpty(GitSecuritySummary);
+
+    [ObservableProperty]
+    public partial bool IsGitDiffVisible { get; set; }
+
+    [ObservableProperty]
+    public partial string GitDiffPath { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string GitDiffSummary { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string GitDiffMessage { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial bool HasGitWorkingTreeDiff { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasGitStagedDiff { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsGitDiffSecurityBlocked { get; set; }
+
+    public bool IsGitDiffLineListEmpty => GitDiffLines.Count == 0;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendCommand))]

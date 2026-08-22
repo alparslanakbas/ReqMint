@@ -42,6 +42,7 @@ public partial class MainViewModel
     {
         IsHistoryVisible = false;
         IsGitVisible = false;
+        CloseGitDiff();
     }
 
     [RelayCommand]
@@ -49,6 +50,7 @@ public partial class MainViewModel
     {
         IsHistoryVisible = true;
         IsGitVisible = false;
+        CloseGitDiff();
         await LoadHistoryAsync(_workspaceSnapshot?.Workspace.Id ?? Guid.Empty, cancellationToken);
     }
 

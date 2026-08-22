@@ -19,4 +19,10 @@ Changed ReqMint JSON files receive a bounded, read-only secret scan. The scan de
 
 Findings contain only the file path, JSON location, and risk category; credential values are never returned to the UI or written to logs. Reads are bounded to 2 MB per file and their temporary byte buffers are cleared after inspection. Oversized, malformed, unreadable, or symbolic-link files fail closed and are reported as unscanned. Future mutating workflows must rerun the scan against their exact operation scope—including the Git index before a commit—rather than trusting an earlier UI result.
 
+## Diff previews
+
+Selecting a changed ReqMint file opens a read-only unified diff in the main workspace. Working-tree and staged changes are presented separately, command output is bounded, and long previews are truncated visibly. Added, removed, hunk, and header lines use semantic colors for quick review.
+
+Every preview performs a fresh security check against the exact version being displayed. Staged previews inspect the Git index rather than trusting the working copy, so a credential staged and then removed locally remains blocked. Unsafe or unscannable versions return only a localized warning; their diff content is never passed to the view model.
+
 Future mutating workflows require explicit user intent, a visible operation scope, secret preflight checks, and separate safety review before implementation.

@@ -1,12 +1,23 @@
+using CommunityToolkit.Mvvm.Input;
 using ReqMint.Core.Git;
 
 namespace ReqMint.App.ViewModels;
 
-public sealed class GitChangeItemViewModel(GitFileChange change) : ViewModelBase
+public sealed class GitChangeItemViewModel : ViewModelBase
 {
-    public string Path { get; } = change.Path;
+    public GitChangeItemViewModel(
+        GitFileChange change,
+        Func<GitFileChange, Task> openDiff)
+    {
+        Change = change;
+        OpenCommand = new AsyncRelayCommand(() => openDiff(Change));
+    }
 
-    public string Status { get; } = change.Status.Trim() switch
+    public GitFileChange Change { get; }
+
+    public string Path => Change.Path;
+
+    public string Status => Change.Status.Trim() switch
     {
         "??" => "?",
         "M" => "M",
@@ -17,4 +28,10 @@ public sealed class GitChangeItemViewModel(GitFileChange change) : ViewModelBase
         "U" or "UU" => "!",
         var status => status,
     };
+
+    public bool HasStagedChanges => Change.HasStagedChanges;
+
+    public bool HasWorkingTreeChanges => Change.HasWorkingTreeChanges;
+
+    public IAsyncRelayCommand OpenCommand { get; }
 }

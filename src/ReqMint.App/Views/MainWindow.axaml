@@ -283,17 +283,37 @@
                                      BorderThickness="0">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate x:DataType="vm:GitChangeItemViewModel">
-                                        <Grid Margin="8,6" ColumnDefinitions="28,*">
-                                            <TextBlock Text="{Binding Status}"
-                                                       Foreground="{DynamicResource AccentBrush}"
-                                                       FontFamily="Cascadia Mono, Consolas"
-                                                       FontWeight="Bold" />
-                                            <TextBlock Grid.Column="1"
-                                                       Text="{Binding Path}"
-                                                       FontFamily="Cascadia Mono, Consolas"
-                                                       FontSize="11"
-                                                       TextTrimming="CharacterEllipsis" />
-                                        </Grid>
+                                        <Button Margin="0,0,0,3"
+                                                Padding="8,6"
+                                                BorderThickness="0"
+                                                HorizontalContentAlignment="Stretch"
+                                                Command="{Binding OpenCommand}">
+                                            <Grid ColumnDefinitions="28,*,Auto,4,Auto">
+                                                <TextBlock Text="{Binding Status}"
+                                                           Foreground="{DynamicResource AccentBrush}"
+                                                           FontFamily="Cascadia Mono, Consolas"
+                                                           FontWeight="Bold" />
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding Path}"
+                                                           FontFamily="Cascadia Mono, Consolas"
+                                                           FontSize="11"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="2"
+                                                           Text="S"
+                                                           IsVisible="{Binding HasStagedChanges}"
+                                                           Classes="secondary"
+                                                           FontSize="10"
+                                                           FontWeight="Bold"
+                                                           ToolTip.Tip="{DynamicResource GitDiffStaged}" />
+                                                <TextBlock Grid.Column="4"
+                                                           Text="W"
+                                                           IsVisible="{Binding HasWorkingTreeChanges}"
+                                                           Classes="secondary"
+                                                           FontSize="10"
+                                                           FontWeight="Bold"
+                                                           ToolTip.Tip="{DynamicResource GitDiffWorkingTree}" />
+                                            </Grid>
+                                        </Button>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
@@ -326,8 +346,9 @@
                 </Grid>
             </Border>
 
-            <!-- Request workspace -->
-            <Grid Grid.Column="2" RowDefinitions="44,72,*,38">
+            <!-- Request workspace and Git diff preview -->
+            <Grid Grid.Column="2">
+            <Grid RowDefinitions="44,72,*,38" IsVisible="{Binding !IsGitDiffVisible}">
                 <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
                     <StackPanel Orientation="Horizontal" Margin="14,0" VerticalAlignment="Center" Spacing="10">
                         <TextBlock Text="{Binding SelectedMethod}" Foreground="{DynamicResource MethodGetBrush}" FontSize="11" FontWeight="Bold" />
@@ -567,6 +588,91 @@
                         </StackPanel>
                     </Grid>
                 </Border>
+            </Grid>
+
+            <Grid RowDefinitions="44,56,*" IsVisible="{Binding IsGitDiffVisible}">
+                <Border Grid.Row="0"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="0,0,0,1">
+                    <Grid Margin="16,0" ColumnDefinitions="Auto,12,*,Auto">
+                        <TextBlock Text="⑂"
+                                   Foreground="{DynamicResource AccentBrush}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding GitDiffPath}"
+                                   FontFamily="Cascadia Mono, Consolas"
+                                   FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" />
+                        <Button Grid.Column="3"
+                                Content="×"
+                                Width="30"
+                                Height="30"
+                                Padding="0"
+                                Command="{Binding CloseGitDiffCommand}"
+                                ToolTip.Tip="{DynamicResource GitDiffClose}" />
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="1"
+                        Background="{DynamicResource SurfaceRaisedBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="0,0,0,1">
+                    <Grid Margin="16,0" ColumnDefinitions="Auto,8,Auto,18,*">
+                        <Button Content="{DynamicResource GitDiffWorkingTree}"
+                                IsVisible="{Binding HasGitWorkingTreeDiff}"
+                                Padding="10,5"
+                                Command="{Binding ShowWorkingTreeDiffCommand}" />
+                        <Button Grid.Column="2"
+                                Content="{DynamicResource GitDiffStaged}"
+                                IsVisible="{Binding HasGitStagedDiff}"
+                                Padding="10,5"
+                                Command="{Binding ShowStagedDiffCommand}" />
+                        <TextBlock Grid.Column="4"
+                                   Text="{Binding GitDiffSummary}"
+                                   Classes="secondary"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="2" Background="{DynamicResource AppBackgroundBrush}">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ItemsControl Margin="18,14" ItemsSource="{Binding GitDiffLines}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:GitDiffLineViewModel">
+                                    <TextBlock Text="{Binding Text}"
+                                               FontFamily="Cascadia Mono, Consolas"
+                                               FontSize="12"
+                                               Classes.diffAdded="{Binding IsAdded}"
+                                               Classes.diffRemoved="{Binding IsRemoved}"
+                                               Classes.diffHunk="{Binding IsHunk}"
+                                               Classes.diffHeader="{Binding IsHeader}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <StackPanel Margin="28"
+                                MaxWidth="560"
+                                Spacing="10"
+                                IsVisible="{Binding IsGitDiffLineListEmpty}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="⚠"
+                                   IsVisible="{Binding IsGitDiffSecurityBlocked}"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   FontSize="28"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding GitDiffMessage}"
+                                   Classes="secondary"
+                                   Classes.warning="{Binding IsGitDiffSecurityBlocked}"
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
             </Grid>
         </Grid>
 

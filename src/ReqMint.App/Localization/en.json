@@ -81,6 +81,16 @@
   "GitSecretScanClean": "Security check passed",
   "GitSecretWarnings": "Security check found {0} possible secret findings across {1} files",
   "GitSecretScanIncomplete": "{0} files could not be inspected",
+  "GitDiffWorkingTree": "Working tree",
+  "GitDiffStaged": "Staged",
+  "GitDiffClose": "Close diff preview",
+  "GitDiffLoading": "Loading diff preview...",
+  "GitDiffBlockedBySecrets": "Preview blocked because this version may contain a secret.",
+  "GitDiffBlockedByScan": "Preview blocked because this version could not be inspected safely.",
+  "GitDiffUnavailable": "Diff preview is unavailable for this file.",
+  "GitDiffEmpty": "No textual differences to display.",
+  "GitDiffLinesCount": "{0} lines",
+  "GitDiffTruncated": "preview limited",
   "GitAheadBy": "ahead {0}",
   "GitBehindBy": "behind {0}"
 }

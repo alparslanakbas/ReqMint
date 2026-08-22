@@ -81,6 +81,16 @@
   "GitSecretScanClean": "Güvenlik kontrolü başarılı",
   "GitSecretWarnings": "Güvenlik kontrolü {1} dosyada {0} olası gizli değer bulgusu tespit etti",
   "GitSecretScanIncomplete": "{0} dosya incelenemedi",
+  "GitDiffWorkingTree": "Çalışma ağacı",
+  "GitDiffStaged": "Hazırlanmış",
+  "GitDiffClose": "Diff önizlemesini kapat",
+  "GitDiffLoading": "Diff önizlemesi yükleniyor...",
+  "GitDiffBlockedBySecrets": "Bu sürüm gizli değer içerebileceği için önizleme engellendi.",
+  "GitDiffBlockedByScan": "Bu sürüm güvenle incelenemediği için önizleme engellendi.",
+  "GitDiffUnavailable": "Bu dosya için diff önizlemesi kullanılamıyor.",
+  "GitDiffEmpty": "Gösterilecek metinsel fark bulunmuyor.",
+  "GitDiffLinesCount": "{0} satır",
+  "GitDiffTruncated": "önizleme sınırlandı",
   "GitAheadBy": "{0} ileride",
   "GitBehindBy": "{0} geride"
 }

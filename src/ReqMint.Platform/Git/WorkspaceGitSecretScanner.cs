@@ -110,6 +110,23 @@ public sealed class WorkspaceGitSecretScanner : IGitSecretScanner
         };
     }
 
+    internal static GitSecretScanResult ScanText(string relativePath, string content)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(
+                content,
+                new JsonDocumentOptions { MaxDepth = 64 });
+            var findings = new List<GitSecretFinding>();
+            JsonSecretDetector.Scan(relativePath, document.RootElement, findings);
+            return new GitSecretScanResult { Findings = findings };
+        }
+        catch (JsonException)
+        {
+            return new GitSecretScanResult { UnscannedFiles = [relativePath] };
+        }
+    }
+
     private static async Task<int> ReadBoundedAsync(
         Stream stream,
         Memory<byte> buffer,

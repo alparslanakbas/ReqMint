@@ -5,6 +5,10 @@ namespace ReqMint.App.ViewModels;
 
 public partial class MainViewModel
 {
+    private const int MaximumDiffPreviewLines = 5000;
+    private GitFileChange? _selectedGitChange;
+    private int _gitDiffLoadVersion;
+
     [RelayCommand]
     private async Task ShowGitAsync(CancellationToken cancellationToken)
     {
@@ -34,13 +38,14 @@ public partial class MainViewModel
                 ? Localize("GitDetachedHead", "Detached HEAD")
                 : status.Branch;
             GitRepositoryRoot = status.RepositoryRoot;
+            CloseGitDiff();
             GitChanges.Clear();
             var managedChanges = status.Changes
                 .Where(change => ReqMintGitFileClassifier.IsManaged(change.Path))
                 .ToArray();
             foreach (var change in managedChanges)
             {
-                GitChanges.Add(new GitChangeItemViewModel(change));
+                GitChanges.Add(new GitChangeItemViewModel(change, OpenGitDiffAsync));
             }
 
             var secretScan = managedChanges.Length == 0
@@ -101,7 +106,154 @@ public partial class MainViewModel
         HasGitSecurityWarning = false;
         GitSecretWarningCount = 0;
         GitChanges.Clear();
+        CloseGitDiff();
         OnPropertyChanged(nameof(IsGitChangeListEmpty));
+    }
+
+    private async Task OpenGitDiffAsync(GitFileChange change)
+    {
+        _selectedGitChange = change;
+        GitDiffPath = change.Path;
+        HasGitWorkingTreeDiff = change.HasWorkingTreeChanges;
+        HasGitStagedDiff = change.HasStagedChanges;
+        IsGitDiffVisible = true;
+        var scope = change.HasWorkingTreeChanges
+            ? GitDiffScope.WorkingTree
+            : GitDiffScope.Staged;
+        await LoadGitDiffAsync(scope, CancellationToken.None);
+    }
+
+    [RelayCommand]
+    private Task ShowWorkingTreeDiffAsync(CancellationToken cancellationToken) =>
+        LoadGitDiffAsync(GitDiffScope.WorkingTree, cancellationToken);
+
+    [RelayCommand]
+    private Task ShowStagedDiffAsync(CancellationToken cancellationToken) =>
+        LoadGitDiffAsync(GitDiffScope.Staged, cancellationToken);
+
+    [RelayCommand]
+    private void CloseGitDiff()
+    {
+        Interlocked.Increment(ref _gitDiffLoadVersion);
+        IsGitDiffVisible = false;
+        GitDiffPath = string.Empty;
+        GitDiffSummary = string.Empty;
+        GitDiffMessage = string.Empty;
+        IsGitDiffSecurityBlocked = false;
+        HasGitWorkingTreeDiff = false;
+        HasGitStagedDiff = false;
+        GitDiffLines.Clear();
+        _selectedGitChange = null;
+        OnPropertyChanged(nameof(IsGitDiffLineListEmpty));
+    }
+
+    private async Task LoadGitDiffAsync(
+        GitDiffScope scope,
+        CancellationToken cancellationToken)
+    {
+        var change = _selectedGitChange;
+        if (_workspaceDirectory is null
+            || change is null
+            || (scope == GitDiffScope.WorkingTree && !change.HasWorkingTreeChanges)
+            || (scope == GitDiffScope.Staged && !change.HasStagedChanges))
+        {
+            return;
+        }
+
+        var loadVersion = Interlocked.Increment(ref _gitDiffLoadVersion);
+        GitDiffLines.Clear();
+        GitDiffMessage = Localize("GitDiffLoading", "Loading diff preview...");
+        GitDiffSummary = scope == GitDiffScope.Staged
+            ? Localize("GitDiffStaged", "Staged")
+            : Localize("GitDiffWorkingTree", "Working tree");
+        IsGitDiffSecurityBlocked = false;
+        OnPropertyChanged(nameof(IsGitDiffLineListEmpty));
+
+        try
+        {
+            var preview = await _gitService.GetDiffAsync(
+                _workspaceDirectory,
+                change.Path,
+                scope,
+                cancellationToken);
+            if (loadVersion != _gitDiffLoadVersion)
+            {
+                return;
+            }
+
+            if (preview.State == GitDiffPreviewState.BlockedBySecurity)
+            {
+                IsGitDiffSecurityBlocked = true;
+                GitDiffMessage = preview.SecurityWarningCount > 0
+                    ? Localize(
+                        "GitDiffBlockedBySecrets",
+                        "Preview blocked because this version may contain a secret.")
+                    : Localize(
+                        "GitDiffBlockedByScan",
+                        "Preview blocked because this version could not be inspected safely.");
+                return;
+            }
+
+            if (preview.State == GitDiffPreviewState.Unavailable)
+            {
+                GitDiffMessage = Localize(
+                    "GitDiffUnavailable",
+                    "Diff preview is unavailable for this file.");
+                return;
+            }
+
+            var normalizedContent = preview.Content.Replace(
+                "\r\n",
+                "\n",
+                StringComparison.Ordinal);
+            var lines = string.IsNullOrEmpty(normalizedContent)
+                ? []
+                : normalizedContent.Split('\n');
+            if (lines.Length > 0 && lines[^1].Length == 0)
+            {
+                lines = lines[..^1];
+            }
+
+            var visibleLineCount = Math.Min(lines.Length, MaximumDiffPreviewLines);
+            foreach (var line in lines.Take(visibleLineCount))
+            {
+                GitDiffLines.Add(new GitDiffLineViewModel(line));
+            }
+
+            var isTruncated = preview.IsTruncated || lines.Length > MaximumDiffPreviewLines;
+            GitDiffMessage = GitDiffLines.Count == 0
+                ? Localize("GitDiffEmpty", "No textual differences to display.")
+                : string.Empty;
+            GitDiffSummary += " · " + Localize(
+                "GitDiffLinesCount",
+                "{0} lines",
+                GitDiffLines.Count);
+            if (isTruncated)
+            {
+                GitDiffSummary += " · " + Localize("GitDiffTruncated", "preview limited");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            if (loadVersion == _gitDiffLoadVersion)
+            {
+                GitDiffMessage = Localize(
+                    "GitDiffUnavailable",
+                    "Diff preview is unavailable for this file.");
+            }
+
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+        finally
+        {
+            if (loadVersion == _gitDiffLoadVersion)
+            {
+                OnPropertyChanged(nameof(IsGitDiffLineListEmpty));
+            }
+        }
     }
 
     private void UpdateGitSecuritySummary(GitSecretScanResult result, int managedChangeCount)

@@ -404,6 +404,72 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task OpeningGitChange_ShowsBoundedReadOnlyDiffPreview()
+    {
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = "C:/repos/commerce",
+                Branch = "main",
+                Changes = [new GitFileChange("collections/orders.json", " M")],
+            },
+            DiffContent =
+                "diff --git a/collections/orders.json b/collections/orders.json\n" +
+                "@@ -1 +1 @@\n" +
+                "-old\n" +
+                "+new",
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: git);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await Assert.Single(viewModel.GitChanges).OpenCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsGitDiffVisible);
+        Assert.Equal("collections/orders.json", viewModel.GitDiffPath);
+        Assert.Equal(GitDiffScope.WorkingTree, git.LastDiffScope);
+        Assert.Equal(4, viewModel.GitDiffLines.Count);
+        Assert.True(viewModel.GitDiffLines[2].IsRemoved);
+        Assert.True(viewModel.GitDiffLines[3].IsAdded);
+        Assert.False(viewModel.IsGitDiffSecurityBlocked);
+    }
+
+    [Fact]
+    public async Task OpeningStagedGitChange_BlocksUnsafePreviewContent()
+    {
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = "C:/repos/commerce",
+                Branch = "main",
+                Changes = [new GitFileChange("environments/local.json", "M ")],
+            },
+            DiffState = GitDiffPreviewState.BlockedBySecurity,
+            DiffSecurityWarningCount = 1,
+            DiffContent = "+never-display-this-secret",
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: git);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await Assert.Single(viewModel.GitChanges).OpenCommand.ExecuteAsync(null);
+
+        Assert.Equal(GitDiffScope.Staged, git.LastDiffScope);
+        Assert.True(viewModel.IsGitDiffSecurityBlocked);
+        Assert.Empty(viewModel.GitDiffLines);
+        Assert.DoesNotContain(
+            "never-display",
+            viewModel.GitDiffMessage,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task OpeningWorkspace_DoesNotListChangesOutsideReqMintScope()
     {
         var git = new StubGitService
@@ -628,7 +694,15 @@ public sealed class MainViewModelWorkspaceTests
     {
         public GitRepositoryStatus? Status { get; init; }
 
+        public string DiffContent { get; init; } = string.Empty;
+
+        public GitDiffPreviewState DiffState { get; init; } = GitDiffPreviewState.Available;
+
+        public int DiffSecurityWarningCount { get; init; }
+
         public int CallCount { get; private set; }
+
+        public GitDiffScope? LastDiffScope { get; private set; }
 
         public Task<GitRepositoryStatus?> GetStatusAsync(
             string workspaceDirectory,
@@ -636,6 +710,23 @@ public sealed class MainViewModelWorkspaceTests
         {
             CallCount++;
             return Task.FromResult(Status);
+        }
+
+        public Task<GitDiffPreview> GetDiffAsync(
+            string workspaceDirectory,
+            string workspaceRelativePath,
+            GitDiffScope scope,
+            CancellationToken cancellationToken = default)
+        {
+            LastDiffScope = scope;
+            return Task.FromResult(new GitDiffPreview
+            {
+                Path = workspaceRelativePath,
+                Scope = scope,
+                State = DiffState,
+                Content = DiffContent,
+                SecurityWarningCount = DiffSecurityWarningCount,
+            });
         }
     }
 
