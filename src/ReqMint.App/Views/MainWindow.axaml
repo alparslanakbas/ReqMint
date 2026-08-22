@@ -34,9 +34,12 @@
                     <TextBlock Text="ReqMint" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
                 </StackPanel>
 
-                <Button Grid.Column="2" HorizontalContentAlignment="Stretch">
+                <Button Grid.Column="2"
+                        HorizontalContentAlignment="Stretch"
+                        Command="{Binding OpenWorkspaceCommand}"
+                        ToolTip.Tip="Open a local ReqMint workspace">
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Text="Acme Commerce" />
+                        <TextBlock Text="{Binding WorkspaceName}" TextTrimming="CharacterEllipsis" />
                         <TextBlock Grid.Column="1" Text="⌄" Classes="secondary" />
                     </Grid>
                 </Button>
@@ -49,7 +52,7 @@
                 <Button Grid.Column="6" HorizontalContentAlignment="Stretch">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <Ellipse Width="7" Height="7" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="1" Text="Development" Margin="9,0" />
+                        <TextBlock Grid.Column="1" Text="{Binding EnvironmentName}" Margin="9,0" />
                         <TextBlock Grid.Column="2" Text="⌄" Classes="secondary" />
                     </Grid>
                 </Button>
@@ -81,61 +84,76 @@
                     BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="0,0,1,0">
                 <Grid RowDefinitions="Auto,Auto,*,Auto">
-                    <Grid Grid.Row="0" Margin="16,16,16,10" ColumnDefinitions="*,Auto">
+                    <Grid Grid.Row="0" Margin="16,16,16,10" ColumnDefinitions="*,Auto,6,Auto">
                         <TextBlock Text="Workspace" FontSize="17" FontWeight="SemiBold" />
-                        <Button Grid.Column="1" Content="＋" Width="30" Height="30" Padding="0" />
+                        <Button Grid.Column="1"
+                                Content="▣＋"
+                                Width="30"
+                                Height="30"
+                                Padding="0"
+                                Command="{Binding CreateWorkspaceCommand}"
+                                ToolTip.Tip="Create a workspace in a local folder" />
+                        <Button Grid.Column="3"
+                                Content="＋"
+                                Width="30"
+                                Height="30"
+                                Padding="0"
+                                Command="{Binding NewRequestCommand}"
+                                ToolTip.Tip="Create a new request" />
                     </Grid>
 
                     <TextBox Grid.Row="1" Margin="12,0,12,12" PlaceholderText="Filter requests..." />
 
                     <ScrollViewer Grid.Row="2">
-                        <StackPanel Margin="8,0" Spacing="3">
-                            <Button HorizontalContentAlignment="Stretch" BorderThickness="0">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <TextBlock Text="⌄" Classes="secondary" />
-                                    <TextBlock Grid.Column="1" Text="Commerce API" Margin="8,0" FontWeight="SemiBold" />
-                                    <TextBlock Grid.Column="2" Text="6" Classes="secondary" />
-                                </Grid>
-                            </Button>
-                            <Button Margin="14,0,0,0" HorizontalContentAlignment="Stretch" BorderThickness="0">
-                                <Grid ColumnDefinitions="48,*">
-                                    <TextBlock Text="GET" Foreground="{DynamicResource MethodGetBrush}" FontSize="11" FontWeight="Bold" />
-                                    <TextBlock Grid.Column="1" Text="Get Orders" />
-                                </Grid>
-                            </Button>
-                            <Button Margin="14,0,0,0" HorizontalContentAlignment="Stretch" BorderThickness="0" Background="{DynamicResource SurfaceHoverBrush}">
-                                <Grid ColumnDefinitions="48,*">
-                                    <TextBlock Text="GET" Foreground="{DynamicResource MethodGetBrush}" FontSize="11" FontWeight="Bold" />
-                                    <TextBlock Grid.Column="1" Text="Get Order" />
-                                </Grid>
-                            </Button>
-                            <Button Margin="14,0,0,0" HorizontalContentAlignment="Stretch" BorderThickness="0">
-                                <Grid ColumnDefinitions="48,*">
-                                    <TextBlock Text="POST" Foreground="{DynamicResource AccentBrush}" FontSize="11" FontWeight="Bold" />
-                                    <TextBlock Grid.Column="1" Text="Create Order" />
-                                </Grid>
-                            </Button>
-                            <Button HorizontalContentAlignment="Stretch" BorderThickness="0">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <TextBlock Text="›" Classes="secondary" />
-                                    <TextBlock Grid.Column="1" Text="Authentication" Margin="8,0" FontWeight="SemiBold" />
-                                    <TextBlock Grid.Column="2" Text="2" Classes="secondary" />
-                                </Grid>
-                            </Button>
-                            <Button HorizontalContentAlignment="Stretch" BorderThickness="0">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <TextBlock Text="›" Classes="secondary" />
-                                    <TextBlock Grid.Column="1" Text="Users" Margin="8,0" FontWeight="SemiBold" />
-                                    <TextBlock Grid.Column="2" Text="4" Classes="secondary" />
-                                </Grid>
-                            </Button>
-                        </StackPanel>
+                        <ItemsControl Margin="8,0" ItemsSource="{Binding Collections}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CollectionItemViewModel">
+                                    <StackPanel Spacing="3" Margin="0,0,0,8">
+                                        <Border Padding="10,7" CornerRadius="6">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <TextBlock Text="⌄" Classes="secondary" />
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding Name}"
+                                                           Margin="8,0"
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="2" Text="{Binding RequestCount}" Classes="secondary" />
+                                            </Grid>
+                                        </Border>
+                                        <ItemsControl ItemsSource="{Binding Requests}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:SavedRequestItemViewModel">
+                                                    <Button Margin="14,0,0,0"
+                                                            HorizontalContentAlignment="Stretch"
+                                                            BorderThickness="0"
+                                                            Command="{Binding OpenCommand}">
+                                                        <Grid ColumnDefinitions="48,*">
+                                                            <TextBlock Text="{Binding Method}"
+                                                                       Foreground="{DynamicResource MethodGetBrush}"
+                                                                       FontSize="11"
+                                                                       FontWeight="Bold" />
+                                                            <TextBlock Grid.Column="1"
+                                                                       Text="{Binding Name}"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                        </Grid>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </ScrollViewer>
 
                     <Border Grid.Row="3" Margin="12" Padding="10" CornerRadius="6" Background="{DynamicResource SurfaceRaisedBrush}">
                         <StackPanel Spacing="4">
-                            <TextBlock Text="Local workspace" FontWeight="SemiBold" />
-                            <TextBlock Text="No account · No cloud sync" Classes="secondary" FontSize="11" />
+                            <TextBlock Text="{Binding WorkspaceName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding WorkspaceLocation}"
+                                       Classes="secondary"
+                                       FontSize="11"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip.Tip="{Binding WorkspaceLocation}" />
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -146,18 +164,26 @@
                 <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
                     <StackPanel Orientation="Horizontal" Margin="14,0" VerticalAlignment="Center" Spacing="10">
                         <TextBlock Text="{Binding SelectedMethod}" Foreground="{DynamicResource MethodGetBrush}" FontSize="11" FontWeight="Bold" />
-                        <TextBlock Text="Get Order" FontWeight="SemiBold" />
+                        <TextBox Text="{Binding RequestName}"
+                                 Width="240"
+                                 BorderThickness="0"
+                                 Background="Transparent"
+                                 FontWeight="SemiBold"
+                                 PlaceholderText="Request name" />
                         <TextBlock Text="×" Classes="secondary" />
                     </StackPanel>
                 </Border>
 
-                <Grid Grid.Row="1" Margin="16,14" ColumnDefinitions="108,12,*,12,104">
+                <Grid Grid.Row="1" Margin="16,14" ColumnDefinitions="108,12,*,12,86,8,104">
                     <ComboBox Grid.Column="0"
                               ItemsSource="{Binding Methods}"
                               SelectedItem="{Binding SelectedMethod}"
                               HorizontalContentAlignment="Stretch" />
                     <TextBox Grid.Column="2" Text="{Binding Url}" PlaceholderText="Enter an HTTP or HTTPS URL" />
                     <Button Grid.Column="4"
+                            Content="Save"
+                            Command="{Binding SaveRequestCommand}" />
+                    <Button Grid.Column="6"
                             Classes="primary"
                             Content="Send"
                             Command="{Binding SendCommand}" />
@@ -285,7 +311,7 @@
             <Grid Margin="14,0" ColumnDefinitions="Auto,16,Auto,*,Auto">
                 <TextBlock Text="ReqMint preview" Classes="secondary" VerticalAlignment="Center" FontSize="11" />
                 <TextBlock Grid.Column="2" Text="API work, without the weight." Classes="secondary" VerticalAlignment="Center" FontSize="11" />
-                <TextBlock Grid.Column="4" Text="Ready" Classes="secondary" VerticalAlignment="Center" FontSize="11" />
+                <TextBlock Grid.Column="4" Text="{Binding WorkspaceStatus}" Classes="secondary" VerticalAlignment="Center" FontSize="11" />
             </Grid>
         </Border>
     </Grid>

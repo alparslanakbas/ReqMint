@@ -1,8 +1,10 @@
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using ReqMint.Core.Requests;
 using System.Collections.ObjectModel;
 using System.Text.Json;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using ReqMint.App.Services;
+using ReqMint.Core.Requests;
+using ReqMint.Core.Workspaces;
 
 namespace ReqMint.App.ViewModels;
 
@@ -25,6 +27,23 @@ public partial class MainViewModel : ViewModelBase
         new("Accept", "application/json"),
         new("X-Client", "ReqMint") { IsEnabled = false },
     ];
+
+    public ObservableCollection<CollectionItemViewModel> Collections { get; } = [];
+
+    [ObservableProperty]
+    public partial string WorkspaceName { get; set; } = "No workspace";
+
+    [ObservableProperty]
+    public partial string WorkspaceLocation { get; set; } = "Choose a local workspace to begin";
+
+    [ObservableProperty]
+    public partial string EnvironmentName { get; set; } = "No environment";
+
+    [ObservableProperty]
+    public partial string WorkspaceStatus { get; set; } = "Ready";
+
+    [ObservableProperty]
+    public partial string RequestName { get; set; } = "New request";
 
     [ObservableProperty]
     public partial string SelectedMethod { get; set; } = "GET";
@@ -56,24 +75,264 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CreateWorkspaceCommand))]
+    [NotifyCanExecuteChangedFor(nameof(OpenWorkspaceCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SaveRequestCommand))]
+    [NotifyCanExecuteChangedFor(nameof(NewRequestCommand))]
     public partial bool IsSending { get; set; }
 
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SendCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CreateWorkspaceCommand))]
+    [NotifyCanExecuteChangedFor(nameof(OpenWorkspaceCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SaveRequestCommand))]
+    [NotifyCanExecuteChangedFor(nameof(NewRequestCommand))]
+    public partial bool IsWorkspaceBusy { get; set; }
+
     private readonly IRequestExecutor _requestExecutor;
+    private readonly IWorkspaceStore _workspaceStore;
+    private readonly IWorkspaceFolderPicker _folderPicker;
+    private WorkspaceSnapshot? _workspaceSnapshot;
+    private string? _workspaceDirectory;
+    private Guid? _selectedRequestId;
+    private Guid? _selectedCollectionId;
 
     public bool IsBodyEnabled => SelectedBodyType != "None";
 
-    public MainViewModel(IRequestExecutor requestExecutor)
+    public MainViewModel(
+        IRequestExecutor requestExecutor,
+        IWorkspaceStore workspaceStore,
+        IWorkspaceFolderPicker folderPicker)
     {
         _requestExecutor = requestExecutor;
+        _workspaceStore = workspaceStore;
+        _folderPicker = folderPicker;
     }
 
-    private bool CanSend() => !IsSending;
+    private bool CanSend() => !IsSending && !IsWorkspaceBusy;
+
+    private bool CanManageWorkspace() => !IsWorkspaceBusy && !IsSending;
+
+    private bool CanSaveRequest() =>
+        !IsWorkspaceBusy && !IsSending && _workspaceSnapshot is not null;
 
     [RelayCommand]
     private void AddQueryParameter() => QueryParameters.Add(new RequestFieldViewModel());
 
     [RelayCommand]
     private void AddHeader() => Headers.Add(new RequestFieldViewModel());
+
+    [RelayCommand(CanExecute = nameof(CanSaveRequest))]
+    private void NewRequest()
+    {
+        _selectedRequestId = null;
+        RequestName = "New request";
+        SelectedMethod = "GET";
+        Url = string.Empty;
+        TimeoutSeconds = 30;
+
+        QueryParameters.Clear();
+        QueryParameters.Add(new RequestFieldViewModel());
+        Headers.Clear();
+        Headers.Add(new RequestFieldViewModel("Accept", "application/json"));
+
+        SelectedBodyType = "None";
+        RequestBody = string.Empty;
+        ResponseStatus = "Ready";
+        ResponseTime = "—";
+        ResponseBody = "Compose and send a new request.";
+        WorkspaceStatus = "New request";
+    }
+
+    [RelayCommand(CanExecute = nameof(CanManageWorkspace))]
+    private async Task CreateWorkspaceAsync(CancellationToken cancellationToken)
+    {
+        IsWorkspaceBusy = true;
+        WorkspaceStatus = "Choose a workspace folder";
+
+        try
+        {
+            var directory = await _folderPicker.PickFolderAsync(
+                "Choose a folder for the ReqMint workspace");
+            if (directory is null)
+            {
+                WorkspaceStatus = "Ready";
+                return;
+            }
+
+            WorkspaceStatus = "Creating workspace...";
+            var existingWorkspace = Path.Combine(directory, "reqmint.workspace.json");
+            if (File.Exists(existingWorkspace))
+            {
+                var existingSnapshot = await _workspaceStore.LoadAsync(directory, cancellationToken);
+                ApplyWorkspace(existingSnapshot, directory);
+                WorkspaceStatus = "Existing workspace opened";
+                return;
+            }
+
+            var workspaceName = GetWorkspaceName(directory);
+            var collectionId = Guid.NewGuid();
+            var collection = new CollectionDocument
+            {
+                Id = collectionId,
+                Name = "Requests",
+            };
+            var workspace = new WorkspaceDocument
+            {
+                Id = Guid.NewGuid(),
+                Name = workspaceName,
+                Collections =
+                [
+                    new WorkspaceFileReference(
+                        collectionId,
+                        collection.Name,
+                        "collections/requests.json"),
+                ],
+            };
+            var snapshot = new WorkspaceSnapshot(workspace, [collection], []);
+
+            await _workspaceStore.SaveAsync(directory, snapshot, cancellationToken);
+            ApplyWorkspace(snapshot, directory);
+            WorkspaceStatus = "Workspace created";
+        }
+        catch (OperationCanceledException)
+        {
+            WorkspaceStatus = "Workspace creation cancelled";
+        }
+        catch (Exception exception)
+        {
+            ShowWorkspaceError("Could not create workspace", exception);
+        }
+        finally
+        {
+            IsWorkspaceBusy = false;
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanManageWorkspace))]
+    private async Task OpenWorkspaceAsync(CancellationToken cancellationToken)
+    {
+        IsWorkspaceBusy = true;
+        WorkspaceStatus = "Choose a workspace folder";
+
+        try
+        {
+            var directory = await _folderPicker.PickFolderAsync("Open a ReqMint workspace");
+            if (directory is null)
+            {
+                WorkspaceStatus = "Ready";
+                return;
+            }
+
+            WorkspaceStatus = "Opening workspace...";
+            var snapshot = await _workspaceStore.LoadAsync(directory, cancellationToken);
+            ApplyWorkspace(snapshot, directory);
+            WorkspaceStatus = "Workspace opened";
+        }
+        catch (OperationCanceledException)
+        {
+            WorkspaceStatus = "Opening workspace cancelled";
+        }
+        catch (Exception exception)
+        {
+            ShowWorkspaceError("Could not open workspace", exception);
+        }
+        finally
+        {
+            IsWorkspaceBusy = false;
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanSaveRequest))]
+    private async Task SaveRequestAsync(CancellationToken cancellationToken)
+    {
+        if (_workspaceSnapshot is null || _workspaceDirectory is null)
+        {
+            return;
+        }
+
+        IsWorkspaceBusy = true;
+        WorkspaceStatus = "Saving request...";
+
+        try
+        {
+            var request = CreateCurrentApiRequest();
+            var requestName = string.IsNullOrWhiteSpace(RequestName)
+                ? $"{request.Method} {request.Url.AbsolutePath}"
+                : RequestName.Trim();
+            var document = new RequestDocument
+            {
+                Id = _selectedRequestId ?? Guid.NewGuid(),
+                Name = requestName,
+                Method = request.Method,
+                Url = request.Url.AbsoluteUri,
+                QueryParameters = request.QueryParameters,
+                Headers = request.Headers,
+                Body = request.Body,
+                TimeoutSeconds = (int)request.Timeout.TotalSeconds,
+            };
+
+            var workspace = _workspaceSnapshot.Workspace;
+            var collections = _workspaceSnapshot.Collections.ToList();
+            if (collections.Count == 0)
+            {
+                var collectionId = Guid.NewGuid();
+                var defaultCollection = new CollectionDocument
+                {
+                    Id = collectionId,
+                    Name = "Requests",
+                };
+                collections.Add(defaultCollection);
+                workspace = workspace with
+                {
+                    Collections =
+                    [
+                        new WorkspaceFileReference(
+                            collectionId,
+                            defaultCollection.Name,
+                            "collections/requests.json"),
+                    ],
+                };
+            }
+
+            var collectionIndex = FindTargetCollectionIndex(collections);
+            var collection = collections[collectionIndex];
+            var requests = collection.Requests.ToList();
+            var requestIndex = requests.FindIndex(item => item.Id == document.Id);
+
+            if (requestIndex >= 0)
+            {
+                requests[requestIndex] = document;
+            }
+            else
+            {
+                requests.Add(document);
+            }
+
+            collections[collectionIndex] = collection with { Requests = requests };
+            var updatedSnapshot = _workspaceSnapshot with
+            {
+                Workspace = workspace,
+                Collections = collections,
+            };
+
+            await _workspaceStore.SaveAsync(_workspaceDirectory, updatedSnapshot, cancellationToken);
+            ApplyWorkspace(updatedSnapshot, _workspaceDirectory, document.Id, collection.Id);
+            WorkspaceStatus = $"Saved {document.Name}";
+        }
+        catch (OperationCanceledException)
+        {
+            WorkspaceStatus = "Save cancelled";
+        }
+        catch (Exception exception)
+        {
+            ShowWorkspaceError("Could not save request", exception);
+        }
+        finally
+        {
+            IsWorkspaceBusy = false;
+        }
+    }
 
     [RelayCommand(CanExecute = nameof(CanSend), IncludeCancelCommand = true)]
     private async Task SendAsync(CancellationToken cancellationToken)
@@ -82,24 +341,7 @@ public partial class MainViewModel : ViewModelBase
 
         try
         {
-            if (TimeoutSeconds <= 0)
-            {
-                throw new ArgumentException("Request timeout must be greater than zero.");
-            }
-
-            request = ApiRequest.Create(SelectedMethod, Url) with
-            {
-                QueryParameters = QueryParameters
-                    .Where(field => field.IsEnabled && !string.IsNullOrWhiteSpace(field.Name))
-                    .Select(field => new RequestField(field.Name.Trim(), field.Value))
-                    .ToArray(),
-                Headers = Headers
-                    .Where(field => field.IsEnabled && !string.IsNullOrWhiteSpace(field.Name))
-                    .Select(field => new RequestField(field.Name.Trim(), field.Value))
-                    .ToArray(),
-                Body = CreateBody(),
-                Timeout = TimeSpan.FromSeconds((double)TimeoutSeconds),
-            };
+            request = CreateCurrentApiRequest();
         }
         catch (ArgumentException exception)
         {
@@ -150,6 +392,133 @@ public partial class MainViewModel : ViewModelBase
         {
             IsSending = false;
         }
+    }
+
+    private ApiRequest CreateCurrentApiRequest()
+    {
+        if (TimeoutSeconds is < 1 or > 600)
+        {
+            throw new ArgumentException("Request timeout must be between 1 and 600 seconds.");
+        }
+
+        return ApiRequest.Create(SelectedMethod, Url) with
+        {
+            QueryParameters = QueryParameters
+                .Where(field => field.IsEnabled && !string.IsNullOrWhiteSpace(field.Name))
+                .Select(field => new RequestField(field.Name.Trim(), field.Value))
+                .ToArray(),
+            Headers = Headers
+                .Where(field => field.IsEnabled && !string.IsNullOrWhiteSpace(field.Name))
+                .Select(field => new RequestField(field.Name.Trim(), field.Value))
+                .ToArray(),
+            Body = CreateBody(),
+            Timeout = TimeSpan.FromSeconds((double)TimeoutSeconds),
+        };
+    }
+
+    private int FindTargetCollectionIndex(IReadOnlyList<CollectionDocument> collections)
+    {
+        var index = _selectedCollectionId is null
+            ? -1
+            : collections.ToList().FindIndex(collection => collection.Id == _selectedCollectionId);
+
+        return index >= 0 ? index : 0;
+    }
+
+    private void ApplyWorkspace(
+        WorkspaceSnapshot snapshot,
+        string directory,
+        Guid? selectedRequestId = null,
+        Guid? selectedCollectionId = null)
+    {
+        _workspaceSnapshot = snapshot;
+        _workspaceDirectory = directory;
+        _selectedRequestId = selectedRequestId;
+        _selectedCollectionId = selectedCollectionId ?? snapshot.Collections.FirstOrDefault()?.Id;
+
+        WorkspaceName = snapshot.Workspace.Name;
+        WorkspaceLocation = directory;
+        EnvironmentName = snapshot.Environments.FirstOrDefault()?.Name ?? "No environment";
+
+        Collections.Clear();
+        foreach (var collection in snapshot.Collections)
+        {
+            Collections.Add(new CollectionItemViewModel(
+                collection.Id,
+                collection.Name,
+                collection.Requests.Select(request =>
+                    new SavedRequestItemViewModel(
+                        request,
+                        selected => OpenRequest(selected, collection.Id)))));
+        }
+
+        SaveRequestCommand.NotifyCanExecuteChanged();
+        NewRequestCommand.NotifyCanExecuteChanged();
+    }
+
+    private void OpenRequest(RequestDocument request, Guid collectionId)
+    {
+        _selectedRequestId = request.Id;
+        _selectedCollectionId = collectionId;
+
+        RequestName = request.Name;
+        SelectedMethod = request.Method;
+        Url = request.Url;
+        TimeoutSeconds = request.TimeoutSeconds;
+
+        QueryParameters.Clear();
+        foreach (var field in request.QueryParameters)
+        {
+            QueryParameters.Add(new RequestFieldViewModel(field.Name, field.Value));
+        }
+
+        Headers.Clear();
+        foreach (var field in request.Headers)
+        {
+            Headers.Add(new RequestFieldViewModel(field.Name, field.Value));
+        }
+
+        SelectedBodyType = GetBodyType(request.Body?.ContentType);
+        RequestBody = request.Body?.Content ?? string.Empty;
+        ResponseStatus = "Ready";
+        ResponseTime = "—";
+        ResponseBody = "Send the saved request to inspect its response.";
+        WorkspaceStatus = $"Opened {request.Name}";
+    }
+
+    private void ShowWorkspaceError(string title, Exception exception)
+    {
+        WorkspaceStatus = title;
+        ResponseStatus = title;
+        ResponseBody = exception.Message;
+        HasResponse = true;
+    }
+
+    private static string GetWorkspaceName(string directory)
+    {
+        var trimmedDirectory = Path.TrimEndingDirectorySeparator(directory);
+        var name = Path.GetFileName(trimmedDirectory);
+        return string.IsNullOrWhiteSpace(name) ? "ReqMint Workspace" : name;
+    }
+
+    private static string GetBodyType(string? contentType)
+    {
+        if (contentType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "JSON";
+        }
+
+        if (contentType?.Contains("xml", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "XML";
+        }
+
+        if (contentType?.Contains("x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "Form URL Encoded";
+        }
+
+        return contentType is null ? "None" : "Text";
     }
 
     private ApiRequestBody? CreateBody() => SelectedBodyType switch
