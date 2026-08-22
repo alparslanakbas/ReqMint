@@ -35,14 +35,28 @@ public partial class MainViewModel
                 : status.Branch;
             GitRepositoryRoot = status.RepositoryRoot;
             GitChanges.Clear();
-            foreach (var change in status.Changes)
+            var managedChanges = status.Changes
+                .Where(change => ReqMintGitFileClassifier.IsManaged(change.Path))
+                .ToArray();
+            foreach (var change in managedChanges)
             {
                 GitChanges.Add(new GitChangeItemViewModel(change));
             }
 
+            GitOtherChangeCount = status.Changes.Count - managedChanges.Length;
             GitSummary = status.IsClean
                 ? Localize("GitClean", "Working tree clean")
-                : Localize("GitChangesCount", "{0} changed files", status.Changes.Count);
+                : managedChanges.Length > 0
+                    ? Localize("GitReqMintChangesCount", "{0} ReqMint file changes", managedChanges.Length)
+                    : Localize("GitNoReqMintChanges", "No ReqMint file changes");
+            if (GitOtherChangeCount > 0)
+            {
+                GitSummary += " · " + Localize(
+                    "GitOtherChangesCount",
+                    "{0} other repository changes",
+                    GitOtherChangeCount);
+            }
+
             if (status.AheadBy > 0)
             {
                 GitSummary += " · " + Localize("GitAheadBy", "ahead {0}", status.AheadBy);
@@ -74,6 +88,7 @@ public partial class MainViewModel
         GitBranch = "—";
         GitSummary = summary;
         GitRepositoryRoot = string.Empty;
+        GitOtherChangeCount = 0;
         GitChanges.Clear();
         OnPropertyChanged(nameof(IsGitChangeListEmpty));
     }

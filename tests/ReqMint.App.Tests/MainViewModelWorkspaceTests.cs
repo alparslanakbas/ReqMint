@@ -334,6 +334,7 @@ public sealed class MainViewModelWorkspaceTests
                 [
                     new GitFileChange("collections/commerce.json", " M"),
                     new GitFileChange("environments/local.json", "??"),
+                    new GitFileChange("src/ReqMint.App/App.axaml.cs", " M"),
                 ],
             },
         };
@@ -348,10 +349,35 @@ public sealed class MainViewModelWorkspaceTests
         Assert.True(viewModel.IsGitVisible);
         Assert.False(viewModel.IsHistoryVisible);
         Assert.Equal("feature/mint-history", viewModel.GitBranch);
-        Assert.Equal("2 changed files · ahead 1", viewModel.GitSummary);
+        Assert.Equal("2 ReqMint file changes · 1 other repository changes · ahead 1", viewModel.GitSummary);
         Assert.Equal(2, viewModel.GitChanges.Count);
+        Assert.Equal(1, viewModel.GitOtherChangeCount);
         Assert.Equal("C:/repos/commerce", viewModel.GitRepositoryRoot);
         Assert.True(git.CallCount >= 2);
+    }
+
+    [Fact]
+    public async Task OpeningWorkspace_DoesNotListChangesOutsideReqMintScope()
+    {
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = "C:/repos/commerce",
+                Branch = "main",
+                Changes = [new GitFileChange("src/Program.cs", " M")],
+            },
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: git);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        Assert.Empty(viewModel.GitChanges);
+        Assert.Equal(1, viewModel.GitOtherChangeCount);
+        Assert.Equal("No ReqMint file changes · 1 other repository changes", viewModel.GitSummary);
     }
 
     [Fact]
@@ -367,6 +393,7 @@ public sealed class MainViewModelWorkspaceTests
         Assert.Equal("—", viewModel.GitBranch);
         Assert.Equal("Workspace is not inside a Git repository", viewModel.GitSummary);
         Assert.Empty(viewModel.GitChanges);
+        Assert.Equal(0, viewModel.GitOtherChangeCount);
     }
 
     [Fact]

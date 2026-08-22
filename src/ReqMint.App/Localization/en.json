@@ -66,7 +66,7 @@
   "TextResponsePreviewLimitHelp": "Read at most 1–20 MB into memory for each response preview.",
   "ResponsePreviewLimited": "\n\n— Preview limited to {0} MB —",
   "TextGit": "Git",
-  "TextGitSubtitle": "Read-only workspace status",
+  "TextGitSubtitle": "ReqMint-managed workspace changes",
   "TextRefreshGit": "Refresh Git status",
   "TextGitReadOnly": "ReqMint only reads repository status. It never commits, pulls or pushes automatically.",
   "GitNotRepository": "Workspace is not inside a Git repository",
@@ -75,7 +75,9 @@
   "GitStatusFailed": "Git status could not be loaded",
   "GitDetachedHead": "Detached HEAD",
   "GitClean": "Working tree clean",
-  "GitChangesCount": "{0} changed files",
+  "GitReqMintChangesCount": "{0} ReqMint file changes",
+  "GitNoReqMintChanges": "No ReqMint file changes",
+  "GitOtherChangesCount": "{0} other repository changes",
   "GitAheadBy": "ahead {0}",
   "GitBehindBy": "behind {0}"
 }

@@ -1,6 +1,8 @@
 # Git integration
 
-ReqMint's first Git collaboration slice is deliberately read-only. Opening a workspace detects whether its folder is inside a Git repository and displays the repository root, active branch, ahead/behind counts, and changed files.
+ReqMint's first Git collaboration slice is deliberately read-only. Opening a workspace detects whether its folder is inside a Git repository and displays the repository root, active branch, ahead/behind counts, and changed ReqMint workspace files.
+
+The detailed list is intentionally limited to `reqmint.workspace.json` and JSON documents under `collections/`, `environments/`, and `data/`. Changes elsewhere in the repository are represented only by a count. This keeps the panel focused on ReqMint's responsibility without hiding the fact that the wider repository is dirty.
 
 ## Safety boundary
 

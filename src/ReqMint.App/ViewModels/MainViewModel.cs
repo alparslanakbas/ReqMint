@@ -116,6 +116,9 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial string GitRepositoryRoot { get; set; } = string.Empty;
 
+    [ObservableProperty]
+    public partial int GitOtherChangeCount { get; set; }
+
     public bool IsGitChangeListEmpty => GitChanges.Count == 0;
 
     [ObservableProperty]
