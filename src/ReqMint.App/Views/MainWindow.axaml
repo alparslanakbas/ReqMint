@@ -49,13 +49,11 @@
                          VerticalAlignment="Center"
                          PlaceholderText="Search or run a command..." />
 
-                <Button Grid.Column="6" HorizontalContentAlignment="Stretch">
-                    <Grid ColumnDefinitions="Auto,*,Auto">
-                        <Ellipse Width="7" Height="7" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="1" Text="{Binding EnvironmentName}" Margin="9,0" />
-                        <TextBlock Grid.Column="2" Text="⌄" Classes="secondary" />
-                    </Grid>
-                </Button>
+                <ComboBox Grid.Column="6"
+                          ItemsSource="{Binding EnvironmentNames}"
+                          SelectedItem="{Binding EnvironmentName}"
+                          HorizontalContentAlignment="Stretch"
+                          ToolTip.Tip="Active environment" />
             </Grid>
         </Border>
 
@@ -253,6 +251,57 @@
                                          VerticalContentAlignment="Top"
                                          FontFamily="Cascadia Mono, Consolas"
                                          PlaceholderText="Select a body type, then enter request content..." />
+                            </Grid>
+                        </TabItem>
+
+                        <TabItem Header="Environment">
+                            <Grid RowDefinitions="Auto,12,*,12,Auto" Margin="18,12">
+                                <Grid Grid.Row="0" ColumnDefinitions="*,10,Auto">
+                                    <TextBox Text="{Binding EnvironmentDraftName}"
+                                             PlaceholderText="Environment name" />
+                                    <Button Grid.Column="2"
+                                            Content="New environment"
+                                            Command="{Binding NewEnvironmentCommand}" />
+                                </Grid>
+
+                                <ScrollViewer Grid.Row="2">
+                                    <ItemsControl ItemsSource="{Binding EnvironmentVariables}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:EnvironmentVariableViewModel">
+                                                <Grid ColumnDefinitions="220,12,*,12,90" Margin="0,0,0,8">
+                                                    <TextBox Text="{Binding Name}" PlaceholderText="Variable name" />
+                                                    <TextBox Grid.Column="2"
+                                                             Text="{Binding Value}"
+                                                             IsVisible="{Binding !IsSecret}"
+                                                             PlaceholderText="Value" />
+                                                    <TextBox Grid.Column="2"
+                                                             Text="{Binding Value}"
+                                                             IsVisible="{Binding IsSecret}"
+                                                             PasswordChar="●"
+                                                             PlaceholderText="Secret value" />
+                                                    <CheckBox Grid.Column="4"
+                                                              IsChecked="{Binding IsSecret}"
+                                                              Content="Secret"
+                                                              VerticalAlignment="Center" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+
+                                <Grid Grid.Row="4" ColumnDefinitions="Auto,10,Auto,16,*">
+                                    <Button Content="＋ Add variable"
+                                            Command="{Binding AddEnvironmentVariableCommand}" />
+                                    <Button Grid.Column="2"
+                                            Classes="primary"
+                                            Content="Save environment"
+                                            Command="{Binding SaveEnvironmentCommand}" />
+                                    <TextBlock Grid.Column="4"
+                                               Text="Secret inputs are stored in the OS vault and cleared after saving."
+                                               Classes="secondary"
+                                               VerticalAlignment="Center"
+                                               TextWrapping="Wrap" />
+                                </Grid>
                             </Grid>
                         </TabItem>
 

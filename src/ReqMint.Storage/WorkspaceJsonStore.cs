@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ReqMint.Core.Templates;
 using ReqMint.Core.Workspaces;
 
 namespace ReqMint.Storage;
@@ -178,11 +179,12 @@ public sealed class WorkspaceJsonStore : IWorkspaceStore
                 throw new WorkspaceFormatException($"Request '{request.Name}' must have a method.");
             }
 
-            if (!Uri.TryCreate(request.Url, UriKind.Absolute, out var uri) ||
-                (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            var isHttpUrl = Uri.TryCreate(request.Url, UriKind.Absolute, out var uri) &&
+                (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+            if (!isHttpUrl && !RequestTemplate.ContainsVariables(request.Url))
             {
                 throw new WorkspaceFormatException(
-                    $"Request '{request.Name}' must have a valid HTTP or HTTPS URL.");
+                    $"Request '{request.Name}' must have an HTTP URL or a URL template.");
             }
 
             if (request.TimeoutSeconds is < 1 or > 600)

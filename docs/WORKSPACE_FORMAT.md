@@ -25,7 +25,18 @@ An environment variable can be marked as secret, but its value must be `null` in
 }
 ```
 
-ReqMint rejects a workspace save if a secret value is present. Secret storage will use the operating system credential vault and will remain outside Git-managed files.
+ReqMint rejects a workspace save if a secret value is present. On Windows, secret values are stored in Windows Credential Manager and remain outside Git-managed files. macOS Keychain and Linux Secret Service adapters are planned; ReqMint does not use a plaintext fallback when a platform vault is unavailable.
+
+## Request variables
+
+Requests can use environment values in URLs, query parameters, headers, bodies, and content types:
+
+```text
+{{BASE_URL}}/orders/{{ORDER_ID}}
+Authorization: Bearer {{API_TOKEN}}
+```
+
+Templates remain unchanged in collection files. ReqMint resolves them from the active environment immediately before sending and reports all missing values together.
 
 ## Safety guarantees
 

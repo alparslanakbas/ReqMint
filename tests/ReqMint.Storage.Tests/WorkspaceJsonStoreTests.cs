@@ -140,6 +140,30 @@ public sealed class WorkspaceJsonStoreTests
         Assert.Empty(Directory.EnumerateFiles(directory.Path, "*.tmp-*", SearchOption.AllDirectories));
     }
 
+    [Fact]
+    public async Task SaveAndLoadAsync_PreservesTemplatedRequestUrls()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new WorkspaceJsonStore();
+        var snapshot = CreateSnapshot();
+        var collection = snapshot.Collections[0] with
+        {
+            Requests =
+            [
+                snapshot.Collections[0].Requests[0] with
+                {
+                    Url = "{{BASE_URL}}/items/{{ITEM_ID}}",
+                },
+            ],
+        };
+        snapshot = snapshot with { Collections = [collection] };
+
+        await store.SaveAsync(directory.Path, snapshot, CancellationToken.None);
+        var loaded = await store.LoadAsync(directory.Path, CancellationToken.None);
+
+        Assert.Equal("{{BASE_URL}}/items/{{ITEM_ID}}", loaded.Collections[0].Requests[0].Url);
+    }
+
     private static WorkspaceSnapshot CreateSnapshot(
         string? secretValue = null,
         string collectionFile = "collections/sample.json")

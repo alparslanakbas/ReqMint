@@ -1,6 +1,8 @@
 using ReqMint.App.Services;
 using ReqMint.App.ViewModels;
 using ReqMint.Core.Requests;
+using ReqMint.Core.Security;
+using ReqMint.Core.Templates;
 using ReqMint.Core.Workspaces;
 
 namespace ReqMint.App.Tests;
@@ -85,10 +87,99 @@ public sealed class MainViewModelWorkspaceTests
         Assert.Equal("Saved List orders", viewModel.WorkspaceStatus);
     }
 
+    [Fact]
+    public async Task SaveEnvironmentCommand_SeparatesPublicAndSecretValues()
+    {
+        var snapshot = CreateSnapshot();
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
+        var vault = new RecordingSecretVault();
+        var viewModel = CreateViewModel(store, CreateWorkspacePath(), vault: vault);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        viewModel.NewEnvironmentCommand.Execute(null);
+        viewModel.EnvironmentDraftName = "Development";
+        viewModel.EnvironmentVariables.Clear();
+        viewModel.EnvironmentVariables.Add(
+            new EnvironmentVariableViewModel("BASE_URL", "https://api.example.com"));
+        viewModel.EnvironmentVariables.Add(
+            new EnvironmentVariableViewModel("TOKEN", "secret-token", isSecret: true));
+
+        await viewModel.SaveEnvironmentCommand.ExecuteAsync(null);
+
+        var environment = Assert.Single(store.SavedSnapshot!.Environments);
+        Assert.Equal("https://api.example.com", environment.Variables[0].Value);
+        Assert.Null(environment.Variables[1].Value);
+        Assert.True(environment.Variables[1].IsSecret);
+        var storedSecret = Assert.Single(vault.StoredValues);
+        Assert.Equal("TOKEN", storedSecret.Reference.VariableName);
+        Assert.Equal("secret-token", storedSecret.Value);
+        Assert.Equal(string.Empty, viewModel.EnvironmentVariables[1].Value);
+    }
+
+    [Fact]
+    public async Task SendCommand_ResolvesTheActiveEnvironmentBeforeExecution()
+    {
+        var snapshot = CreateSnapshot();
+        var request = snapshot.Collections[0].Requests[0] with
+        {
+            Url = "{{BASE_URL}}/orders",
+            Headers = [new RequestField("Authorization", "Bearer {{TOKEN}}")],
+        };
+        var collection = snapshot.Collections[0] with { Requests = [request] };
+        var environment = new EnvironmentDocument
+        {
+            Id = Guid.Parse("44444444-4444-4444-4444-444444444444"),
+            Name = "Development",
+            Variables =
+            [
+                new EnvironmentVariable("BASE_URL", "https://api.example.com"),
+                new EnvironmentVariable("TOKEN", null, IsSecret: true),
+            ],
+        };
+        snapshot = snapshot with
+        {
+            Workspace = snapshot.Workspace with
+            {
+                Environments =
+                [
+                    new WorkspaceFileReference(
+                        environment.Id,
+                        environment.Name,
+                        "environments/development.json"),
+                ],
+            },
+            Collections = [collection],
+            Environments = [environment],
+        };
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
+        var vault = new RecordingSecretVault { ValueToRead = "secret-token" };
+        var executor = new RecordingRequestExecutor();
+        var viewModel = CreateViewModel(store, CreateWorkspacePath(), executor, vault);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        viewModel.Collections[0].Requests[0].OpenCommand.Execute(null);
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.Equal("https://api.example.com/orders", executor.Request?.Url.AbsoluteUri);
+        Assert.Equal(
+            "Bearer secret-token",
+            Assert.Single(executor.Request!.Headers).Value);
+        Assert.Equal("200 OK", viewModel.ResponseStatus);
+    }
+
     private static MainViewModel CreateViewModel(
         RecordingWorkspaceStore store,
-        string directory) =>
-        new(new NoOpRequestExecutor(), store, new StubFolderPicker(directory));
+        string directory,
+        IRequestExecutor? executor = null,
+        RecordingSecretVault? vault = null)
+    {
+        vault ??= new RecordingSecretVault();
+        return new MainViewModel(
+            executor ?? new NoOpRequestExecutor(),
+            store,
+            new StubFolderPicker(directory),
+            new RequestTemplateResolver(vault),
+            vault);
+    }
 
     private static string CreateWorkspacePath() => Path.Combine(
         Path.GetTempPath(),
@@ -162,5 +253,51 @@ public sealed class MainViewModelWorkspaceTests
             ApiRequest request,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+    }
+
+    private sealed class RecordingSecretVault : ISecretVault
+    {
+        public string? ValueToRead { get; init; }
+
+        public List<(SecretReference Reference, string Value)> StoredValues { get; } = [];
+
+        public Task<string?> GetAsync(
+            SecretReference reference,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(ValueToRead);
+
+        public Task SetAsync(
+            SecretReference reference,
+            string value,
+            CancellationToken cancellationToken = default)
+        {
+            StoredValues.Add((reference, value));
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteAsync(
+            SecretReference reference,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+    }
+
+    private sealed class RecordingRequestExecutor : IRequestExecutor
+    {
+        public ApiRequest? Request { get; private set; }
+
+        public Task<ApiResponse> ExecuteAsync(
+            ApiRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            Request = request;
+            return Task.FromResult(new ApiResponse(
+                200,
+                "OK",
+                new Dictionary<string, IReadOnlyList<string>>(),
+                "{}",
+                "application/json",
+                TimeSpan.FromMilliseconds(12),
+                IsBodyTruncated: false));
+        }
     }
 }

@@ -4,6 +4,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ReqMint.App.Services;
 using ReqMint.Core.Requests;
+using ReqMint.Core.Security;
+using ReqMint.Core.Templates;
 using ReqMint.Core.Workspaces;
 
 namespace ReqMint.App.ViewModels;
@@ -30,6 +32,10 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<CollectionItemViewModel> Collections { get; } = [];
 
+    public ObservableCollection<string> EnvironmentNames { get; } = ["No environment"];
+
+    public ObservableCollection<EnvironmentVariableViewModel> EnvironmentVariables { get; } = [];
+
     [ObservableProperty]
     public partial string WorkspaceName { get; set; } = "No workspace";
 
@@ -38,6 +44,9 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial string EnvironmentName { get; set; } = "No environment";
+
+    [ObservableProperty]
+    public partial string EnvironmentDraftName { get; set; } = "Development";
 
     [ObservableProperty]
     public partial string WorkspaceStatus { get; set; } = "Ready";
@@ -79,6 +88,9 @@ public partial class MainViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(OpenWorkspaceCommand))]
     [NotifyCanExecuteChangedFor(nameof(SaveRequestCommand))]
     [NotifyCanExecuteChangedFor(nameof(NewRequestCommand))]
+    [NotifyCanExecuteChangedFor(nameof(NewEnvironmentCommand))]
+    [NotifyCanExecuteChangedFor(nameof(AddEnvironmentVariableCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SaveEnvironmentCommand))]
     public partial bool IsSending { get; set; }
 
     [ObservableProperty]
@@ -87,26 +99,44 @@ public partial class MainViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(OpenWorkspaceCommand))]
     [NotifyCanExecuteChangedFor(nameof(SaveRequestCommand))]
     [NotifyCanExecuteChangedFor(nameof(NewRequestCommand))]
+    [NotifyCanExecuteChangedFor(nameof(NewEnvironmentCommand))]
+    [NotifyCanExecuteChangedFor(nameof(AddEnvironmentVariableCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SaveEnvironmentCommand))]
     public partial bool IsWorkspaceBusy { get; set; }
 
     private readonly IRequestExecutor _requestExecutor;
     private readonly IWorkspaceStore _workspaceStore;
     private readonly IWorkspaceFolderPicker _folderPicker;
+    private readonly RequestTemplateResolver _templateResolver;
+    private readonly ISecretVault _secretVault;
     private WorkspaceSnapshot? _workspaceSnapshot;
     private string? _workspaceDirectory;
     private Guid? _selectedRequestId;
     private Guid? _selectedCollectionId;
+    private EnvironmentDocument? _activeEnvironment;
+    private Guid? _editingEnvironmentId;
 
     public bool IsBodyEnabled => SelectedBodyType != "None";
 
     public MainViewModel(
         IRequestExecutor requestExecutor,
         IWorkspaceStore workspaceStore,
-        IWorkspaceFolderPicker folderPicker)
+        IWorkspaceFolderPicker folderPicker,
+        RequestTemplateResolver templateResolver,
+        ISecretVault secretVault)
     {
         _requestExecutor = requestExecutor;
         _workspaceStore = workspaceStore;
         _folderPicker = folderPicker;
+        _templateResolver = templateResolver;
+        _secretVault = secretVault;
+    }
+
+    partial void OnEnvironmentNameChanged(string value)
+    {
+        _activeEnvironment = _workspaceSnapshot?.Environments.FirstOrDefault(
+            environment => string.Equals(environment.Name, value, StringComparison.Ordinal));
+        LoadEnvironmentEditor(_activeEnvironment);
     }
 
     private bool CanSend() => !IsSending && !IsWorkspaceBusy;
@@ -116,11 +146,134 @@ public partial class MainViewModel : ViewModelBase
     private bool CanSaveRequest() =>
         !IsWorkspaceBusy && !IsSending && _workspaceSnapshot is not null;
 
+    private bool CanEditEnvironment() =>
+        !IsWorkspaceBusy && !IsSending && _workspaceSnapshot is not null;
+
     [RelayCommand]
     private void AddQueryParameter() => QueryParameters.Add(new RequestFieldViewModel());
 
     [RelayCommand]
     private void AddHeader() => Headers.Add(new RequestFieldViewModel());
+
+    [RelayCommand(CanExecute = nameof(CanEditEnvironment))]
+    private void NewEnvironment()
+    {
+        _editingEnvironmentId = null;
+        EnvironmentDraftName = "New environment";
+        EnvironmentVariables.Clear();
+        EnvironmentVariables.Add(new EnvironmentVariableViewModel("BASE_URL"));
+        WorkspaceStatus = "New environment";
+    }
+
+    [RelayCommand(CanExecute = nameof(CanEditEnvironment))]
+    private void AddEnvironmentVariable() =>
+        EnvironmentVariables.Add(new EnvironmentVariableViewModel());
+
+    [RelayCommand(CanExecute = nameof(CanEditEnvironment))]
+    private async Task SaveEnvironmentAsync(CancellationToken cancellationToken)
+    {
+        if (_workspaceSnapshot is null || _workspaceDirectory is null)
+        {
+            return;
+        }
+
+        IsWorkspaceBusy = true;
+        WorkspaceStatus = "Saving environment...";
+
+        try
+        {
+            var environmentName = EnvironmentDraftName.Trim();
+            if (string.IsNullOrWhiteSpace(environmentName))
+            {
+                throw new ArgumentException("An environment name is required.");
+            }
+
+            if (_workspaceSnapshot.Environments.Any(environment =>
+                environment.Id != _editingEnvironmentId &&
+                string.Equals(environment.Name, environmentName, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new ArgumentException($"Environment '{environmentName}' already exists.");
+            }
+
+            var variables = EnvironmentVariables
+                .Where(variable => !string.IsNullOrWhiteSpace(variable.Name))
+                .Select(variable => new EnvironmentVariable(
+                    variable.Name.Trim(),
+                    variable.IsSecret ? null : variable.Value,
+                    variable.IsSecret))
+                .ToArray();
+            var environmentId = _editingEnvironmentId ?? Guid.NewGuid();
+            var environment = new EnvironmentDocument
+            {
+                Id = environmentId,
+                Name = environmentName,
+                Variables = variables,
+            };
+
+            var environments = _workspaceSnapshot.Environments.ToList();
+            var environmentIndex = environments.FindIndex(item => item.Id == environmentId);
+            if (environmentIndex >= 0)
+            {
+                environments[environmentIndex] = environment;
+            }
+            else
+            {
+                environments.Add(environment);
+            }
+
+            var references = _workspaceSnapshot.Workspace.Environments.ToList();
+            var referenceIndex = references.FindIndex(reference => reference.Id == environmentId);
+            var reference = new WorkspaceFileReference(
+                environmentId,
+                environmentName,
+                referenceIndex >= 0
+                    ? references[referenceIndex].File
+                    : $"environments/{environmentId:N}.json");
+            if (referenceIndex >= 0)
+            {
+                references[referenceIndex] = reference;
+            }
+            else
+            {
+                references.Add(reference);
+            }
+
+            var updatedSnapshot = _workspaceSnapshot with
+            {
+                Workspace = _workspaceSnapshot.Workspace with { Environments = references },
+                Environments = environments,
+            };
+            await _workspaceStore.SaveAsync(
+                _workspaceDirectory,
+                updatedSnapshot,
+                cancellationToken);
+
+            await SaveSecretValuesAsync(
+                _workspaceSnapshot.Workspace.Id,
+                environment,
+                cancellationToken);
+
+            ApplyWorkspace(
+                updatedSnapshot,
+                _workspaceDirectory,
+                _selectedRequestId,
+                _selectedCollectionId,
+                environment.Id);
+            WorkspaceStatus = $"Saved {environment.Name}";
+        }
+        catch (OperationCanceledException)
+        {
+            WorkspaceStatus = "Environment save cancelled";
+        }
+        catch (Exception exception)
+        {
+            ShowWorkspaceError("Could not save environment", exception);
+        }
+        finally
+        {
+            IsWorkspaceBusy = false;
+        }
+    }
 
     [RelayCommand(CanExecute = nameof(CanSaveRequest))]
     private void NewRequest()
@@ -256,21 +409,7 @@ public partial class MainViewModel : ViewModelBase
 
         try
         {
-            var request = CreateCurrentApiRequest();
-            var requestName = string.IsNullOrWhiteSpace(RequestName)
-                ? $"{request.Method} {request.Url.AbsolutePath}"
-                : RequestName.Trim();
-            var document = new RequestDocument
-            {
-                Id = _selectedRequestId ?? Guid.NewGuid(),
-                Name = requestName,
-                Method = request.Method,
-                Url = request.Url.AbsoluteUri,
-                QueryParameters = request.QueryParameters,
-                Headers = request.Headers,
-                Body = request.Body,
-                TimeoutSeconds = (int)request.Timeout.TotalSeconds,
-            };
+            var document = CreateCurrentRequestDocument(_selectedRequestId ?? Guid.NewGuid());
 
             var workspace = _workspaceSnapshot.Workspace;
             var collections = _workspaceSnapshot.Collections.ToList();
@@ -341,11 +480,31 @@ public partial class MainViewModel : ViewModelBase
 
         try
         {
-            request = CreateCurrentApiRequest();
+            var requestDocument = CreateCurrentRequestDocument(
+                _selectedRequestId ?? Guid.NewGuid());
+            request = await _templateResolver.ResolveAsync(
+                _workspaceSnapshot?.Workspace.Id ?? Guid.Empty,
+                _activeEnvironment,
+                requestDocument,
+                cancellationToken);
         }
         catch (ArgumentException exception)
         {
             ResponseStatus = "Invalid request";
+            ResponseBody = exception.Message;
+            HasResponse = true;
+            return;
+        }
+        catch (RequestTemplateResolutionException exception)
+        {
+            ResponseStatus = "Missing variables";
+            ResponseBody = exception.Message;
+            HasResponse = true;
+            return;
+        }
+        catch (SecretVaultUnavailableException exception)
+        {
+            ResponseStatus = "Secret vault unavailable";
             ResponseBody = exception.Message;
             HasResponse = true;
             return;
@@ -394,15 +553,40 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    private ApiRequest CreateCurrentApiRequest()
+    private RequestDocument CreateCurrentRequestDocument(Guid requestId)
     {
         if (TimeoutSeconds is < 1 or > 600)
         {
             throw new ArgumentException("Request timeout must be between 1 and 600 seconds.");
         }
 
-        return ApiRequest.Create(SelectedMethod, Url) with
+        if (string.IsNullOrWhiteSpace(SelectedMethod))
         {
+            throw new ArgumentException("An HTTP method is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(Url))
+        {
+            throw new ArgumentException("A request URL is required.");
+        }
+
+        var isHttpUrl = Uri.TryCreate(Url, UriKind.Absolute, out var parsedUrl) &&
+            (parsedUrl.Scheme == Uri.UriSchemeHttp || parsedUrl.Scheme == Uri.UriSchemeHttps);
+        if (!isHttpUrl && !RequestTemplate.ContainsVariables(Url))
+        {
+            throw new ArgumentException("A valid HTTP URL or URL template is required.");
+        }
+
+        var name = string.IsNullOrWhiteSpace(RequestName)
+            ? $"{SelectedMethod.Trim().ToUpperInvariant()} request"
+            : RequestName.Trim();
+
+        return new RequestDocument
+        {
+            Id = requestId,
+            Name = name,
+            Method = SelectedMethod.Trim().ToUpperInvariant(),
+            Url = Url.Trim(),
             QueryParameters = QueryParameters
                 .Where(field => field.IsEnabled && !string.IsNullOrWhiteSpace(field.Name))
                 .Select(field => new RequestField(field.Name.Trim(), field.Value))
@@ -412,7 +596,7 @@ public partial class MainViewModel : ViewModelBase
                 .Select(field => new RequestField(field.Name.Trim(), field.Value))
                 .ToArray(),
             Body = CreateBody(),
-            Timeout = TimeSpan.FromSeconds((double)TimeoutSeconds),
+            TimeoutSeconds = (int)TimeoutSeconds,
         };
     }
 
@@ -429,7 +613,8 @@ public partial class MainViewModel : ViewModelBase
         WorkspaceSnapshot snapshot,
         string directory,
         Guid? selectedRequestId = null,
-        Guid? selectedCollectionId = null)
+        Guid? selectedCollectionId = null,
+        Guid? selectedEnvironmentId = null)
     {
         _workspaceSnapshot = snapshot;
         _workspaceDirectory = directory;
@@ -438,7 +623,25 @@ public partial class MainViewModel : ViewModelBase
 
         WorkspaceName = snapshot.Workspace.Name;
         WorkspaceLocation = directory;
-        EnvironmentName = snapshot.Environments.FirstOrDefault()?.Name ?? "No environment";
+        EnvironmentNames.Clear();
+        if (snapshot.Environments.Count == 0)
+        {
+            EnvironmentNames.Add("No environment");
+        }
+        else
+        {
+            foreach (var environment in snapshot.Environments)
+            {
+                EnvironmentNames.Add(environment.Name);
+            }
+        }
+
+        _activeEnvironment = selectedEnvironmentId is null
+            ? snapshot.Environments.FirstOrDefault()
+            : snapshot.Environments.FirstOrDefault(
+                environment => environment.Id == selectedEnvironmentId);
+        EnvironmentName = _activeEnvironment?.Name ?? EnvironmentNames[0];
+        LoadEnvironmentEditor(_activeEnvironment);
 
         Collections.Clear();
         foreach (var collection in snapshot.Collections)
@@ -454,6 +657,55 @@ public partial class MainViewModel : ViewModelBase
 
         SaveRequestCommand.NotifyCanExecuteChanged();
         NewRequestCommand.NotifyCanExecuteChanged();
+        NewEnvironmentCommand.NotifyCanExecuteChanged();
+        AddEnvironmentVariableCommand.NotifyCanExecuteChanged();
+        SaveEnvironmentCommand.NotifyCanExecuteChanged();
+    }
+
+    private async Task SaveSecretValuesAsync(
+        Guid workspaceId,
+        EnvironmentDocument environment,
+        CancellationToken cancellationToken)
+    {
+        foreach (var variable in EnvironmentVariables)
+        {
+            if (variable.WasSecret &&
+                (!variable.IsSecret ||
+                 !string.Equals(variable.OriginalName, variable.Name, StringComparison.Ordinal)))
+            {
+                await _secretVault.DeleteAsync(
+                    new SecretReference(workspaceId, environment.Id, variable.OriginalName),
+                    cancellationToken);
+            }
+
+            if (variable.IsSecret && !string.IsNullOrEmpty(variable.Value))
+            {
+                await _secretVault.SetAsync(
+                    new SecretReference(workspaceId, environment.Id, variable.Name.Trim()),
+                    variable.Value,
+                    cancellationToken);
+            }
+        }
+    }
+
+    private void LoadEnvironmentEditor(EnvironmentDocument? environment)
+    {
+        _editingEnvironmentId = environment?.Id;
+        EnvironmentDraftName = environment?.Name ?? "Development";
+        EnvironmentVariables.Clear();
+
+        if (environment is null)
+        {
+            return;
+        }
+
+        foreach (var variable in environment.Variables)
+        {
+            EnvironmentVariables.Add(new EnvironmentVariableViewModel(
+                variable.Name,
+                variable.IsSecret ? string.Empty : variable.Value ?? string.Empty,
+                variable.IsSecret));
+        }
     }
 
     private void OpenRequest(RequestDocument request, Guid collectionId)
