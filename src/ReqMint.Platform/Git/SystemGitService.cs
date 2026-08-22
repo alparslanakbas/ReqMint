@@ -190,6 +190,152 @@ public sealed class SystemGitService : IGitService
         return StageResult(workspaceRelativePath, GitStageResultState.Staged);
     }
 
+    public async Task<GitCommitPreflight> GetCommitPreflightAsync(
+        string workspaceDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workspaceDirectory);
+        var fullPath = Path.GetFullPath(workspaceDirectory);
+        var status = await GetStatusAsync(fullPath, cancellationToken);
+        if (status is null)
+        {
+            return CommitPreflight(GitCommitPreflightState.NoStagedReqMintFiles);
+        }
+
+        var stagedChanges = status.Changes
+            .Where(change => change.HasStagedChanges)
+            .ToArray();
+        var stagedReqMintChanges = stagedChanges
+            .Where(change => ReqMintGitFileClassifier.IsManaged(change.Path))
+            .ToArray();
+        var stagedPaths = stagedReqMintChanges
+            .Select(change => change.Path)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        if (status.Changes.Any(change => change.IsConflict))
+        {
+            return CommitPreflight(
+                GitCommitPreflightState.Conflicts,
+                stagedPaths);
+        }
+
+        if (stagedReqMintChanges.Length == 0)
+        {
+            return CommitPreflight(GitCommitPreflightState.NoStagedReqMintFiles);
+        }
+
+        var otherStagedFileCount = stagedChanges.Length - stagedReqMintChanges.Length;
+        if (otherStagedFileCount > 0)
+        {
+            return CommitPreflight(
+                GitCommitPreflightState.ContainsOtherStagedFiles,
+                stagedPaths,
+                otherStagedFileCount);
+        }
+
+        var warningCount = 0;
+        var unscannedCount = 0;
+        foreach (var path in stagedPaths)
+        {
+            var scan = await ScanStagedFileAsync(fullPath, path, cancellationToken);
+            warningCount += scan.Findings.Count;
+            unscannedCount += scan.UnscannedFiles.Count;
+        }
+
+        return warningCount > 0 || unscannedCount > 0
+            ? new GitCommitPreflight
+            {
+                State = GitCommitPreflightState.BlockedBySecurity,
+                StagedPaths = stagedPaths,
+                SecurityWarningCount = warningCount,
+                UnscannedFileCount = unscannedCount,
+            }
+            : CommitPreflight(GitCommitPreflightState.Ready, stagedPaths);
+    }
+
+    public async Task<GitCommitResult> CommitAsync(
+        string workspaceDirectory,
+        string message,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workspaceDirectory);
+        if (!GitCommitMessageValidator.IsValid(message))
+        {
+            return new GitCommitResult { State = GitCommitResultState.InvalidMessage };
+        }
+
+        var fullPath = Path.GetFullPath(workspaceDirectory);
+        var preflight = await GetCommitPreflightAsync(fullPath, cancellationToken);
+        if (!preflight.IsReady)
+        {
+            return new GitCommitResult
+            {
+                State = GitCommitResultState.PreflightBlocked,
+                Preflight = preflight,
+            };
+        }
+
+        var emptyHooksDirectory = Path.Combine(
+            Path.GetTempPath(),
+            $"ReqMint.GitHooks.{Guid.NewGuid():N}");
+        Directory.CreateDirectory(emptyHooksDirectory);
+        GitCommandResult commit;
+        try
+        {
+            commit = await RunAsync(
+                [
+                    "-c", $"core.hooksPath={emptyHooksDirectory}",
+                    "-C", fullPath,
+                    "commit", "--quiet", "-m", message,
+                ],
+                cancellationToken);
+        }
+        finally
+        {
+            TryDeleteDirectory(emptyHooksDirectory);
+        }
+
+        if (commit.ExitCode != 0)
+        {
+            throw new GitCommandException(commit.StandardError.Trim());
+        }
+
+        var revision = await RunAsync(
+            ["-C", fullPath, "rev-parse", "--short=12", "HEAD"],
+            cancellationToken,
+            maximumOutputCharacters: 256);
+        return new GitCommitResult
+        {
+            State = GitCommitResultState.Committed,
+            Preflight = preflight,
+            CommitId = revision.ExitCode == 0 ? revision.StandardOutput.Trim() : string.Empty,
+        };
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        try
+        {
+            Directory.Delete(path, recursive: false);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
+
+    private static GitCommitPreflight CommitPreflight(
+        GitCommitPreflightState state,
+        IReadOnlyList<string>? stagedPaths = null,
+        int otherStagedFileCount = 0) => new()
+        {
+            State = state,
+            StagedPaths = stagedPaths ?? [],
+            OtherStagedFileCount = otherStagedFileCount,
+        };
+
     private static bool PathsEqual(string first, string second) => string.Equals(
         NormalizeRelativePath(first),
         NormalizeRelativePath(second),

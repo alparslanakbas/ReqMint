@@ -16,6 +16,15 @@ public interface IGitService
         string workspaceDirectory,
         string workspaceRelativePath,
         CancellationToken cancellationToken = default);
+
+    Task<GitCommitPreflight> GetCommitPreflightAsync(
+        string workspaceDirectory,
+        CancellationToken cancellationToken = default);
+
+    Task<GitCommitResult> CommitAsync(
+        string workspaceDirectory,
+        string message,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record GitRepositoryStatus
@@ -70,6 +79,64 @@ public enum GitStageResultState
     Staged,
     BlockedBySecurity,
     NotEligible,
+}
+
+public sealed record GitCommitPreflight
+{
+    public GitCommitPreflightState State { get; init; } =
+        GitCommitPreflightState.NoStagedReqMintFiles;
+
+    public IReadOnlyList<string> StagedPaths { get; init; } = [];
+
+    public int OtherStagedFileCount { get; init; }
+
+    public int SecurityWarningCount { get; init; }
+
+    public int UnscannedFileCount { get; init; }
+
+    public bool IsReady => State == GitCommitPreflightState.Ready;
+}
+
+public enum GitCommitPreflightState
+{
+    Ready,
+    NoStagedReqMintFiles,
+    Conflicts,
+    ContainsOtherStagedFiles,
+    BlockedBySecurity,
+}
+
+public sealed record GitCommitResult
+{
+    public GitCommitResultState State { get; init; } = GitCommitResultState.PreflightBlocked;
+
+    public GitCommitPreflight Preflight { get; init; } = new();
+
+    public string CommitId { get; init; } = string.Empty;
+}
+
+public enum GitCommitResultState
+{
+    Committed,
+    InvalidMessage,
+    PreflightBlocked,
+}
+
+public static class GitCommitMessageValidator
+{
+    public const int MinimumLength = 3;
+    public const int MaximumLength = 72;
+
+    public static bool IsValid(string? message)
+    {
+        if (string.IsNullOrWhiteSpace(message) || message != message.Trim())
+        {
+            return false;
+        }
+
+        return message.Length is >= MinimumLength and <= MaximumLength
+            && !message.Any(character => character is '\r' or '\n' || char.IsControl(character));
+    }
 }
 
 public sealed record GitDiffPreview

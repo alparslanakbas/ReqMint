@@ -535,6 +535,92 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task CommittingStagedFiles_RequiresPreflightAndExplicitConfirmation()
+    {
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = "C:/repos/commerce",
+                Branch = "main",
+                Changes = [new GitFileChange("collections/orders.json", "M ")],
+            },
+            CommitPreflight = new GitCommitPreflight
+            {
+                State = GitCommitPreflightState.Ready,
+                StagedPaths = ["collections/orders.json"],
+            },
+            CommitResult = new GitCommitResult
+            {
+                State = GitCommitResultState.Committed,
+                CommitId = "abc123def456",
+            },
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: git);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        Assert.True(viewModel.IsGitCommitReviewAvailable);
+
+        await viewModel.ReviewGitCommitCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsGitCommitVisible);
+        Assert.Equal(["collections/orders.json"], viewModel.GitCommitFiles);
+        Assert.Equal(1, git.CommitPreflightCallCount);
+        Assert.Equal(0, git.CommitCallCount);
+
+        viewModel.GitCommitMessage = "chore: update orders request";
+        await viewModel.ConfirmGitCommitCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, git.CommitCallCount);
+        Assert.Equal("chore: update orders request", git.LastCommitMessage);
+        Assert.Equal("Commit abc123def456 created safely", viewModel.WorkspaceStatus);
+        Assert.False(viewModel.IsGitCommitVisible);
+    }
+
+    [Fact]
+    public async Task CommitReview_ExplainsWhyMixedStagedScopeIsBlocked()
+    {
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = "C:/repos/commerce",
+                Branch = "main",
+                Changes =
+                [
+                    new GitFileChange("collections/orders.json", "M "),
+                    new GitFileChange("src/Program.cs", "M "),
+                ],
+            },
+            CommitPreflight = new GitCommitPreflight
+            {
+                State = GitCommitPreflightState.ContainsOtherStagedFiles,
+                StagedPaths = ["collections/orders.json"],
+                OtherStagedFileCount = 1,
+            },
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            gitService: git);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        Assert.True(viewModel.IsGitCommitReviewAvailable);
+
+        await viewModel.ReviewGitCommitCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.IsGitCommitVisible);
+        Assert.Equal(
+            "Commit blocked because non-ReqMint files are staged",
+            viewModel.WorkspaceStatus);
+        Assert.Equal(1, git.CommitPreflightCallCount);
+        Assert.Equal(0, git.CommitCallCount);
+    }
+
+    [Fact]
     public async Task OpeningWorkspace_DoesNotListChangesOutsideReqMintScope()
     {
         var git = new StubGitService
@@ -777,6 +863,22 @@ public sealed class MainViewModelWorkspaceTests
 
         public string? LastStagedPath { get; private set; }
 
+        public GitCommitPreflight CommitPreflight { get; init; } = new()
+        {
+            State = GitCommitPreflightState.NoStagedReqMintFiles,
+        };
+
+        public GitCommitResult CommitResult { get; init; } = new()
+        {
+            State = GitCommitResultState.PreflightBlocked,
+        };
+
+        public int CommitPreflightCallCount { get; private set; }
+
+        public int CommitCallCount { get; private set; }
+
+        public string? LastCommitMessage { get; private set; }
+
         public Task<GitRepositoryStatus?> GetStatusAsync(
             string workspaceDirectory,
             CancellationToken cancellationToken = default)
@@ -815,6 +917,24 @@ public sealed class MainViewModelWorkspaceTests
                 Path = workspaceRelativePath,
                 State = StageState,
             });
+        }
+
+        public Task<GitCommitPreflight> GetCommitPreflightAsync(
+            string workspaceDirectory,
+            CancellationToken cancellationToken = default)
+        {
+            CommitPreflightCallCount++;
+            return Task.FromResult(CommitPreflight);
+        }
+
+        public Task<GitCommitResult> CommitAsync(
+            string workspaceDirectory,
+            string message,
+            CancellationToken cancellationToken = default)
+        {
+            CommitCallCount++;
+            LastCommitMessage = message;
+            return Task.FromResult(CommitResult);
         }
     }
 

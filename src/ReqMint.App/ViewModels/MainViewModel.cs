@@ -41,6 +41,8 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<GitDiffLineViewModel> GitDiffLines { get; } = [];
 
+    public ObservableCollection<string> GitCommitFiles { get; } = [];
+
     public ObservableCollection<string> EnvironmentNames { get; } = ["No environment"];
 
     public ObservableCollection<EnvironmentVariableViewModel> EnvironmentVariables { get; } = [];
@@ -139,6 +141,7 @@ public partial class MainViewModel : ViewModelBase
     public bool IsGitSecuritySummaryVisible => !string.IsNullOrEmpty(GitSecuritySummary);
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRequestWorkspaceVisible))]
     public partial bool IsGitDiffVisible { get; set; }
 
     [ObservableProperty]
@@ -170,6 +173,31 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial bool IsGitStageBusy { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsGitCommitReviewAvailable { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRequestWorkspaceVisible))]
+    public partial bool IsGitCommitVisible { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsGitCommitBusy { get; set; }
+
+    [ObservableProperty]
+    public partial string GitCommitMessage { get; set; } = "chore: update ReqMint workspace";
+
+    [ObservableProperty]
+    public partial string GitCommitSummary { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsGitCommitValidationVisible))]
+    public partial string GitCommitValidationMessage { get; set; } = string.Empty;
+
+    public bool IsRequestWorkspaceVisible => !IsGitDiffVisible && !IsGitCommitVisible;
+
+    public bool IsGitCommitValidationVisible =>
+        !string.IsNullOrEmpty(GitCommitValidationMessage);
 
     public bool IsGitDiffLineListEmpty => GitDiffLines.Count == 0;
 

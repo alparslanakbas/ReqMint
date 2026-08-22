@@ -32,4 +32,10 @@ Staging is offered only for a ReqMint-managed file that has working-tree changes
 
 The service re-reads Git status immediately before mutation and rejects stale or ineligible state. It scans the working copy, stages the exact path through a process argument list, then scans the resulting Git-index snapshot. A failed post-stage scan is removed from the index. Other repository files are never included, and staging never triggers commit, pull, or push.
 
-Commit and network workflows remain disabled pending their own safety review.
+## Explicit commit workflow
+
+The commit action appears only when at least one ReqMint file is staged, no merge conflict exists, and no staged file falls outside ReqMint's managed paths. Opening the review reruns an exact Git-index scan and lists every included path. The user supplies a trimmed, single-line summary of 3–72 characters and confirms separately.
+
+Confirmation reruns the full preflight immediately before `git commit`. Any newly introduced conflict, non-ReqMint staged file, secret finding, or unscannable index snapshot blocks the operation. ReqMint never uses bulk working-tree additions during commit and does not pull or push afterward. The initial safe workflow executes the commit with an empty temporary hooks directory so repository hooks cannot introduce hidden side effects; future hook support requires a separate explicit-consent design.
+
+Pull and push workflows remain disabled pending their own safety review.

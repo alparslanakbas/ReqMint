@@ -39,6 +39,7 @@ public partial class MainViewModel
                 : status.Branch;
             GitRepositoryRoot = status.RepositoryRoot;
             CloseGitDiff();
+            CloseGitCommit();
             GitChanges.Clear();
             var managedChanges = status.Changes
                 .Where(change => ReqMintGitFileClassifier.IsManaged(change.Path))
@@ -49,6 +50,8 @@ public partial class MainViewModel
             }
 
             GitConflictCount = managedChanges.Count(change => change.IsConflict);
+            var stagedReqMintCount = managedChanges.Count(change => change.HasStagedChanges);
+            IsGitCommitReviewAvailable = stagedReqMintCount > 0;
 
             var secretScan = managedChanges.Length == 0
                 ? GitSecretScanResult.Empty
@@ -116,6 +119,8 @@ public partial class MainViewModel
         HasGitSecurityWarning = false;
         GitSecretWarningCount = 0;
         GitConflictCount = 0;
+        IsGitCommitReviewAvailable = false;
+        CloseGitCommit();
         GitChanges.Clear();
         CloseGitDiff();
         OnPropertyChanged(nameof(IsGitChangeListEmpty));
@@ -123,6 +128,7 @@ public partial class MainViewModel
 
     private async Task OpenGitDiffAsync(GitFileChange change)
     {
+        CloseGitCommit();
         _selectedGitChange = change;
         GitDiffPath = change.Path;
         HasGitWorkingTreeDiff = change.HasWorkingTreeChanges;
@@ -369,6 +375,159 @@ public partial class MainViewModel
         {
             IsGitStageBusy = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task ReviewGitCommitAsync(CancellationToken cancellationToken)
+    {
+        var workspaceDirectory = _workspaceDirectory;
+        if (!IsGitCommitReviewAvailable
+            || IsGitCommitBusy
+            || workspaceDirectory is null)
+        {
+            return;
+        }
+
+        IsGitCommitBusy = true;
+        GitCommitValidationMessage = string.Empty;
+        try
+        {
+            var preflight = await _gitService.GetCommitPreflightAsync(
+                workspaceDirectory,
+                cancellationToken);
+            if (!preflight.IsReady)
+            {
+                ShowCommitPreflightFailure(preflight);
+                await RefreshGitStatusAsync(workspaceDirectory, cancellationToken);
+                return;
+            }
+
+            CloseGitDiff();
+            GitCommitFiles.Clear();
+            foreach (var path in preflight.StagedPaths)
+            {
+                GitCommitFiles.Add(path);
+            }
+
+            GitCommitSummary = Localize(
+                "GitCommitReadySummary",
+                "{0} staged ReqMint files passed the final security check",
+                preflight.StagedPaths.Count);
+            IsGitCommitVisible = true;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            WorkspaceStatus = Localize(
+                "GitCommitPreflightFailed",
+                "Commit safety check could not be completed");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+        finally
+        {
+            IsGitCommitBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelGitCommit() => CloseGitCommit();
+
+    [RelayCommand]
+    private async Task ConfirmGitCommitAsync(CancellationToken cancellationToken)
+    {
+        var workspaceDirectory = _workspaceDirectory;
+        if (!IsGitCommitVisible || IsGitCommitBusy || workspaceDirectory is null)
+        {
+            return;
+        }
+
+        if (!GitCommitMessageValidator.IsValid(GitCommitMessage))
+        {
+            GitCommitValidationMessage = Localize(
+                "GitCommitMessageInvalid",
+                "Use a single-line commit message between 3 and 72 characters.");
+            return;
+        }
+
+        IsGitCommitBusy = true;
+        GitCommitValidationMessage = string.Empty;
+        try
+        {
+            var result = await _gitService.CommitAsync(
+                workspaceDirectory,
+                GitCommitMessage,
+                cancellationToken);
+            if (result.State == GitCommitResultState.InvalidMessage)
+            {
+                GitCommitValidationMessage = Localize(
+                    "GitCommitMessageInvalid",
+                    "Use a single-line commit message between 3 and 72 characters.");
+                return;
+            }
+
+            if (result.State == GitCommitResultState.PreflightBlocked)
+            {
+                CloseGitCommit();
+                ShowCommitPreflightFailure(result.Preflight);
+                await RefreshGitStatusAsync(workspaceDirectory, cancellationToken);
+                return;
+            }
+
+            CloseGitCommit();
+            WorkspaceStatus = string.IsNullOrEmpty(result.CommitId)
+                ? Localize("GitCommitCompleted", "Commit created safely")
+                : Localize(
+                    "GitCommitCompletedWithId",
+                    "Commit {0} created safely",
+                    result.CommitId);
+            await RefreshGitStatusAsync(workspaceDirectory, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            WorkspaceStatus = Localize("GitCommitFailed", "Commit could not be created");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+        finally
+        {
+            IsGitCommitBusy = false;
+        }
+    }
+
+    private void CloseGitCommit()
+    {
+        IsGitCommitVisible = false;
+        IsGitCommitBusy = false;
+        GitCommitSummary = string.Empty;
+        GitCommitValidationMessage = string.Empty;
+        GitCommitFiles.Clear();
+    }
+
+    private void ShowCommitPreflightFailure(GitCommitPreflight preflight)
+    {
+        WorkspaceStatus = preflight.State switch
+        {
+            GitCommitPreflightState.Conflicts => Localize(
+                "GitCommitBlockedByConflicts",
+                "Commit blocked until all merge conflicts are resolved"),
+            GitCommitPreflightState.ContainsOtherStagedFiles => Localize(
+                "GitCommitBlockedByScope",
+                "Commit blocked because non-ReqMint files are staged"),
+            GitCommitPreflightState.BlockedBySecurity when preflight.SecurityWarningCount > 0 =>
+                Localize(
+                    "GitCommitBlockedBySecrets",
+                    "Commit blocked because the Git index may contain a secret"),
+            GitCommitPreflightState.BlockedBySecurity => Localize(
+                "GitCommitBlockedByScan",
+                "Commit blocked because the Git index could not be inspected safely"),
+            _ => Localize(
+                "GitCommitNoStagedFiles",
+                "There are no staged ReqMint files to commit"),
+        };
     }
 
     private void UpdateGitSecuritySummary(GitSecretScanResult result, int managedChangeCount)

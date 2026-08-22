@@ -186,6 +186,108 @@ public sealed class SystemGitServiceDiffTests
         Assert.Contains("Working version", working.Content, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task GetCommitPreflightAsync_BlocksStagedFilesOutsideReqMintScope()
+    {
+        using var repository = await TemporaryGitRepository.CreateAsync();
+        await repository.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Original\",\"requests\":[]}");
+        await repository.WriteAsync("notes.txt", "original");
+        await repository.CommitAllAsync("initial workspace");
+        await repository.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Changed\",\"requests\":[]}");
+        await repository.WriteAsync("notes.txt", "changed");
+        await repository.RunGitAsync("add", "--", "collections/orders.json", "notes.txt");
+
+        var preflight = await new SystemGitService().GetCommitPreflightAsync(repository.Path);
+
+        Assert.Equal(GitCommitPreflightState.ContainsOtherStagedFiles, preflight.State);
+        Assert.Equal(1, preflight.OtherStagedFileCount);
+        Assert.Equal(["collections/orders.json"], preflight.StagedPaths);
+    }
+
+    [Fact]
+    public async Task GetCommitPreflightAsync_BlocksSecretsInTheGitIndex()
+    {
+        using var repository = await TemporaryGitRepository.CreateAsync();
+        await repository.WriteAsync(
+            "environments/local.json",
+            "{\"variables\":[]}");
+        await repository.CommitAllAsync("initial workspace");
+        await repository.WriteAsync(
+            "environments/local.json",
+            "{\"variables\":[{\"name\":\"API_TOKEN\",\"value\":\"never-commit\",\"isSecret\":true}]}");
+        await repository.RunGitAsync("add", "--", "environments/local.json");
+
+        var preflight = await new SystemGitService().GetCommitPreflightAsync(repository.Path);
+
+        Assert.Equal(GitCommitPreflightState.BlockedBySecurity, preflight.State);
+        Assert.True(preflight.SecurityWarningCount > 0);
+    }
+
+    [Fact]
+    public async Task CommitAsync_CommitsOnlyTheReviewedIndexAndDoesNotPush()
+    {
+        using var repository = await TemporaryGitRepository.CreateAsync();
+        await repository.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Original\",\"requests\":[]}");
+        await repository.WriteAsync("notes.txt", "original");
+        await repository.CommitAllAsync("initial workspace");
+        await repository.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Changed\",\"requests\":[]}");
+        await repository.WriteAsync("notes.txt", "working-only change");
+        await repository.RunGitAsync("add", "--", "collections/orders.json");
+
+        var service = new SystemGitService();
+        var result = await service.CommitAsync(
+            repository.Path,
+            "chore: update orders workspace");
+        var status = await service.GetStatusAsync(repository.Path);
+
+        Assert.Equal(GitCommitResultState.Committed, result.State);
+        Assert.NotEmpty(result.CommitId);
+        Assert.DoesNotContain(
+            status!.Changes,
+            change => change.Path == "collections/orders.json");
+        Assert.Contains(
+            status.Changes,
+            change => change.Path == "notes.txt" && change.Status == " M");
+    }
+
+    [Fact]
+    public async Task CommitAsync_RechecksScopeAfterTheReview()
+    {
+        using var repository = await TemporaryGitRepository.CreateAsync();
+        await repository.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Original\",\"requests\":[]}");
+        await repository.WriteAsync("notes.txt", "original");
+        await repository.CommitAllAsync("initial workspace");
+        await repository.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Changed\",\"requests\":[]}");
+        await repository.RunGitAsync("add", "--", "collections/orders.json");
+
+        var service = new SystemGitService();
+        var review = await service.GetCommitPreflightAsync(repository.Path);
+        Assert.True(review.IsReady);
+
+        await repository.WriteAsync("notes.txt", "staged after review");
+        await repository.RunGitAsync("add", "--", "notes.txt");
+        var result = await service.CommitAsync(
+            repository.Path,
+            "chore: update orders workspace");
+
+        Assert.Equal(GitCommitResultState.PreflightBlocked, result.State);
+        Assert.Equal(
+            GitCommitPreflightState.ContainsOtherStagedFiles,
+            result.Preflight.State);
+    }
+
     private sealed class TemporaryGitRepository : IDisposable
     {
         private TemporaryGitRepository(string path)
