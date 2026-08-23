@@ -346,6 +346,28 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial string CollectionRunRerunUnavailableReason { get; set; } = string.Empty;
 
+    [ObservableProperty]
+    public partial bool IsOnboardingVisible { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsOnboardingWelcomeStep))]
+    [NotifyPropertyChangedFor(nameof(IsOnboardingPrivacyStep))]
+    [NotifyPropertyChangedFor(nameof(IsOnboardingReadyStep))]
+    [NotifyPropertyChangedFor(nameof(CanGoToPreviousOnboardingStep))]
+    [NotifyPropertyChangedFor(nameof(IsOnboardingFinalStep))]
+    public partial int OnboardingStep { get; set; }
+
+    public bool IsOnboardingWelcomeStep => OnboardingStep == 0;
+
+    public bool IsOnboardingPrivacyStep => OnboardingStep == 1;
+
+    public bool IsOnboardingReadyStep => OnboardingStep == 2;
+
+    public bool CanGoToPreviousOnboardingStep => OnboardingStep > 0;
+
+    public bool IsOnboardingFinalStep =>
+        OnboardingStep == JsonAppSettingsService.MaximumOnboardingStep;
+
     public bool IsCollectionRunHistoryEmpty => CollectionRunHistory.Count == 0;
 
     public bool IsCollectionRunnerInteractionEnabled =>
@@ -458,6 +480,7 @@ public partial class MainViewModel : ViewModelBase
         HistoryRetentionLimit = appSettings.Current.HistoryRetentionLimit;
         CollectionRunHistoryRetentionLimit = appSettings.Current.CollectionRunHistoryRetentionLimit;
         ResponsePreviewLimitMegabytes = appSettings.Current.ResponsePreviewLimitMegabytes;
+        InitializeOnboarding(appSettings.Current);
         _cleanRequestDraft = CaptureRequestDraft();
     }
 

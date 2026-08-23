@@ -4,6 +4,7 @@ namespace ReqMint.App.Services;
 
 public sealed class JsonAppSettingsService : IAppSettingsService
 {
+    public const int MaximumOnboardingStep = 2;
     public const int MinimumHistoryRetentionLimit = 25;
     public const int MaximumHistoryRetentionLimit = 2000;
     public const int MinimumCollectionRunHistoryRetentionLimit = 10;
@@ -85,6 +86,13 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             settings.ResponsePreviewLimitMegabytes,
             MinimumResponsePreviewLimitMegabytes,
             MaximumResponsePreviewLimitMegabytes),
+        OnboardingStatus = Enum.IsDefined(settings.OnboardingStatus)
+            ? settings.OnboardingStatus
+            : OnboardingStatus.NotStarted,
+        OnboardingStep = Math.Clamp(
+            settings.OnboardingStep,
+            0,
+            MaximumOnboardingStep),
     };
 
     private static void TryDeleteTemporaryFile(string path)

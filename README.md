@@ -42,6 +42,7 @@ docs/      product, architecture, and migration decisions
 - [Collection Runner data files](docs/COLLECTION_RUN_DATA.md)
 - [Workspace format](docs/WORKSPACE_FORMAT.md)
 - [Localization](docs/LOCALIZATION.md)
+- [Guided onboarding](docs/ONBOARDING.md)
 - [Git integration](docs/GIT_INTEGRATION.md)
 
 ## Build

@@ -16,4 +16,16 @@ public sealed record AppSettings
     public int CollectionRunHistoryRetentionLimit { get; init; } = 50;
 
     public int ResponsePreviewLimitMegabytes { get; init; } = 2;
+
+    public OnboardingStatus OnboardingStatus { get; init; }
+
+    public int OnboardingStep { get; init; }
+}
+
+public enum OnboardingStatus
+{
+    NotStarted,
+    InProgress,
+    Completed,
+    Skipped,
 }

@@ -359,6 +359,67 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public void Onboarding_ResumesAndPersistsCompletionLocally()
+    {
+        var settings = new StubAppSettingsService(new AppSettings
+        {
+            OnboardingStatus = OnboardingStatus.InProgress,
+            OnboardingStep = 1,
+        });
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            appSettings: settings);
+
+        Assert.True(viewModel.IsOnboardingVisible);
+        Assert.True(viewModel.IsOnboardingPrivacyStep);
+
+        viewModel.PreviousOnboardingStepCommand.Execute(null);
+
+        Assert.True(viewModel.IsOnboardingWelcomeStep);
+        Assert.Equal(0, settings.Current.OnboardingStep);
+
+        viewModel.ContinueOnboardingCommand.Execute(null);
+        Assert.True(viewModel.IsOnboardingPrivacyStep);
+
+        viewModel.ContinueOnboardingCommand.Execute(null);
+
+        Assert.True(viewModel.IsOnboardingReadyStep);
+        Assert.Equal(OnboardingStatus.InProgress, settings.Current.OnboardingStatus);
+        Assert.Equal(2, settings.Current.OnboardingStep);
+
+        viewModel.ContinueOnboardingCommand.Execute(null);
+
+        Assert.False(viewModel.IsOnboardingVisible);
+        Assert.Equal(OnboardingStatus.Completed, settings.Current.OnboardingStatus);
+        Assert.Equal("Welcome to ReqMint", viewModel.WorkspaceStatus);
+    }
+
+    [Fact]
+    public void Onboarding_CanBeSkippedAndRestartedFromSettings()
+    {
+        var settings = new StubAppSettingsService();
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            appSettings: settings);
+
+        Assert.True(viewModel.IsOnboardingVisible);
+
+        viewModel.SkipOnboardingCommand.Execute(null);
+
+        Assert.False(viewModel.IsOnboardingVisible);
+        Assert.Equal(OnboardingStatus.Skipped, settings.Current.OnboardingStatus);
+
+        viewModel.RestartOnboardingCommand.Execute(null);
+
+        Assert.True(viewModel.IsOnboardingVisible);
+        Assert.True(viewModel.IsOnboardingWelcomeStep);
+        Assert.Equal(OnboardingStatus.InProgress, settings.Current.OnboardingStatus);
+        Assert.Equal(0, settings.Current.OnboardingStep);
+    }
+
+    [Fact]
     public async Task OpeningWorkspace_LoadsReadOnlyGitStatus()
     {
         var git = new StubGitService
@@ -1490,7 +1551,12 @@ public sealed class MainViewModelWorkspaceTests
 
     private sealed class StubAppSettingsService : IAppSettingsService
     {
-        public AppSettings Current { get; private set; } = new();
+        public StubAppSettingsService(AppSettings? settings = null)
+        {
+            Current = settings ?? new AppSettings();
+        }
+
+        public AppSettings Current { get; private set; }
 
         public void Update(AppSettings settings) => Current = settings;
     }

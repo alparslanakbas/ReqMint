@@ -17,6 +17,8 @@ public sealed class JsonAppSettingsServiceTests
             HistoryRetentionLimit = 350,
             CollectionRunHistoryRetentionLimit = 80,
             ResponsePreviewLimitMegabytes = 7,
+            OnboardingStatus = OnboardingStatus.InProgress,
+            OnboardingStep = 2,
         });
         var reloaded = new JsonAppSettingsService(directory.Path);
 
@@ -24,6 +26,8 @@ public sealed class JsonAppSettingsServiceTests
         Assert.Equal(350, reloaded.Current.HistoryRetentionLimit);
         Assert.Equal(80, reloaded.Current.CollectionRunHistoryRetentionLimit);
         Assert.Equal(7, reloaded.Current.ResponsePreviewLimitMegabytes);
+        Assert.Equal(OnboardingStatus.InProgress, reloaded.Current.OnboardingStatus);
+        Assert.Equal(2, reloaded.Current.OnboardingStep);
     }
 
     [Theory]
@@ -78,6 +82,25 @@ public sealed class JsonAppSettingsServiceTests
         var store = new JsonAppSettingsService(directory.Path);
 
         Assert.Equal(expected, store.Current.CollectionRunHistoryRetentionLimit);
+    }
+
+    [Fact]
+    public void LoadingSettings_NormalizesInvalidOnboardingProgress()
+    {
+        using var directory = new TemporaryDirectory();
+        var path = System.IO.Path.Combine(directory.Path, "ui-settings.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new AppSettings
+        {
+            OnboardingStatus = (OnboardingStatus)999,
+            OnboardingStep = 999,
+        }));
+
+        var store = new JsonAppSettingsService(directory.Path);
+
+        Assert.Equal(OnboardingStatus.NotStarted, store.Current.OnboardingStatus);
+        Assert.Equal(
+            JsonAppSettingsService.MaximumOnboardingStep,
+            store.Current.OnboardingStep);
     }
 
     private sealed class TemporaryDirectory : IDisposable

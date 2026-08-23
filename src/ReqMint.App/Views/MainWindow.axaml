@@ -597,6 +597,18 @@
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
+                                <TextBlock Text="{DynamicResource OnboardingSettingsTitle}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,10,0,0" />
+                                <Grid ColumnDefinitions="Auto,12,*">
+                                    <Button Content="{DynamicResource OnboardingRestart}"
+                                            Command="{Binding RestartOnboardingCommand}" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{DynamicResource OnboardingSettingsHelp}"
+                                               Classes="secondary"
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center" />
+                                </Grid>
                                 <TextBlock Text="{DynamicResource TextHistoryRetention}" FontWeight="SemiBold" Margin="0,10,0,0" />
                                 <Grid ColumnDefinitions="160,10,*">
                                     <NumericUpDown Grid.Column="0"
@@ -1450,6 +1462,190 @@
                 <TextBlock Grid.Column="2" Text="API work, without the weight." Classes="secondary" VerticalAlignment="Center" FontSize="11" />
                 <TextBlock Grid.Column="4" Text="{Binding WorkspaceStatus}" Classes="secondary" VerticalAlignment="Center" FontSize="11" />
             </Grid>
+        </Border>
+
+        <!-- Local, optional first-run introduction -->
+        <Border Grid.RowSpan="3"
+                Background="{DynamicResource OverlayBrush}"
+                IsVisible="{Binding IsOnboardingVisible}">
+            <Border Width="680"
+                    MinHeight="440"
+                    Padding="36"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="16">
+                <Grid RowDefinitions="Auto,24,*,28,Auto">
+                    <Grid ColumnDefinitions="Auto,12,*,Auto">
+                        <Border Width="44"
+                                Height="44"
+                                CornerRadius="12"
+                                Background="{DynamicResource AccentBrush}">
+                            <TextBlock Text="R➜"
+                                       Foreground="{DynamicResource AppBackgroundBrush}"
+                                       FontWeight="Bold"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                            <TextBlock Text="ReqMint"
+                                       FontSize="20"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Text="{DynamicResource OnboardingStepOne}"
+                                       IsVisible="{Binding IsOnboardingWelcomeStep}"
+                                       Classes="secondary"
+                                       FontSize="11" />
+                            <TextBlock Text="{DynamicResource OnboardingStepTwo}"
+                                       IsVisible="{Binding IsOnboardingPrivacyStep}"
+                                       Classes="secondary"
+                                       FontSize="11" />
+                            <TextBlock Text="{DynamicResource OnboardingStepThree}"
+                                       IsVisible="{Binding IsOnboardingReadyStep}"
+                                       Classes="secondary"
+                                       FontSize="11" />
+                        </StackPanel>
+                        <Button Grid.Column="3"
+                                Content="{DynamicResource OnboardingSkip}"
+                                Command="{Binding SkipOnboardingCommand}" />
+                    </Grid>
+
+                    <Grid Grid.Row="2">
+                        <StackPanel IsVisible="{Binding IsOnboardingWelcomeStep}"
+                                    Spacing="14"
+                                    VerticalAlignment="Center">
+                            <TextBlock Text="{DynamicResource OnboardingWelcomeTitle}"
+                                       FontSize="30"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{DynamicResource OnboardingWelcomeBody}"
+                                       Classes="secondary"
+                                       FontSize="15"
+                                       LineHeight="23"
+                                       TextWrapping="Wrap" />
+                            <Border Margin="0,8,0,0"
+                                    Padding="16"
+                                    CornerRadius="10"
+                                    Background="{DynamicResource SurfaceRaisedBrush}">
+                                <TextBlock Text="{DynamicResource OnboardingWelcomeNote}"
+                                           TextWrapping="Wrap" />
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel IsVisible="{Binding IsOnboardingPrivacyStep}"
+                                    Spacing="14"
+                                    VerticalAlignment="Center">
+                            <TextBlock Text="{DynamicResource OnboardingPrivacyTitle}"
+                                       FontSize="30"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{DynamicResource OnboardingPrivacyBody}"
+                                       Classes="secondary"
+                                       FontSize="15"
+                                       LineHeight="23"
+                                       TextWrapping="Wrap" />
+                            <Grid Margin="0,8,0,0" ColumnDefinitions="*,12,*">
+                                <Border Padding="16"
+                                        CornerRadius="10"
+                                        Background="{DynamicResource SurfaceRaisedBrush}">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="{DynamicResource OnboardingPrivacyLocalTitle}"
+                                                   FontWeight="SemiBold" />
+                                        <TextBlock Text="{DynamicResource OnboardingPrivacyLocalBody}"
+                                                   Classes="secondary"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="2"
+                                        Padding="16"
+                                        CornerRadius="10"
+                                        Background="{DynamicResource SurfaceRaisedBrush}">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="{DynamicResource OnboardingPrivacyGitTitle}"
+                                                   FontWeight="SemiBold" />
+                                        <TextBlock Text="{DynamicResource OnboardingPrivacyGitBody}"
+                                                   Classes="secondary"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel IsVisible="{Binding IsOnboardingReadyStep}"
+                                    Spacing="14"
+                                    VerticalAlignment="Center">
+                            <TextBlock Text="{DynamicResource OnboardingReadyTitle}"
+                                       FontSize="30"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{DynamicResource OnboardingReadyBody}"
+                                       Classes="secondary"
+                                       FontSize="15"
+                                       LineHeight="23"
+                                       TextWrapping="Wrap" />
+                            <Border Margin="0,8,0,0"
+                                    Padding="16"
+                                    CornerRadius="10"
+                                    Background="{DynamicResource SurfaceRaisedBrush}"
+                                    BorderBrush="{DynamicResource AccentMutedBrush}"
+                                    BorderThickness="1">
+                                <TextBlock Text="{DynamicResource OnboardingReadyNote}"
+                                           TextWrapping="Wrap" />
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="3"
+                          HorizontalAlignment="Center"
+                          ColumnDefinitions="8,8,8,8,8">
+                        <Ellipse Width="8" Height="8" Fill="{DynamicResource BorderBrush}" />
+                        <Ellipse Width="8"
+                                 Height="8"
+                                 Fill="{DynamicResource AccentBrush}"
+                                 IsVisible="{Binding IsOnboardingWelcomeStep}" />
+                        <Ellipse Grid.Column="2"
+                                 Width="8"
+                                 Height="8"
+                                 Fill="{DynamicResource BorderBrush}" />
+                        <Ellipse Grid.Column="2"
+                                 Width="8"
+                                 Height="8"
+                                 Fill="{DynamicResource AccentBrush}"
+                                 IsVisible="{Binding IsOnboardingPrivacyStep}" />
+                        <Ellipse Grid.Column="4"
+                                 Width="8"
+                                 Height="8"
+                                 Fill="{DynamicResource BorderBrush}" />
+                        <Ellipse Grid.Column="4"
+                                 Width="8"
+                                 Height="8"
+                                 Fill="{DynamicResource AccentBrush}"
+                                 IsVisible="{Binding IsOnboardingReadyStep}" />
+                    </Grid>
+
+                    <Grid Grid.Row="4" ColumnDefinitions="Auto,*,Auto">
+                        <Button Content="{DynamicResource OnboardingPrevious}"
+                                IsVisible="{Binding CanGoToPreviousOnboardingStep}"
+                                Command="{Binding PreviousOnboardingStepCommand}" />
+                        <Button Grid.Column="2"
+                                Classes="primary"
+                                Content="{DynamicResource OnboardingStart}"
+                                IsVisible="{Binding IsOnboardingWelcomeStep}"
+                                Command="{Binding ContinueOnboardingCommand}" />
+                        <Button Grid.Column="2"
+                                Classes="primary"
+                                Content="{DynamicResource OnboardingContinue}"
+                                IsVisible="{Binding IsOnboardingPrivacyStep}"
+                                Command="{Binding ContinueOnboardingCommand}" />
+                        <Button Grid.Column="2"
+                                Classes="primary"
+                                Content="{DynamicResource OnboardingFinish}"
+                                IsVisible="{Binding IsOnboardingFinalStep}"
+                                Command="{Binding ContinueOnboardingCommand}" />
+                    </Grid>
+                </Grid>
+            </Border>
         </Border>
     </Grid>
 </Window>

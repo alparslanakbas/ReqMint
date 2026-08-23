@@ -19,6 +19,7 @@
             <Color x:Key="DiffAdded500">#4ADE80</Color>
             <Color x:Key="DiffRemoved500">#FB7185</Color>
             <Color x:Key="DiffHunk500">#60A5FA</Color>
+            <Color x:Key="OverlayColor">#D908110F</Color>
 
             <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource Graphite950}" />
             <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource Graphite900}" />
@@ -34,6 +35,7 @@
             <SolidColorBrush x:Key="DiffAddedBrush" Color="{StaticResource DiffAdded500}" />
             <SolidColorBrush x:Key="DiffRemovedBrush" Color="{StaticResource DiffRemoved500}" />
             <SolidColorBrush x:Key="DiffHunkBrush" Color="{StaticResource DiffHunk500}" />
+            <SolidColorBrush x:Key="OverlayBrush" Color="{StaticResource OverlayColor}" />
         </ResourceDictionary>
     </Application.Resources>
 
