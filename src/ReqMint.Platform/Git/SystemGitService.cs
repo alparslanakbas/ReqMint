@@ -484,29 +484,20 @@ public sealed class SystemGitService : IGitService
             };
         }
 
-        var workspacePrefix = Path.GetRelativePath(status.RepositoryRoot, fullPath)
-            .Replace('\\', '/')
-            .Trim('/');
-        if (workspacePrefix == ".")
+        var workspacePrefix = await GetWorkspacePrefixAsync(fullPath, cancellationToken);
+        if (workspacePrefix is null)
         {
-            workspacePrefix = string.Empty;
+            return FastForwardPreflight(
+                GitFastForwardPreflightState.PreviewUnavailable,
+                remote);
         }
 
         var managedPaths = new List<string>(changedPaths.Length);
         var otherChangedFileCount = 0;
         foreach (var changedPath in changedPaths)
         {
-            var normalizedPath = changedPath.Replace('\\', '/');
-            var workspacePath = string.IsNullOrEmpty(workspacePrefix)
-                ? normalizedPath
-                : normalizedPath.StartsWith(
-                    workspacePrefix + "/",
-                    OperatingSystem.IsWindows()
-                        ? StringComparison.OrdinalIgnoreCase
-                        : StringComparison.Ordinal)
-                    ? normalizedPath[(workspacePrefix.Length + 1)..]
-                    : string.Empty;
-            if (!ReqMintGitFileClassifier.IsManaged(workspacePath))
+            var workspacePath = GetManagedWorkspacePath(workspacePrefix, changedPath);
+            if (workspacePath is null)
             {
                 otherChangedFileCount++;
                 continue;
@@ -671,13 +662,18 @@ public sealed class SystemGitService : IGitService
             };
         }
 
+        var workspacePrefix = await GetWorkspacePrefixAsync(fullPath, cancellationToken);
+        if (workspacePrefix is null)
+        {
+            return PushPreflight(GitPushPreflightState.PreviewUnavailable, remote);
+        }
+
         var changedPaths = new List<string>(changedRepositoryPaths.Length);
         var otherChangedFileCount = 0;
         foreach (var repositoryPath in changedRepositoryPaths)
         {
             var workspacePath = GetManagedWorkspacePath(
-                status.RepositoryRoot,
-                fullPath,
+                workspacePrefix,
                 repositoryPath);
             if (workspacePath is null)
             {
@@ -721,8 +717,7 @@ public sealed class SystemGitService : IGitService
                 .Split('\0', StringSplitOptions.RemoveEmptyEntries))
             {
                 var workspacePath = GetManagedWorkspacePath(
-                    status.RepositoryRoot,
-                    fullPath,
+                    workspacePrefix,
                     repositoryPath);
                 if (workspacePath is null)
                 {
@@ -855,19 +850,26 @@ public sealed class SystemGitService : IGitService
             Remote = remote,
         };
 
-    private static string? GetManagedWorkspacePath(
-        string repositoryRoot,
+    private static async Task<string?> GetWorkspacePrefixAsync(
         string workspaceDirectory,
-        string repositoryRelativePath)
+        CancellationToken cancellationToken)
     {
-        var workspacePrefix = Path.GetRelativePath(repositoryRoot, workspaceDirectory)
-            .Replace('\\', '/')
-            .Trim('/');
-        if (workspacePrefix == ".")
+        var result = await RunAsync(
+            ["-C", workspaceDirectory, "rev-parse", "--show-prefix"],
+            cancellationToken,
+            maximumOutputCharacters: 4096);
+        if (result.ExitCode != 0 || result.StandardOutputTruncated)
         {
-            workspacePrefix = string.Empty;
+            return null;
         }
 
+        return NormalizeRelativePath(result.StandardOutput.Trim()).Trim('/');
+    }
+
+    private static string? GetManagedWorkspacePath(
+        string workspacePrefix,
+        string repositoryRelativePath)
+    {
         var normalizedPath = repositoryRelativePath.Replace('\\', '/');
         var comparison = OperatingSystem.IsWindows()
             ? StringComparison.OrdinalIgnoreCase

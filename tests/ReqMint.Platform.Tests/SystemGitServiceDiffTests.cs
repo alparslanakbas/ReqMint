@@ -429,6 +429,50 @@ public sealed class SystemGitServiceDiffTests
     }
 
     [Fact]
+    public async Task GetFastForwardPreflightAsync_ResolvesWorkspaceOpenedThroughDirectoryAlias()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        using var upstream = await TemporaryGitRepository.CreateAsync();
+        await upstream.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Original\",\"requests\":[]}");
+        await upstream.CommitAllAsync("initial workspace");
+        using var local = await TemporaryGitRepository.CloneAsync(upstream.Path);
+
+        await upstream.WriteAsync(
+            "collections/orders.json",
+            "{\"name\":\"Remote update\",\"requests\":[]}");
+        await upstream.CommitAllAsync("remote workspace update");
+
+        var aliasParent = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            "ReqMint.Git.Aliases",
+            Guid.NewGuid().ToString("N"));
+        var aliasPath = System.IO.Path.Combine(aliasParent, "workspace");
+        Directory.CreateDirectory(aliasParent);
+        Directory.CreateSymbolicLink(aliasPath, local.Path);
+
+        try
+        {
+            var service = new SystemGitService();
+            await service.FetchAsync(aliasPath);
+            var preflight = await service.GetFastForwardPreflightAsync(aliasPath);
+
+            Assert.True(preflight.IsReady);
+            Assert.Equal(["collections/orders.json"], preflight.ChangedPaths);
+        }
+        finally
+        {
+            Directory.Delete(aliasPath);
+            Directory.Delete(aliasParent);
+        }
+    }
+
+    [Fact]
     public async Task GetFastForwardPreflightAsync_BlocksDirtyAndDivergedRepositories()
     {
         using var upstream = await TemporaryGitRepository.CreateAsync();
