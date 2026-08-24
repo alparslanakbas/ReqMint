@@ -37,6 +37,8 @@ $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $projectPath = Join-Path $repositoryRoot 'src\ReqMint.App\ReqMint.App.csproj'
 $manifestTemplatePath = Join-Path $repositoryRoot 'packaging\windows\AppxManifest.xml.in'
 $assetGeneratorPath = Join-Path $PSScriptRoot 'New-WindowsPackageAssets.ps1'
+$packageToolsPath = Join-Path $PSScriptRoot 'WindowsPackageTools.ps1'
+. $packageToolsPath
 
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $repositoryRoot 'artifacts\packages\windows'
@@ -98,24 +100,7 @@ if ($LayoutOnly) {
     return
 }
 
-$makeAppxCommand = Get-Command 'makeappx.exe' -ErrorAction SilentlyContinue
-$makeAppxPath = if ($null -ne $makeAppxCommand) { $makeAppxCommand.Source } else { $null }
-
-if ([string]::IsNullOrWhiteSpace($makeAppxPath)) {
-    $windowsKitsRoot = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10'
-    $candidatePaths = @(
-        (Join-Path $windowsKitsRoot 'bin\*\x64\makeappx.exe'),
-        (Join-Path $windowsKitsRoot 'App Certification Kit\makeappx.exe')
-    )
-
-    $makeAppxPath = Get-Item -Path $candidatePaths -ErrorAction SilentlyContinue |
-        Sort-Object -Property FullName -Descending |
-        Select-Object -First 1 -ExpandProperty FullName
-}
-
-if ([string]::IsNullOrWhiteSpace($makeAppxPath)) {
-    throw 'MakeAppx.exe was not found. Install the Windows 10/11 SDK, or use the Windows MSIX GitHub Actions workflow.'
-}
+$makeAppxPath = Get-ReqMintMakeAppxPath
 
 $packagePath = Join-Path $resolvedOutputDirectory "ReqMint_$Version`_$Architecture.msix"
 & $makeAppxPath pack /d $layoutDirectory /p $packagePath /o

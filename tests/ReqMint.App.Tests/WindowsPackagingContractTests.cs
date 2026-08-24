@@ -47,7 +47,7 @@ public sealed class WindowsPackagingContractTests
     }
 
     [Fact]
-    public void Workflow_InjectsPublicStoreIdentityFromRepositoryVariables()
+    public void DevelopmentWorkflow_CanInjectPublicStoreIdentityFromRepositoryVariables()
     {
         var workflow = File.ReadAllText(RepositoryPath(".github", "workflows", "windows-msix.yml"));
 
@@ -56,6 +56,36 @@ public sealed class WindowsPackagingContractTests
         Assert.Contains("REQMINT_STORE_PUBLISHER_DISPLAY_NAME", workflow, StringComparison.Ordinal);
         Assert.Contains("./eng/package-windows.ps1", workflow, StringComparison.Ordinal);
         Assert.Contains("actions/upload-artifact@v7", workflow, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StoreBundleWorkflow_RequiresStoreIdentityAndUploadsBundle()
+    {
+        var workflow = File.ReadAllText(RepositoryPath(".github", "workflows", "windows-store-bundle.yml"));
+
+        Assert.Contains("REQMINT_STORE_IDENTITY_NAME", workflow, StringComparison.Ordinal);
+        Assert.Contains("REQMINT_STORE_PUBLISHER", workflow, StringComparison.Ordinal);
+        Assert.Contains("REQMINT_STORE_PUBLISHER_DISPLAY_NAME", workflow, StringComparison.Ordinal);
+        Assert.Contains("Validate Microsoft Store identity", workflow, StringComparison.Ordinal);
+        Assert.Contains("./eng/package-windows-bundle.ps1", workflow, StringComparison.Ordinal);
+        Assert.Contains("*.msixbundle", workflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("else { 'ReqMint.Development' }", workflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("else { 'CN=ReqMint Development' }", workflow, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BundleScript_BuildsX64AndArm64WithOneStoreIdentity()
+    {
+        var script = File.ReadAllText(RepositoryPath("eng", "package-windows-bundle.ps1"));
+
+        Assert.Contains("@('x64', 'arm64')", script, StringComparison.Ordinal);
+        Assert.Contains("-IdentityName $IdentityName", script, StringComparison.Ordinal);
+        Assert.Contains("-Publisher $Publisher", script, StringComparison.Ordinal);
+        Assert.Contains("Get-ReqMintMakeAppxPath", script, StringComparison.Ordinal);
+        Assert.Contains("bundle /d $packageDirectory", script, StringComparison.Ordinal);
+        Assert.Contains(".msixbundle", script, StringComparison.Ordinal);
+        Assert.Contains("ReqMint.Development", script, StringComparison.Ordinal);
+        Assert.Contains("CN=ReqMint Development", script, StringComparison.Ordinal);
     }
 
     private static string RepositoryPath(params string[] segments)
