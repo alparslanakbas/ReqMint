@@ -8,8 +8,16 @@ The introduction has explicit not-started, in-progress, completed, and skipped s
 
 The flow does not create an account, contact an analytics service, open a network connection, or copy workspace content. Changing the application language updates the introduction through the same English and Turkish resource dictionaries as the rest of the interface.
 
+## Guided sample request
+
+The ready step offers an explicit local sample action. ReqMint creates a new workspace under a randomized application-owned temporary directory, opens a `Getting Started` collection, selects a public `TUTORIAL_BASE_URL` environment variable, and prepares an unsaved `Say hello to ReqMint` request. Existing workspace files and Git repositories are never written by this action. Unsaved request navigation still uses the normal save/discard/cancel prompt, while unsaved collection or environment edits block the switch.
+
+The sample API binds only to IPv4 loopback (`127.0.0.1`) on an operating-system-assigned port. Its bounded HTTP reader accepts only `GET /api/hello`, times out incomplete local clients, caps request headers at 16 KiB, returns fixed JSON, and does not echo user input. The guided request history is not copied into the persistent history database.
+
+The guide advances after a verified 200 response from the active loopback endpoint and completes when the user saves the draft into the temporary collection. On application exit, ReqMint stops the listener, deletes only the three expected tutorial documents, and removes their randomized validated directory only when it is empty. The introduction can be restarted from Settings; an active sample session itself is intentionally not restored across process launches because its port and files are ephemeral.
+
 ## Delivery stages
 
-The first slice provides the welcome, privacy, and ready states plus skip, back, continue, finish, resume, and restart behavior. A later slice will add the disposable sample workspace and deterministic loopback tutorial API. That sample must remain removable, work without internet access, and never become part of a user's existing workspace without explicit approval.
+The first slice provides the welcome, privacy, and ready states plus skip, back, continue, finish, resume, and restart behavior. The second slice provides the disposable workspace, deterministic loopback endpoint, environment-template request, and guided send/review/save path.
 
 Keyboard traversal, visible focus, screen-reader names, scaling, and high-contrast behavior remain release gates for the complete tutorial.

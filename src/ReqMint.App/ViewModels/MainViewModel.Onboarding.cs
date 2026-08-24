@@ -6,6 +6,74 @@ namespace ReqMint.App.ViewModels;
 public partial class MainViewModel
 {
     [RelayCommand]
+    private async Task StartTutorialSampleAsync(CancellationToken cancellationToken)
+    {
+        if (!IsOnboardingVisible
+            || !IsOnboardingReadyStep
+            || IsWorkspaceBusy
+            || IsSending)
+        {
+            return;
+        }
+
+        if (!await ConfirmNavigationAsync(cancellationToken))
+        {
+            return;
+        }
+
+        if (HasUnsavedNonRequestChanges())
+        {
+            WorkspaceStatus = Localize(
+                "TutorialUnsavedWorkspaceChanges",
+                "Save or discard workspace edits before opening the tutorial");
+            return;
+        }
+
+        IsWorkspaceBusy = true;
+        WorkspaceStatus = Localize(
+            "TutorialStartingStatus",
+            "Preparing the local tutorial");
+        try
+        {
+            var session = await _tutorialSessionService.StartAsync(cancellationToken);
+            ApplyWorkspace(
+                session.Snapshot,
+                session.WorkspaceDirectory,
+                selectedCollectionId: session.CollectionId,
+                selectedEnvironmentId: session.EnvironmentId);
+            await LoadHistoryAsync(session.Snapshot.Workspace.Id, cancellationToken);
+            await RefreshGitStatusAsync(session.WorkspaceDirectory, cancellationToken);
+            ResetRequestDraft();
+            LoadRequestDraft(session.DraftRequest);
+            _activeTutorialSession = session;
+            TutorialGuideStage = TutorialGuideStage.Send;
+            IsTutorialGuideVisible = true;
+            IsOnboardingVisible = false;
+            SaveOnboardingProgress(OnboardingStatus.Completed);
+            WorkspaceStatus = Localize(
+                "TutorialReadyStatus",
+                "Local tutorial ready");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            WorkspaceStatus = Localize(
+                "TutorialCancelledStatus",
+                "Tutorial preparation cancelled");
+        }
+        catch (Exception exception)
+        {
+            WorkspaceStatus = Localize(
+                "TutorialFailedStatus",
+                "The local tutorial could not be prepared");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+        finally
+        {
+            IsWorkspaceBusy = false;
+        }
+    }
+
+    [RelayCommand]
     private void ContinueOnboarding()
     {
         if (!IsOnboardingVisible)
@@ -59,6 +127,9 @@ public partial class MainViewModel
         SaveOnboardingProgress(OnboardingStatus.InProgress);
     }
 
+    [RelayCommand]
+    private void DismissTutorialGuide() => IsTutorialGuideVisible = false;
+
     private void InitializeOnboarding(AppSettings settings)
     {
         var shouldResume = settings.OnboardingStatus is
@@ -78,4 +149,75 @@ public partial class MainViewModel
             OnboardingStatus = status,
             OnboardingStep = OnboardingStep,
         });
+
+    private void AdvanceTutorialAfterResponse(
+        ReqMint.Core.Requests.ApiRequest request,
+        ReqMint.Core.Requests.ApiResponse response)
+    {
+        var session = _activeTutorialSession;
+        if (!IsTutorialGuideVisible
+            || TutorialGuideStage != TutorialGuideStage.Send
+            || session is null
+            || response.StatusCode != 200
+            || request.Url != new Uri(session.BaseUri, "api/hello"))
+        {
+            return;
+        }
+
+        TutorialGuideStage = TutorialGuideStage.Save;
+        WorkspaceStatus = Localize(
+            "TutorialResponseReceivedStatus",
+            "Tutorial response received");
+    }
+
+    private void AdvanceTutorialAfterSave(ReqMint.Core.Workspaces.RequestDocument request)
+    {
+        var session = _activeTutorialSession;
+        if (!IsTutorialGuideVisible
+            || TutorialGuideStage != TutorialGuideStage.Save
+            || session is null
+            || !string.Equals(
+                _workspaceDirectory,
+                session.WorkspaceDirectory,
+                StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(
+                request.Url,
+                session.DraftRequest.Url,
+                StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        TutorialGuideStage = TutorialGuideStage.Complete;
+        WorkspaceStatus = Localize(
+            "TutorialCompletedStatus",
+            "First local request completed");
+    }
+
+    private async Task RecordHistoryUnlessTutorialAsync(
+        ReqMint.Core.Workspaces.RequestDocument requestDocument,
+        ReqMint.Core.Requests.ApiRequest request,
+        ReqMint.Core.Requests.ApiResponse? response,
+        string outcome)
+    {
+        var session = _activeTutorialSession;
+        if (session is not null
+            && string.Equals(
+                _workspaceDirectory,
+                session.WorkspaceDirectory,
+                StringComparison.OrdinalIgnoreCase)
+            && request.Url == new Uri(session.BaseUri, "api/hello"))
+        {
+            return;
+        }
+
+        await RecordHistoryAsync(requestDocument, response, outcome);
+    }
+}
+
+public enum TutorialGuideStage
+{
+    Send,
+    Save,
+    Complete,
 }

@@ -420,6 +420,89 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task Onboarding_LocalTutorialGuidesSendAndSaveWithoutChangingAnotherWorkspace()
+    {
+        var existingSnapshot = CreateSnapshot();
+        var existingDirectory = CreateWorkspacePath();
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = existingSnapshot };
+        var executor = new RecordingRequestExecutor();
+        var historyStore = new RecordingHistoryStore();
+        var settings = new StubAppSettingsService(new AppSettings
+        {
+            OnboardingStatus = OnboardingStatus.InProgress,
+            OnboardingStep = JsonAppSettingsService.MaximumOnboardingStep,
+        });
+        var tutorialSession = CreateTutorialSession();
+        var tutorial = new StubTutorialSessionService(tutorialSession);
+        var viewModel = CreateViewModel(
+            store,
+            existingDirectory,
+            executor: executor,
+            historyStore: historyStore,
+            appSettings: settings,
+            tutorialSessionService: tutorial);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        await viewModel.StartTutorialSampleCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, tutorial.CallCount);
+        Assert.False(viewModel.IsOnboardingVisible);
+        Assert.True(viewModel.IsTutorialGuideVisible);
+        Assert.True(viewModel.IsTutorialSendStep);
+        Assert.Equal("ReqMint Tutorial", viewModel.WorkspaceName);
+        Assert.Equal("{{TUTORIAL_BASE_URL}}/api/hello", viewModel.Url);
+        Assert.Equal("Tutorial", viewModel.EnvironmentName);
+        Assert.Null(store.SavedSnapshot);
+        Assert.Equal("Commerce", existingSnapshot.Workspace.Name);
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsTutorialSaveStep);
+        Assert.Equal(
+            "http://127.0.0.1:43210/api/hello",
+            executor.Request!.Url.AbsoluteUri);
+        Assert.Empty(historyStore.Entries);
+
+        await viewModel.SaveRequestCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsTutorialCompleteStep);
+        Assert.Equal("First local request completed", viewModel.WorkspaceStatus);
+        Assert.Equal(
+            "Say hello to ReqMint",
+            Assert.Single(Assert.Single(store.SavedSnapshot!.Collections).Requests).Name);
+        Assert.Equal(tutorialSession.WorkspaceDirectory, store.SavedDirectory);
+        Assert.NotEqual(existingDirectory, store.SavedDirectory);
+    }
+
+    [Fact]
+    public async Task Onboarding_LocalTutorialDoesNotReplaceUnsavedWorkspaceEdits()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var settings = new StubAppSettingsService(new AppSettings
+        {
+            OnboardingStatus = OnboardingStatus.InProgress,
+            OnboardingStep = JsonAppSettingsService.MaximumOnboardingStep,
+        });
+        var tutorial = new StubTutorialSessionService(CreateTutorialSession());
+        var viewModel = CreateViewModel(
+            store,
+            CreateWorkspacePath(),
+            appSettings: settings,
+            tutorialSessionService: tutorial);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        viewModel.CollectionDraftName = "Unsaved collection name";
+
+        await viewModel.StartTutorialSampleCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, tutorial.CallCount);
+        Assert.Equal("Commerce", viewModel.WorkspaceName);
+        Assert.Equal(
+            "Save or discard workspace edits before opening the tutorial",
+            viewModel.WorkspaceStatus);
+        Assert.True(viewModel.IsOnboardingVisible);
+    }
+
+    [Fact]
     public async Task OpeningWorkspace_LoadsReadOnlyGitStatus()
     {
         var git = new StubGitService
@@ -1412,7 +1495,7 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     private static MainViewModel CreateViewModel(
-        RecordingWorkspaceStore store,
+        IWorkspaceStore store,
         string directory,
         IRequestExecutor? executor = null,
         RecordingSecretVault? vault = null,
@@ -1426,7 +1509,8 @@ public sealed class MainViewModelWorkspaceTests
         ICollectionRunExportService? collectionRunExportService = null,
         ICollectionRunDataFileService? collectionRunDataFileService = null,
         RecordingCollectionRunHistoryStore? collectionRunHistoryStore = null,
-        StubCollectionRunHistoryClearPrompt? collectionRunHistoryClearPrompt = null)
+        StubCollectionRunHistoryClearPrompt? collectionRunHistoryClearPrompt = null,
+        ITutorialSessionService? tutorialSessionService = null)
     {
         vault ??= new RecordingSecretVault();
         executor ??= new NoOpRequestExecutor();
@@ -1448,7 +1532,8 @@ public sealed class MainViewModelWorkspaceTests
             collectionRunExportService ?? new RecordingCollectionRunExportService(),
             collectionRunDataFileService ?? new StubCollectionRunDataFileService(),
             collectionRunHistoryStore ?? new RecordingCollectionRunHistoryStore(),
-            collectionRunHistoryClearPrompt ?? new StubCollectionRunHistoryClearPrompt());
+            collectionRunHistoryClearPrompt ?? new StubCollectionRunHistoryClearPrompt(),
+            tutorialSessionService ?? new StubTutorialSessionService(CreateTutorialSession()));
     }
 
     private static string CreateWorkspacePath() => Path.Combine(
@@ -1486,6 +1571,68 @@ public sealed class MainViewModelWorkspaceTests
         };
 
         return new WorkspaceSnapshot(workspace, [collection], []);
+    }
+
+    private static TutorialSession CreateTutorialSession()
+    {
+        var collectionId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var environmentId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        var collection = new CollectionDocument
+        {
+            Id = collectionId,
+            Name = "Getting Started",
+        };
+        var environment = new EnvironmentDocument
+        {
+            Id = environmentId,
+            Name = "Tutorial",
+            Variables =
+            [
+                new EnvironmentVariable("TUTORIAL_BASE_URL", "http://127.0.0.1:43210"),
+            ],
+        };
+        var workspace = new WorkspaceDocument
+        {
+            Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            Name = "ReqMint Tutorial",
+            Collections =
+            [
+                new WorkspaceFileReference(
+                    collectionId,
+                    collection.Name,
+                    "collections/getting-started.json"),
+            ],
+            Environments =
+            [
+                new WorkspaceFileReference(
+                    environmentId,
+                    environment.Name,
+                    "environments/tutorial.json"),
+            ],
+        };
+        var request = new RequestDocument
+        {
+            Id = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+            Name = "Say hello to ReqMint",
+            Method = "GET",
+            Url = "{{TUTORIAL_BASE_URL}}/api/hello",
+            Headers = [new RequestField("Accept", "application/json")],
+            Assertions =
+            [
+                new RequestAssertion
+                {
+                    Kind = RequestAssertionKind.StatusCodeEquals,
+                    ExpectedStatusCode = 200,
+                },
+            ],
+        };
+        return new TutorialSession(
+            CreateWorkspacePath(),
+            new Uri("http://127.0.0.1:43210/"),
+            new WorkspaceSnapshot(workspace, [collection], [environment]),
+            request,
+            collectionId,
+            environmentId);
     }
 
     private static RequestHistoryEntry CreateHistoryEntry(
@@ -1559,6 +1706,23 @@ public sealed class MainViewModelWorkspaceTests
         public AppSettings Current { get; private set; }
 
         public void Update(AppSettings settings) => Current = settings;
+    }
+
+    private sealed class StubTutorialSessionService(TutorialSession session)
+        : ITutorialSessionService
+    {
+        public int CallCount { get; private set; }
+
+        public Task<TutorialSession> StartAsync(
+            CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            return Task.FromResult(session);
+        }
+
+        public void Dispose()
+        {
+        }
     }
 
     private sealed class StubGitService : IGitService

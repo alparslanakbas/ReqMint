@@ -368,6 +368,21 @@ public partial class MainViewModel : ViewModelBase
     public bool IsOnboardingFinalStep =>
         OnboardingStep == JsonAppSettingsService.MaximumOnboardingStep;
 
+    [ObservableProperty]
+    public partial bool IsTutorialGuideVisible { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsTutorialSendStep))]
+    [NotifyPropertyChangedFor(nameof(IsTutorialSaveStep))]
+    [NotifyPropertyChangedFor(nameof(IsTutorialCompleteStep))]
+    public partial TutorialGuideStage TutorialGuideStage { get; set; }
+
+    public bool IsTutorialSendStep => TutorialGuideStage == TutorialGuideStage.Send;
+
+    public bool IsTutorialSaveStep => TutorialGuideStage == TutorialGuideStage.Save;
+
+    public bool IsTutorialCompleteStep => TutorialGuideStage == TutorialGuideStage.Complete;
+
     public bool IsCollectionRunHistoryEmpty => CollectionRunHistory.Count == 0;
 
     public bool IsCollectionRunnerInteractionEnabled =>
@@ -430,6 +445,8 @@ public partial class MainViewModel : ViewModelBase
     private readonly ICollectionRunDataFileService _collectionRunDataFileService;
     private readonly ICollectionRunHistoryStore _collectionRunHistoryStore;
     private readonly ICollectionRunHistoryClearPrompt _collectionRunHistoryClearPrompt;
+    private readonly ITutorialSessionService _tutorialSessionService;
+    private TutorialSession? _activeTutorialSession;
     private WorkspaceSnapshot? _workspaceSnapshot;
     private string? _workspaceDirectory;
     private Guid? _selectedRequestId;
@@ -457,7 +474,8 @@ public partial class MainViewModel : ViewModelBase
         ICollectionRunExportService collectionRunExportService,
         ICollectionRunDataFileService collectionRunDataFileService,
         ICollectionRunHistoryStore collectionRunHistoryStore,
-        ICollectionRunHistoryClearPrompt collectionRunHistoryClearPrompt)
+        ICollectionRunHistoryClearPrompt collectionRunHistoryClearPrompt,
+        ITutorialSessionService tutorialSessionService)
     {
         _requestExecutor = requestExecutor;
         _collectionRunner = collectionRunner;
@@ -477,6 +495,7 @@ public partial class MainViewModel : ViewModelBase
         _collectionRunDataFileService = collectionRunDataFileService;
         _collectionRunHistoryStore = collectionRunHistoryStore;
         _collectionRunHistoryClearPrompt = collectionRunHistoryClearPrompt;
+        _tutorialSessionService = tutorialSessionService;
         HistoryRetentionLimit = appSettings.Current.HistoryRetentionLimit;
         CollectionRunHistoryRetentionLimit = appSettings.Current.CollectionRunHistoryRetentionLimit;
         ResponsePreviewLimitMegabytes = appSettings.Current.ResponsePreviewLimitMegabytes;
@@ -757,6 +776,7 @@ public partial class MainViewModel : ViewModelBase
             ApplyWorkspace(updatedSnapshot, _workspaceDirectory, document.Id, collection.Id);
             MarkRequestClean();
             WorkspaceStatus = Localize("StatusSavedItem", "Saved {0}", document.Name);
+            AdvanceTutorialAfterSave(document);
         }
         catch (OperationCanceledException)
         {
@@ -836,28 +856,45 @@ public partial class MainViewModel : ViewModelBase
             }
 
             HasResponse = true;
-            await RecordHistoryAsync(requestDocument, response, "completed");
+            AdvanceTutorialAfterResponse(request, response);
+            await RecordHistoryUnlessTutorialAsync(
+                requestDocument,
+                request,
+                response,
+                "completed");
         }
         catch (OperationCanceledException)
         {
             ResponseStatus = Localize("StatusCancelled", "Cancelled");
             ResponseBody = "The request was cancelled.";
             HasResponse = true;
-            await RecordHistoryAsync(requestDocument, response: null, "cancelled");
+            await RecordHistoryUnlessTutorialAsync(
+                requestDocument,
+                request,
+                response: null,
+                "cancelled");
         }
         catch (TimeoutException exception)
         {
             ResponseStatus = Localize("StatusTimedOut", "Timed out");
             ResponseBody = exception.Message;
             HasResponse = true;
-            await RecordHistoryAsync(requestDocument, response: null, "timed-out");
+            await RecordHistoryUnlessTutorialAsync(
+                requestDocument,
+                request,
+                response: null,
+                "timed-out");
         }
         catch (HttpRequestException exception)
         {
             ResponseStatus = Localize("StatusConnectionFailed", "Connection failed");
             ResponseBody = exception.Message;
             HasResponse = true;
-            await RecordHistoryAsync(requestDocument, response: null, "failed");
+            await RecordHistoryUnlessTutorialAsync(
+                requestDocument,
+                request,
+                response: null,
+                "failed");
         }
         finally
         {
@@ -930,6 +967,16 @@ public partial class MainViewModel : ViewModelBase
         Guid? selectedEnvironmentId = null)
     {
         CloseCollectionRunner();
+        if (_activeTutorialSession is { } tutorialSession
+            && !string.Equals(
+                directory,
+                tutorialSession.WorkspaceDirectory,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            _activeTutorialSession = null;
+            IsTutorialGuideVisible = false;
+        }
+
         _workspaceSnapshot = snapshot;
         _workspaceDirectory = directory;
         _selectedRequestId = selectedRequestId;
@@ -1125,13 +1172,11 @@ public partial class MainViewModel : ViewModelBase
         CaptureRequestDraft(),
         StringComparison.Ordinal);
 
-    private bool HasUnsavedWorkspaceChanges()
-    {
-        if (HasUnsavedRequestChanges())
-        {
-            return true;
-        }
+    private bool HasUnsavedWorkspaceChanges() =>
+        HasUnsavedRequestChanges() || HasUnsavedNonRequestChanges();
 
+    private bool HasUnsavedNonRequestChanges()
+    {
         var selectedCollection = _workspaceSnapshot?.Collections.FirstOrDefault(
             collection => collection.Id == _selectedCollectionId);
         if (selectedCollection is not null

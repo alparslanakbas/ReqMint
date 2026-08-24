@@ -374,7 +374,7 @@
 
             <!-- Request workspace and Git diff preview -->
             <Grid Grid.Column="2">
-            <Grid RowDefinitions="44,72,*,38" IsVisible="{Binding IsRequestWorkspaceVisible}">
+            <Grid RowDefinitions="44,72,Auto,*,38" IsVisible="{Binding IsRequestWorkspaceVisible}">
                 <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
                     <StackPanel Orientation="Horizontal" Margin="14,0" VerticalAlignment="Center" Spacing="10">
                         <TextBlock Text="{Binding SelectedMethod}" Foreground="{DynamicResource MethodGetBrush}" FontSize="11" FontWeight="Bold" />
@@ -403,7 +403,48 @@
                             Command="{Binding SendCommand}" />
                 </Grid>
 
-                <Grid Grid.Row="2" RowDefinitions="2*,42,3*">
+                <Border Grid.Row="2"
+                        Margin="16,0,16,12"
+                        Padding="14"
+                        IsVisible="{Binding IsTutorialGuideVisible}"
+                        Background="{DynamicResource SurfaceRaisedBrush}"
+                        BorderBrush="{DynamicResource AccentMutedBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10">
+                    <Grid ColumnDefinitions="Auto,14,*,14,Auto">
+                        <Border Width="32"
+                                Height="32"
+                                CornerRadius="8"
+                                Background="{DynamicResource AccentBrush}">
+                            <TextBlock Text="✓"
+                                       Foreground="{DynamicResource AppBackgroundBrush}"
+                                       FontWeight="Bold"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="2" Spacing="3">
+                            <TextBlock Text="{DynamicResource TutorialGuideTitle}"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Text="{DynamicResource TutorialSendInstruction}"
+                                       IsVisible="{Binding IsTutorialSendStep}"
+                                       Classes="secondary"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{DynamicResource TutorialSaveInstruction}"
+                                       IsVisible="{Binding IsTutorialSaveStep}"
+                                       Classes="secondary"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{DynamicResource TutorialCompleteInstruction}"
+                                       IsVisible="{Binding IsTutorialCompleteStep}"
+                                       Classes="secondary"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Button Grid.Column="4"
+                                Content="{DynamicResource TutorialDismissGuide}"
+                                Command="{Binding DismissTutorialGuideCommand}" />
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="3" RowDefinitions="2*,42,3*">
                     <TabControl Grid.Row="0" Background="{DynamicResource AppBackgroundBrush}">
                         <TabItem Header="{DynamicResource TextParams}">
                             <Grid RowDefinitions="*,Auto" Margin="18,12">
@@ -673,7 +714,7 @@
                     </Border>
                 </Grid>
 
-                <Border Grid.Row="3" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+                <Border Grid.Row="4" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
                     <Grid Margin="14,0" ColumnDefinitions="Auto,18,Auto,*,Auto">
                         <TextBlock Text="{Binding GitBranch}" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="2" Text="{Binding GitSummary}" Classes="secondary" VerticalAlignment="Center" />
@@ -1638,11 +1679,16 @@
                                 Content="{DynamicResource OnboardingContinue}"
                                 IsVisible="{Binding IsOnboardingPrivacyStep}"
                                 Command="{Binding ContinueOnboardingCommand}" />
-                        <Button Grid.Column="2"
-                                Classes="primary"
-                                Content="{DynamicResource OnboardingFinish}"
-                                IsVisible="{Binding IsOnboardingFinalStep}"
-                                Command="{Binding ContinueOnboardingCommand}" />
+                        <StackPanel Grid.Column="2"
+                                    Orientation="Horizontal"
+                                    Spacing="8"
+                                    IsVisible="{Binding IsOnboardingFinalStep}">
+                            <Button Content="{DynamicResource OnboardingFinish}"
+                                    Command="{Binding ContinueOnboardingCommand}" />
+                            <Button Classes="primary"
+                                    Content="{DynamicResource TutorialStartSample}"
+                                    Command="{Binding StartTutorialSampleCommand}" />
+                        </StackPanel>
                     </Grid>
                 </Grid>
             </Border>

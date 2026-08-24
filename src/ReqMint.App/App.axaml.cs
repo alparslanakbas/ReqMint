@@ -16,6 +16,7 @@ namespace ReqMint.App;
 public partial class App : Application
 {
     private HttpRequestExecutor? _requestExecutor;
+    private ITutorialSessionService? _tutorialSessionService;
 
     public override void Initialize()
     {
@@ -39,10 +40,14 @@ public partial class App : Application
             var localization = new LocalizationService(settings);
             var mainWindow = new MainWindow();
             var databasePath = Path.Combine(applicationData, "reqmint.db");
+            var workspaceStore = new WorkspaceJsonStore();
+            _tutorialSessionService = new LoopbackTutorialSessionService(
+                workspaceStore,
+                Path.Combine(Path.GetTempPath(), "ReqMint", "Tutorial"));
             mainWindow.DataContext = new MainViewModel(
                 _requestExecutor,
                 new CollectionRunner(_requestExecutor, templateResolver),
-                new WorkspaceJsonStore(),
+                workspaceStore,
                 new AvaloniaWorkspaceFolderPicker(mainWindow),
                 templateResolver,
                 secretVault,
@@ -59,9 +64,14 @@ public partial class App : Application
                     localization),
                 new AvaloniaCollectionRunDataFileService(mainWindow, localization),
                 new SqliteCollectionRunHistoryStore(databasePath),
-                new AvaloniaCollectionRunHistoryClearPrompt(mainWindow, localization));
+                new AvaloniaCollectionRunHistoryClearPrompt(mainWindow, localization),
+                _tutorialSessionService);
             desktop.MainWindow = mainWindow;
-            desktop.Exit += (_, _) => _requestExecutor.Dispose();
+            desktop.Exit += (_, _) =>
+            {
+                _tutorialSessionService?.Dispose();
+                _requestExecutor?.Dispose();
+            };
         }
 
         base.OnFrameworkInitializationCompleted();
