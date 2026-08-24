@@ -141,6 +141,14 @@
             <Setter Property="CornerRadius" Value="6" />
         </Style>
 
+        <Style Selector="ComboBoxItem">
+            <Setter Property="Margin" Value="4,1" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+
         <Style Selector="TabItem.requestEditorTab">
             <Setter Property="MinHeight" Value="38" />
             <Setter Property="Margin" Value="0,0,4,0" />

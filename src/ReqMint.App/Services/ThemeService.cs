@@ -57,6 +57,46 @@ public partial class ThemeService : ObservableObject
         SetBrush(resources, "DiffRemovedBrush", theme.DiffRemoved);
         SetBrush(resources, "DiffHunkBrush", theme.DiffHunk);
         SetBrush(resources, "OverlayBrush", theme.Overlay);
+        SetComboBoxBrushes(resources, theme);
+    }
+
+    private static void SetComboBoxBrushes(IResourceDictionary resources, ThemeOption theme)
+    {
+        SetBrush(resources, "ComboBoxBackground", theme.SurfaceRaised);
+        SetBrush(resources, "ComboBoxBackgroundPointerOver", theme.SurfaceHover);
+        SetBrush(resources, "ComboBoxBackgroundPressed", theme.SurfaceHover);
+        SetBrush(resources, "ComboBoxBackgroundUnfocused", theme.AccentMuted);
+        SetBrush(resources, "ComboBoxForeground", theme.TextPrimary);
+        SetBrush(resources, "ComboBoxForegroundFocused", theme.TextPrimary);
+        SetBrush(resources, "ComboBoxForegroundFocusedPressed", theme.TextPrimary);
+        SetBrush(resources, "ComboBoxBorderBrush", theme.Border);
+        SetBrush(resources, "ComboBoxBorderBrushPointerOver", theme.Accent);
+        SetBrush(resources, "ComboBoxBorderBrushPressed", theme.Accent);
+        SetBrush(resources, "ComboBoxBackgroundBorderBrushFocused", theme.Accent);
+        SetBrush(resources, "ComboBoxBackgroundBorderBrushUnfocused", theme.Accent);
+        SetBrush(resources, "ComboBoxDropDownGlyphForeground", theme.TextSecondary);
+        SetBrush(resources, "ComboBoxDropDownGlyphForegroundFocused", theme.Accent);
+        SetBrush(resources, "ComboBoxDropDownGlyphForegroundFocusedPressed", theme.Accent);
+        SetBrush(resources, "ComboBoxDropDownBackground", theme.SurfaceRaised);
+        SetBrush(resources, "ComboBoxDropDownBorderBrush", theme.Border);
+
+        SetBrush(resources, "ComboBoxItemForeground", theme.TextPrimary);
+        SetBrush(resources, "ComboBoxItemForegroundPressed", theme.TextPrimary);
+        SetBrush(resources, "ComboBoxItemForegroundPointerOver", theme.TextPrimary);
+        SetBrush(resources, "ComboBoxItemForegroundSelected", theme.TextPrimary);
+        SetBrush(resources, "ComboBoxItemForegroundSelectedPressed", theme.TextPrimary);
+        SetBrush(resources, "ComboBoxItemForegroundSelectedPointerOver", theme.TextPrimary);
+        SetBrush(resources, "ComboBoxItemBackground", "#00000000");
+        SetBrush(resources, "ComboBoxItemBackgroundPointerOver", theme.SurfaceHover);
+        SetBrush(resources, "ComboBoxItemBackgroundPressed", theme.SurfaceHover);
+        SetBrush(resources, "ComboBoxItemBackgroundSelected", theme.AccentMuted);
+        SetBrush(resources, "ComboBoxItemBackgroundSelectedPressed", theme.AccentMuted);
+        SetBrush(resources, "ComboBoxItemBackgroundSelectedPointerOver", theme.AccentMuted);
+        SetBrush(resources, "ComboBoxItemBorderBrushPointerOver", theme.Border);
+        SetBrush(resources, "ComboBoxItemBorderBrushPressed", theme.Accent);
+        SetBrush(resources, "ComboBoxItemBorderBrushSelected", theme.Accent);
+        SetBrush(resources, "ComboBoxItemBorderBrushSelectedPressed", theme.Accent);
+        SetBrush(resources, "ComboBoxItemBorderBrushSelectedPointerOver", theme.Accent);
     }
 
     private static void SetBrush(IResourceDictionary resources, string key, string color) =>
