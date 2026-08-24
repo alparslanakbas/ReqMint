@@ -359,6 +359,89 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public void WindowClosePreference_PersistsAndCanBeReset()
+    {
+        var settings = new StubAppSettingsService();
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            appSettings: settings);
+
+        Assert.True(viewModel.IsWindowClosePreferenceUndecided);
+        Assert.False(viewModel.KeepRunningInBackground);
+
+        viewModel.KeepRunningInBackground = true;
+
+        Assert.Equal(WindowCloseBehavior.KeepRunning, settings.Current.WindowCloseBehavior);
+        Assert.True(viewModel.KeepRunningInBackground);
+        Assert.False(viewModel.IsWindowClosePreferenceUndecided);
+
+        viewModel.ResetWindowClosePreferenceCommand.Execute(null);
+
+        Assert.Equal(WindowCloseBehavior.Ask, settings.Current.WindowCloseBehavior);
+        Assert.True(viewModel.IsWindowClosePreferenceUndecided);
+    }
+
+    [Fact]
+    public async Task ConfirmExitAsync_BlocksWhileAnOperationIsActive()
+    {
+        var prompt = new StubUnsavedChangesPrompt();
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            prompt: prompt);
+        viewModel.IsSending = true;
+
+        var canExit = await viewModel.ConfirmExitAsync();
+
+        Assert.False(canExit);
+        Assert.Equal(0, prompt.CallCount);
+        Assert.Equal(
+            "Finish or cancel the active operation before exiting",
+            viewModel.WorkspaceStatus);
+    }
+
+    [Fact]
+    public async Task ConfirmExitAsync_SavesASingleEditedDraft()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var prompt = new StubUnsavedChangesPrompt { Choice = UnsavedChangesChoice.Save };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath(), prompt: prompt);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        viewModel.Url = "https://api.example.com/changed-before-exit";
+
+        var canExit = await viewModel.ConfirmExitAsync();
+
+        Assert.True(canExit);
+        Assert.True(prompt.LastCanSave);
+        Assert.Equal(
+            "https://api.example.com/changed-before-exit",
+            store.SavedSnapshot!.Collections[0].Requests[0].Url);
+    }
+
+    [Fact]
+    public async Task ConfirmExitAsync_RequiresSeparateSavesForSeveralDraftTypes()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var prompt = new StubUnsavedChangesPrompt { Choice = UnsavedChangesChoice.Save };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath(), prompt: prompt);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        viewModel.Url = "https://api.example.com/changed-before-exit";
+        viewModel.CollectionDraftName = "Renamed during exit";
+
+        var canExit = await viewModel.ConfirmExitAsync();
+
+        Assert.False(canExit);
+        Assert.False(prompt.LastCanSave);
+        Assert.Null(store.SavedSnapshot);
+        Assert.Equal(
+            "Save each edited request, collection, or environment before exiting",
+            viewModel.WorkspaceStatus);
+    }
+
+    [Fact]
     public void Onboarding_ResumesAndPersistsCompletionLocally()
     {
         var settings = new StubAppSettingsService(new AppSettings
@@ -1676,9 +1759,12 @@ public sealed class MainViewModelWorkspaceTests
 
         public int CallCount { get; private set; }
 
+        public bool LastCanSave { get; private set; }
+
         public Task<UnsavedChangesChoice> ShowAsync(string requestName, bool canSave)
         {
             CallCount++;
+            LastCanSave = canSave;
             return Task.FromResult(Choice);
         }
     }

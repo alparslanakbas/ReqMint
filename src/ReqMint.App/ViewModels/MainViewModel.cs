@@ -62,6 +62,27 @@ public partial class MainViewModel : ViewModelBase
 
     public LocalizationService Localization { get; }
 
+    public bool KeepRunningInBackground
+    {
+        get => _appSettings.Current.WindowCloseBehavior == WindowCloseBehavior.KeepRunning;
+        set
+        {
+            var behavior = value
+                ? WindowCloseBehavior.KeepRunning
+                : WindowCloseBehavior.Exit;
+            if (_appSettings.Current.WindowCloseBehavior == behavior)
+            {
+                return;
+            }
+
+            _appSettings.Update(_appSettings.Current with { WindowCloseBehavior = behavior });
+            RefreshWindowClosePreference();
+        }
+    }
+
+    public bool IsWindowClosePreferenceUndecided =>
+        _appSettings.Current.WindowCloseBehavior == WindowCloseBehavior.Ask;
+
     [ObservableProperty]
     public partial string WorkspaceName { get; set; } = "No workspace";
 
@@ -540,6 +561,87 @@ public partial class MainViewModel : ViewModelBase
 
     private bool CanManageCollection() =>
         !IsWorkspaceBusy && !IsSending && _workspaceSnapshot is not null;
+
+    public void RefreshWindowClosePreference()
+    {
+        OnPropertyChanged(nameof(KeepRunningInBackground));
+        OnPropertyChanged(nameof(IsWindowClosePreferenceUndecided));
+    }
+
+    [RelayCommand]
+    private void ResetWindowClosePreference()
+    {
+        _appSettings.Update(_appSettings.Current with
+        {
+            WindowCloseBehavior = WindowCloseBehavior.Ask,
+        });
+        RefreshWindowClosePreference();
+    }
+
+    public async Task<bool> ConfirmExitAsync(CancellationToken cancellationToken = default)
+    {
+        if (IsSending
+            || IsWorkspaceBusy
+            || IsCollectionRunnerBusy
+            || IsGitStageBusy
+            || IsGitCommitBusy
+            || IsGitRemoteBusy
+            || IsGitFastForwardBusy
+            || IsGitPushBusy)
+        {
+            WorkspaceStatus = Localize(
+                "ExitBusyStatus",
+                "Finish or cancel the active operation before exiting");
+            return false;
+        }
+
+        var hasRequestChanges = HasUnsavedRequestChanges();
+        var hasCollectionChanges = HasUnsavedCollectionChanges();
+        var hasEnvironmentChanges = HasUnsavedEnvironmentChanges();
+        var changedDraftCount = (hasRequestChanges ? 1 : 0)
+            + (hasCollectionChanges ? 1 : 0)
+            + (hasEnvironmentChanges ? 1 : 0);
+        if (changedDraftCount == 0)
+        {
+            return true;
+        }
+
+        var canSave = changedDraftCount == 1 && _workspaceSnapshot is not null;
+        if (!canSave)
+        {
+            WorkspaceStatus = Localize(
+                "ExitMultipleDraftsStatus",
+                "Save each edited request, collection, or environment before exiting");
+        }
+
+        var choice = await _unsavedChangesPrompt.ShowAsync(
+            WorkspaceName,
+            canSave);
+        if (choice == UnsavedChangesChoice.Discard)
+        {
+            return true;
+        }
+
+        if (choice != UnsavedChangesChoice.Save || !canSave)
+        {
+            return false;
+        }
+
+        if (hasRequestChanges)
+        {
+            await SaveRequestAsync(cancellationToken);
+        }
+        else if (hasCollectionChanges)
+        {
+            await RenameCollectionAsync(cancellationToken);
+        }
+        else if (hasEnvironmentChanges)
+        {
+            await SaveEnvironmentAsync(cancellationToken);
+        }
+
+        return !HasUnsavedWorkspaceChanges();
+    }
 
     private string Localize(string key, string fallback) =>
         Localization?.GetString(key) ?? fallback;
@@ -1175,19 +1277,22 @@ public partial class MainViewModel : ViewModelBase
     private bool HasUnsavedWorkspaceChanges() =>
         HasUnsavedRequestChanges() || HasUnsavedNonRequestChanges();
 
-    private bool HasUnsavedNonRequestChanges()
+    private bool HasUnsavedNonRequestChanges() =>
+        HasUnsavedCollectionChanges() || HasUnsavedEnvironmentChanges();
+
+    private bool HasUnsavedCollectionChanges()
     {
         var selectedCollection = _workspaceSnapshot?.Collections.FirstOrDefault(
             collection => collection.Id == _selectedCollectionId);
-        if (selectedCollection is not null
+        return selectedCollection is not null
             && !string.Equals(
                 CollectionDraftName,
                 selectedCollection.Name,
-                StringComparison.Ordinal))
-        {
-            return true;
-        }
+                StringComparison.Ordinal);
+    }
 
+    private bool HasUnsavedEnvironmentChanges()
+    {
         var environment = _workspaceSnapshot?.Environments.FirstOrDefault(
             item => item.Id == _editingEnvironmentId);
         if (environment is null)

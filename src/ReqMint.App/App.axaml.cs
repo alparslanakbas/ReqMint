@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using ReqMint.App.Services;
@@ -17,6 +18,7 @@ public partial class App : Application
 {
     private HttpRequestExecutor? _requestExecutor;
     private ITutorialSessionService? _tutorialSessionService;
+    private DesktopApplicationController? _desktopApplicationController;
 
     public override void Initialize()
     {
@@ -44,7 +46,7 @@ public partial class App : Application
             _tutorialSessionService = new LoopbackTutorialSessionService(
                 workspaceStore,
                 Path.Combine(Path.GetTempPath(), "ReqMint", "Tutorial"));
-            mainWindow.DataContext = new MainViewModel(
+            var mainViewModel = new MainViewModel(
                 _requestExecutor,
                 new CollectionRunner(_requestExecutor, templateResolver),
                 workspaceStore,
@@ -66,9 +68,21 @@ public partial class App : Application
                 new SqliteCollectionRunHistoryStore(databasePath),
                 new AvaloniaCollectionRunHistoryClearPrompt(mainWindow, localization),
                 _tutorialSessionService);
+            mainWindow.DataContext = mainViewModel;
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             desktop.MainWindow = mainWindow;
+            _desktopApplicationController = new DesktopApplicationController(
+                this,
+                desktop,
+                mainWindow,
+                mainViewModel,
+                localization,
+                new WindowCloseCoordinator(
+                    settings,
+                    new AvaloniaWindowClosePreferencePrompt(mainWindow, localization)));
             desktop.Exit += (_, _) =>
             {
+                _desktopApplicationController?.Dispose();
                 _tutorialSessionService?.Dispose();
                 _requestExecutor?.Dispose();
             };

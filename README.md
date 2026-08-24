@@ -43,6 +43,7 @@ docs/      product, architecture, and migration decisions
 - [Workspace format](docs/WORKSPACE_FORMAT.md)
 - [Localization](docs/LOCALIZATION.md)
 - [Guided onboarding](docs/ONBOARDING.md)
+- [Background mode](docs/BACKGROUND_MODE.md)
 - [Git integration](docs/GIT_INTEGRATION.md)
 - [Windows packaging](docs/WINDOWS_PACKAGING.md)
 

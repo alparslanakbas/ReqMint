@@ -93,6 +93,7 @@ function New-ReqMintPackageAsset {
 }
 
 New-ReqMintPackageAsset -FileName 'StoreLogo.png' -Width 50 -Height 50
+New-ReqMintPackageAsset -FileName 'TrayIcon.png' -Width 64 -Height 64
 New-ReqMintPackageAsset -FileName 'Square44x44Logo.png' -Width 44 -Height 44
 New-ReqMintPackageAsset -FileName 'Square150x150Logo.png' -Width 150 -Height 150
 New-ReqMintPackageAsset -FileName 'Square310x310Logo.png' -Width 310 -Height 310

@@ -89,6 +89,9 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         OnboardingStatus = Enum.IsDefined(settings.OnboardingStatus)
             ? settings.OnboardingStatus
             : OnboardingStatus.NotStarted,
+        WindowCloseBehavior = Enum.IsDefined(settings.WindowCloseBehavior)
+            ? settings.WindowCloseBehavior
+            : WindowCloseBehavior.Ask,
         OnboardingStep = Math.Clamp(
             settings.OnboardingStep,
             0,

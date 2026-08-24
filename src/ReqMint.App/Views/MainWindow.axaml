@@ -12,6 +12,7 @@
         Title="ReqMint — API work, without the weight."
         Width="1440"
         Height="900"
+        Icon="/Assets/TrayIcon.png"
         MinWidth="1080"
         MinHeight="680"
         WindowStartupLocation="CenterScreen">
@@ -638,6 +639,25 @@
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
+                                <TextBlock Text="{DynamicResource CloseBehaviorSettingsTitle}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,10,0,0" />
+                                <CheckBox Content="{DynamicResource CloseBehaviorKeepRunningSetting}"
+                                          IsChecked="{Binding KeepRunningInBackground}" />
+                                <Grid ColumnDefinitions="Auto,12,*">
+                                    <Button Content="{DynamicResource CloseBehaviorAskAgain}"
+                                            Command="{Binding ResetWindowClosePreferenceCommand}" />
+                                    <StackPanel Grid.Column="2"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="{DynamicResource CloseBehaviorUndecidedHelp}"
+                                                   IsVisible="{Binding IsWindowClosePreferenceUndecided}"
+                                                   Foreground="{DynamicResource AccentBrush}"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Text="{DynamicResource CloseBehaviorSettingsHelp}"
+                                                   Classes="secondary"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Grid>
                                 <TextBlock Text="{DynamicResource OnboardingSettingsTitle}"
                                            FontWeight="SemiBold"
                                            Margin="0,10,0,0" />

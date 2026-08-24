@@ -19,6 +19,7 @@ public sealed class JsonAppSettingsServiceTests
             ResponsePreviewLimitMegabytes = 7,
             OnboardingStatus = OnboardingStatus.InProgress,
             OnboardingStep = 2,
+            WindowCloseBehavior = WindowCloseBehavior.KeepRunning,
         });
         var reloaded = new JsonAppSettingsService(directory.Path);
 
@@ -28,6 +29,7 @@ public sealed class JsonAppSettingsServiceTests
         Assert.Equal(7, reloaded.Current.ResponsePreviewLimitMegabytes);
         Assert.Equal(OnboardingStatus.InProgress, reloaded.Current.OnboardingStatus);
         Assert.Equal(2, reloaded.Current.OnboardingStep);
+        Assert.Equal(WindowCloseBehavior.KeepRunning, reloaded.Current.WindowCloseBehavior);
     }
 
     [Theory]
@@ -101,6 +103,21 @@ public sealed class JsonAppSettingsServiceTests
         Assert.Equal(
             JsonAppSettingsService.MaximumOnboardingStep,
             store.Current.OnboardingStep);
+    }
+
+    [Fact]
+    public void LoadingSettings_NormalizesInvalidWindowCloseBehavior()
+    {
+        using var directory = new TemporaryDirectory();
+        var path = System.IO.Path.Combine(directory.Path, "ui-settings.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new AppSettings
+        {
+            WindowCloseBehavior = (WindowCloseBehavior)999,
+        }));
+
+        var store = new JsonAppSettingsService(directory.Path);
+
+        Assert.Equal(WindowCloseBehavior.Ask, store.Current.WindowCloseBehavior);
     }
 
     private sealed class TemporaryDirectory : IDisposable

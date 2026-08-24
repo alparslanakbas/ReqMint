@@ -20,6 +20,8 @@ public sealed record AppSettings
     public OnboardingStatus OnboardingStatus { get; init; }
 
     public int OnboardingStep { get; init; }
+
+    public WindowCloseBehavior WindowCloseBehavior { get; init; }
 }
 
 public enum OnboardingStatus
@@ -28,4 +30,11 @@ public enum OnboardingStatus
     InProgress,
     Completed,
     Skipped,
+}
+
+public enum WindowCloseBehavior
+{
+    Ask,
+    KeepRunning,
+    Exit,
 }
