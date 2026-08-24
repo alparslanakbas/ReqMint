@@ -51,6 +51,16 @@ The platform store owns checkout, taxes, regional pricing, receipts, subscriptio
 4. Publish Pro at its real list price with a trial instead of a permanently cheap launch price.
 5. Add Team only after organizations request administration and support that justify per-seat pricing.
 
+## Market expansion sequence
+
+1. Complete the English/Turkish public-preview cycle and establish a trustworthy baseline.
+2. Launch a fully localized Arabic Community preview for the Gulf, beginning with Saudi Arabia and the United Arab Emirates. Use platform-managed regional pricing only after Pro exists; do not infer a higher price from customer nationality.
+3. Extend the same Arabic release to Qatar, Kuwait, Bahrain, and Oman after Store availability, support readiness, and price-display checks.
+4. Launch Simplified Chinese only after its application, website documentation, support, distribution, and localized Store assets are complete.
+5. Measure each market through privacy-respecting Store analytics, downloads, reviews, support questions, and voluntary feedback. Russian localization is excluded from this plan.
+
+The engineering and localization gates for these releases are defined in [INTERNATIONAL_EXPANSION.md](INTERNATIONAL_EXPANSION.md).
+
 ## Price benchmark recorded 24 August 2026
 
 At the time of this decision, annually billed competitor entry prices were approximately USD 6/user/month for Bruno Pro and Hoppscotch Organization, USD 9/month for Postman Solo, USD 12/user/month for Insomnia Pro, and USD 19/user/month for Postman Team. ReqMint Pro's target sits below established individual products while preserving room to fund maintenance; Team enters at the lower end only after it has authentic team value.

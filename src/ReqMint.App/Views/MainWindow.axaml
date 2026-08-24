@@ -15,6 +15,7 @@
         Icon="/Assets/TrayIcon.png"
         MinWidth="1080"
         MinHeight="680"
+        FlowDirection="{Binding Localization.FlowDirection}"
         WindowStartupLocation="CenterScreen">
 
     <Grid RowDefinitions="58,*,30">
@@ -288,7 +289,7 @@
                         <TextBlock Grid.Row="2"
                                    Margin="16,0,16,10"
                                    Text="{Binding GitRepositoryRoot}"
-                                   Classes="secondary"
+                                   Classes="secondary technical"
                                    FontSize="10"
                                    TextTrimming="CharacterEllipsis"
                                    ToolTip.Tip="{Binding GitRepositoryRoot}" />
@@ -307,12 +308,13 @@
                                                 Command="{Binding OpenCommand}">
                                             <Grid ColumnDefinitions="28,*,Auto,4,Auto">
                                                 <TextBlock Text="{Binding Status}"
-                                                           Classes="gitStatus"
+                                                           Classes="gitStatus technical"
                                                            Classes.warning="{Binding IsConflict}"
                                                            FontFamily="Cascadia Mono, Consolas"
                                                            FontWeight="Bold" />
                                                 <TextBlock Grid.Column="1"
                                                            Text="{Binding Path}"
+                                                           Classes="technical"
                                                            FontFamily="Cascadia Mono, Consolas"
                                                            FontSize="11"
                                                            TextTrimming="CharacterEllipsis" />
@@ -405,7 +407,7 @@
                               ItemsSource="{Binding Methods}"
                               SelectedItem="{Binding SelectedMethod}"
                               HorizontalContentAlignment="Stretch" />
-                    <TextBox Grid.Column="2" Text="{Binding Url}" PlaceholderText="Enter an HTTP or HTTPS URL" />
+                    <TextBox Grid.Column="2" Text="{Binding Url}" Classes="technical" PlaceholderText="Enter an HTTP or HTTPS URL" />
                     <Button Grid.Column="4"
                             Content="{DynamicResource TextSave}"
                             Command="{Binding SaveRequestCommand}" />
@@ -468,8 +470,8 @@
                                             <DataTemplate x:DataType="vm:RequestFieldViewModel">
                                                 <Grid ColumnDefinitions="32,220,12,*" Margin="0,0,0,8">
                                                     <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" />
-                                                    <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="Parameter name" />
-                                                    <TextBox Grid.Column="3" Text="{Binding Value}" PlaceholderText="Value" />
+                                                    <TextBox Grid.Column="1" Text="{Binding Name}" Classes="technical" PlaceholderText="Parameter name" />
+                                                    <TextBox Grid.Column="3" Text="{Binding Value}" Classes="technical" PlaceholderText="Value" />
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -490,8 +492,8 @@
                                             <DataTemplate x:DataType="vm:RequestFieldViewModel">
                                                 <Grid ColumnDefinitions="32,220,12,*" Margin="0,0,0,8">
                                                     <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" />
-                                                    <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="Header name" />
-                                                    <TextBox Grid.Column="3" Text="{Binding Value}" PlaceholderText="Value" />
+                                                    <TextBox Grid.Column="1" Text="{Binding Name}" Classes="technical" PlaceholderText="Header name" />
+                                                    <TextBox Grid.Column="3" Text="{Binding Value}" Classes="technical" PlaceholderText="Value" />
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -516,6 +518,7 @@
                                 </Grid>
                                 <TextBox Grid.Row="2"
                                          Text="{Binding RequestBody}"
+                                         Classes="technical"
                                          IsEnabled="{Binding IsBodyEnabled}"
                                          AcceptsReturn="True"
                                          TextWrapping="NoWrap"
@@ -541,13 +544,16 @@
                                             <DataTemplate x:DataType="vm:EnvironmentVariableViewModel">
                                                 <Grid ColumnDefinitions="220,12,*,12,90" Margin="0,0,0,8">
                                                     <TextBox Text="{Binding Name}"
+                                                             Classes="technical"
                                                              PlaceholderText="{DynamicResource TextVariableName}" />
                                                     <TextBox Grid.Column="2"
                                                              Text="{Binding Value}"
+                                                             Classes="technical"
                                                              IsVisible="{Binding !IsSecret}"
                                                              PlaceholderText="{DynamicResource TextValue}" />
                                                     <TextBox Grid.Column="2"
                                                              Text="{Binding Value}"
+                                                             Classes="technical"
                                                              IsVisible="{Binding IsSecret}"
                                                              PasswordChar="●"
                                                              PlaceholderText="{DynamicResource TextSecretValue}" />
@@ -628,6 +634,7 @@
                                               VerticalAlignment="Center" />
                                     <TextBox Grid.Column="2"
                                              Text="{Binding AssertionJsonPointer}"
+                                             Classes="technical"
                                              IsEnabled="{Binding IsJsonFieldAssertionEnabled}"
                                              PlaceholderText="/data/id" />
                                 </Grid>
@@ -815,6 +822,7 @@
                     <Border Grid.Row="2" Padding="18" Background="{DynamicResource AppBackgroundBrush}">
                         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                             <TextBlock Text="{Binding ResponseBody}"
+                                       Classes="technical"
                                        FontFamily="Cascadia Mono, Consolas"
                                        FontSize="13"
                                        TextWrapping="NoWrap" />
@@ -1272,6 +1280,7 @@
                                    VerticalAlignment="Center" />
                         <TextBlock Grid.Column="2"
                                    Text="{Binding GitDiffPath}"
+                                   Classes="technical"
                                    FontFamily="Cascadia Mono, Consolas"
                                    FontWeight="SemiBold"
                                    TextTrimming="CharacterEllipsis"
@@ -1321,6 +1330,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:GitDiffLineViewModel">
                                     <TextBlock Text="{Binding Text}"
+                                               Classes="technical"
                                                FontFamily="Cascadia Mono, Consolas"
                                                FontSize="12"
                                                Classes.diffAdded="{Binding IsAdded}"
@@ -1394,6 +1404,7 @@
                                        FontSize="18"
                                        FontWeight="SemiBold" />
                             <TextBlock Text="{Binding GitDiffPath}"
+                                       Classes="technical"
                                        FontFamily="Cascadia Mono, Consolas"
                                        TextWrapping="Wrap" />
                             <TextBlock Text="{DynamicResource GitStageReviewMessage}"
@@ -1468,6 +1479,7 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding}"
+                                                       Classes="technical"
                                                        FontFamily="Cascadia Mono, Consolas"
                                                        FontSize="11"
                                                        TextWrapping="Wrap" />
@@ -1551,6 +1563,7 @@
                                        Classes="secondary" />
                             <TextBlock Grid.Column="2"
                                        Text="{Binding GitRemoteName}"
+                                       Classes="technical"
                                        FontFamily="Cascadia Mono, Consolas"
                                        FontWeight="SemiBold" />
                             <TextBlock Grid.Row="2"
@@ -1559,6 +1572,7 @@
                             <TextBlock Grid.Row="2"
                                        Grid.Column="2"
                                        Text="{Binding GitRemoteBranch}"
+                                       Classes="technical"
                                        FontFamily="Cascadia Mono, Consolas"
                                        FontWeight="SemiBold" />
                         </Grid>
@@ -1644,6 +1658,7 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding}"
+                                                            Classes="technical"
                                                            Margin="0,0,0,6"
                                                            FontFamily="Cascadia Mono, Consolas"
                                                            FontSize="11"
@@ -1668,6 +1683,7 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding}"
+                                                            Classes="technical"
                                                            Margin="0,0,0,5"
                                                            FontFamily="Cascadia Mono, Consolas"
                                                            FontSize="11"
@@ -1748,6 +1764,7 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding}"
+                                                            Classes="technical"
                                                            Margin="0,0,0,6"
                                                            FontFamily="Cascadia Mono, Consolas"
                                                            FontSize="11"
@@ -1772,6 +1789,7 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding}"
+                                                            Classes="technical"
                                                            Margin="0,0,0,5"
                                                            FontFamily="Cascadia Mono, Consolas"
                                                            FontSize="11"

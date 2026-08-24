@@ -87,6 +87,16 @@ The approved theme gallery contains fourteen themes:
 
 Themes are token-based. Feature views must not contain hard-coded theme colors.
 
+## International expansion
+
+- The first expansion market is the Arabic-speaking Gulf, using complete Modern Standard Arabic localization and a right-to-left application shell.
+- Initial market validation covers Saudi Arabia and the United Arab Emirates; Qatar, Kuwait, Bahrain, and Oman follow through the same Arabic release after Store, support, and pricing checks.
+- Simplified Chinese is the second expansion language after the Arabic release reaches its quality gate.
+- Russian localization and Russian-market monetization are not part of the approved roadmap.
+- Technical content such as URLs, headers, JSON, environment keys, file paths, and Git diffs remains left-to-right inside a mirrored Arabic shell.
+- A language is never exposed as a partial preview. Application resources, onboarding, documentation, support, Store copy, screenshots, and native-language review ship as one release unit.
+- The detailed sequence and release gates are recorded in [INTERNATIONAL_EXPANSION.md](INTERNATIONAL_EXPANSION.md).
+
 ## Public support surfaces
 
 - Settings displays the installed application version, operating system, architecture, and .NET runtime so support reports can identify the affected build without collecting telemetry.

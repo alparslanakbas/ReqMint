@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Avalonia;
+using Avalonia.Media;
 using Avalonia.Platform;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -12,12 +13,17 @@ public partial class LocalizationService : ObservableObject
 
     public IReadOnlyList<LanguageOption> Languages { get; } =
     [
-        new("en", "English"),
-        new("tr", "Türkçe"),
+        new("en", "English", "en-US"),
+        new("tr", "Türkçe", "tr-TR"),
     ];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FlowDirection))]
     public partial LanguageOption SelectedLanguage { get; set; }
+
+    public FlowDirection FlowDirection => SelectedLanguage.IsRightToLeft
+        ? FlowDirection.RightToLeft
+        : FlowDirection.LeftToRight;
 
     public LocalizationService(IAppSettingsService settings)
     {
@@ -46,7 +52,7 @@ public partial class LocalizationService : ObservableObject
 
     private static void Apply(LanguageOption language)
     {
-        var culture = CultureInfo.GetCultureInfo(language.Code);
+        var culture = CultureInfo.GetCultureInfo(language.CultureName);
         CultureInfo.CurrentCulture = culture;
         CultureInfo.CurrentUICulture = culture;
         CultureInfo.DefaultThreadCurrentCulture = culture;

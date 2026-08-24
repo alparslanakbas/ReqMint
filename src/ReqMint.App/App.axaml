@@ -52,6 +52,14 @@
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
         </Style>
 
+        <Style Selector="TextBlock.technical">
+            <Setter Property="FlowDirection" Value="LeftToRight" />
+        </Style>
+
+        <Style Selector="TextBox.technical">
+            <Setter Property="FlowDirection" Value="LeftToRight" />
+        </Style>
+
         <Style Selector="TextBlock.warning">
             <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
         </Style>

@@ -1,18 +1,39 @@
 using System.Text.Json;
+using ReqMint.App.Services;
 
 namespace ReqMint.App.Tests;
 
 public sealed class LocalizationResourceContractTests
 {
     [Fact]
-    public void EnglishAndTurkishResources_HaveMatchingKeys()
+    public void LanguageMetadata_DetectsArabicRtlAndSimplifiedChineseLtr()
+    {
+        var arabic = new LanguageOption("ar", "العربية", "ar");
+        var simplifiedChinese = new LanguageOption("zh-Hans", "简体中文", "zh-CN");
+
+        Assert.True(arabic.IsRightToLeft);
+        Assert.False(simplifiedChinese.IsRightToLeft);
+    }
+
+    [Fact]
+    public void AllLocalizationResources_HaveMatchingKeysAndNonEmptyValues()
     {
         var english = ReadResources("en");
         var turkish = ReadResources("tr");
+        var localizationDirectory = RepositoryPath("src", "ReqMint.App", "Localization");
 
-        Assert.Equal(
-            english.Keys.Order(StringComparer.Ordinal),
-            turkish.Keys.Order(StringComparer.Ordinal));
+        foreach (var path in Directory.GetFiles(localizationDirectory, "*.json"))
+        {
+            var resources = JsonSerializer.Deserialize<Dictionary<string, string>>(
+                File.ReadAllText(path))!;
+
+            Assert.Equal(
+                english.Keys.Order(StringComparer.Ordinal),
+                resources.Keys.Order(StringComparer.Ordinal));
+            Assert.DoesNotContain(resources, resource =>
+                string.IsNullOrWhiteSpace(resource.Value));
+        }
+
         Assert.Equal("Response", english["TextResponse"]);
         Assert.Equal("Yanıt", turkish["TextResponse"]);
         Assert.Equal("Copy", english["TextCopy"]);
@@ -70,6 +91,27 @@ public sealed class LocalizationResourceContractTests
         Assert.DoesNotContain(
             "ResponseStatus = \"Ready\"",
             viewModel,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MainWindow_MirrorsWithTheLanguageAndKeepsTechnicalContentLtr()
+    {
+        var view = File.ReadAllText(
+            RepositoryPath("src", "ReqMint.App", "Views", "MainWindow.axaml"));
+        var styles = File.ReadAllText(
+            RepositoryPath("src", "ReqMint.App", "App.axaml"));
+
+        Assert.Contains(
+            "FlowDirection=\"{Binding Localization.FlowDirection}\"",
+            view,
+            StringComparison.Ordinal);
+        Assert.Contains("Classes=\"technical\"", view, StringComparison.Ordinal);
+        Assert.Contains("Selector=\"TextBox.technical\"", styles, StringComparison.Ordinal);
+        Assert.Contains("Selector=\"TextBlock.technical\"", styles, StringComparison.Ordinal);
+        Assert.Contains(
+            "<Setter Property=\"FlowDirection\" Value=\"LeftToRight\" />",
+            styles,
             StringComparison.Ordinal);
     }
 
