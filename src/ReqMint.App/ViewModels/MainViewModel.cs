@@ -16,6 +16,11 @@ namespace ReqMint.App.ViewModels;
 
 public partial class MainViewModel : ViewModelBase
 {
+    private static readonly Uri DocumentationUri = new("https://reqmint.alparslanayt.chatgpt.site/docs");
+    private static readonly Uri PrivacyUri = new("https://reqmint.alparslanayt.chatgpt.site/privacy");
+    private static readonly Uri SecurityUri = new("https://reqmint.alparslanayt.chatgpt.site/security");
+    private static readonly Uri SupportUri = new("https://reqmint.alparslanayt.chatgpt.site/support");
+
     public IReadOnlyList<string> Methods { get; } =
         ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 
@@ -61,6 +66,8 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<EnvironmentVariableViewModel> EnvironmentVariables { get; } = [];
 
     public LocalizationService Localization { get; }
+
+    public ApplicationInfoSnapshot ApplicationInfo { get; }
 
     public bool KeepRunningInBackground
     {
@@ -467,6 +474,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly ICollectionRunHistoryStore _collectionRunHistoryStore;
     private readonly ICollectionRunHistoryClearPrompt _collectionRunHistoryClearPrompt;
     private readonly ITutorialSessionService _tutorialSessionService;
+    private readonly IExternalLinkService _externalLinkService;
     private TutorialSession? _activeTutorialSession;
     private WorkspaceSnapshot? _workspaceSnapshot;
     private string? _workspaceDirectory;
@@ -496,7 +504,9 @@ public partial class MainViewModel : ViewModelBase
         ICollectionRunDataFileService collectionRunDataFileService,
         ICollectionRunHistoryStore collectionRunHistoryStore,
         ICollectionRunHistoryClearPrompt collectionRunHistoryClearPrompt,
-        ITutorialSessionService tutorialSessionService)
+        ITutorialSessionService tutorialSessionService,
+        IApplicationInfoService applicationInfoService,
+        IExternalLinkService externalLinkService)
     {
         _requestExecutor = requestExecutor;
         _collectionRunner = collectionRunner;
@@ -517,11 +527,33 @@ public partial class MainViewModel : ViewModelBase
         _collectionRunHistoryStore = collectionRunHistoryStore;
         _collectionRunHistoryClearPrompt = collectionRunHistoryClearPrompt;
         _tutorialSessionService = tutorialSessionService;
+        _externalLinkService = externalLinkService;
+        ApplicationInfo = applicationInfoService.Current;
         HistoryRetentionLimit = appSettings.Current.HistoryRetentionLimit;
         CollectionRunHistoryRetentionLimit = appSettings.Current.CollectionRunHistoryRetentionLimit;
         ResponsePreviewLimitMegabytes = appSettings.Current.ResponsePreviewLimitMegabytes;
         InitializeOnboarding(appSettings.Current);
         _cleanRequestDraft = CaptureRequestDraft();
+    }
+
+    [RelayCommand]
+    private Task OpenDocumentationAsync() => OpenExternalLinkAsync(DocumentationUri);
+
+    [RelayCommand]
+    private Task OpenPrivacyAsync() => OpenExternalLinkAsync(PrivacyUri);
+
+    [RelayCommand]
+    private Task OpenSecurityAsync() => OpenExternalLinkAsync(SecurityUri);
+
+    [RelayCommand]
+    private Task OpenSupportAsync() => OpenExternalLinkAsync(SupportUri);
+
+    private async Task OpenExternalLinkAsync(Uri uri)
+    {
+        var opened = await _externalLinkService.OpenAsync(uri);
+        WorkspaceStatus = opened
+            ? Localize("ExternalLinkOpened", "Opened in your browser")
+            : Localize("ExternalLinkFailed", "The link could not be opened");
     }
 
     partial void OnResponsePreviewLimitMegabytesChanged(decimal value)

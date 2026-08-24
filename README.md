@@ -22,6 +22,7 @@ The previous Windows Forms proof of concept is preserved under `legacy/` until t
 - streaming, cancellable HTTP execution
 - Git-friendly workspace documents
 - local history and secure platform credential storage
+- in-app version, privacy, security, documentation, and support access
 - Microsoft Store-ready MSIX distribution for Windows
 
 ## Repository layout

@@ -328,5 +328,16 @@
   "GitPushCompleted": "Pushed {0} commits to {1}",
   "GitPushFailed": "Push could not be completed; no force push was attempted",
   "GitAheadBy": "ahead {0}",
-  "GitBehindBy": "behind {0}"
+  "GitBehindBy": "behind {0}",
+  "AboutTitle": "About ReqMint",
+  "AboutCommunityPreview": "Community preview · local-first",
+  "AboutDescription": "See the exact app version and open ReqMint's public documentation, privacy, security, and support pages.",
+  "AboutPlatform": "Platform",
+  "AboutRuntime": "Runtime",
+  "AboutDocumentation": "Documentation ↗",
+  "AboutPrivacy": "Privacy ↗",
+  "AboutSecurity": "Security ↗",
+  "AboutSupport": "Support ↗",
+  "ExternalLinkOpened": "Opened in your browser",
+  "ExternalLinkFailed": "The link could not be opened"
 }

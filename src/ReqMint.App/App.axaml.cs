@@ -67,7 +67,9 @@ public partial class App : Application
                 new AvaloniaCollectionRunDataFileService(mainWindow, localization),
                 new SqliteCollectionRunHistoryStore(databasePath),
                 new AvaloniaCollectionRunHistoryClearPrompt(mainWindow, localization),
-                _tutorialSessionService);
+                _tutorialSessionService,
+                new RuntimeApplicationInfoService(),
+                new DesktopExternalLinkService());
             mainWindow.DataContext = mainViewModel;
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             desktop.MainWindow = mainWindow;

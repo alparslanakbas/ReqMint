@@ -328,5 +328,16 @@
   "GitPushCompleted": "{1} hedefine {0} commit gönderildi",
   "GitPushFailed": "Push tamamlanamadı; force push denenmedi",
   "GitAheadBy": "{0} ileride",
-  "GitBehindBy": "{0} geride"
+  "GitBehindBy": "{0} geride",
+  "AboutTitle": "ReqMint hakkında",
+  "AboutCommunityPreview": "Topluluk önizlemesi · yerel öncelikli",
+  "AboutDescription": "Uygulamanın tam sürümünü görün; ReqMint dokümantasyon, gizlilik, güvenlik ve destek sayfalarını açın.",
+  "AboutPlatform": "Platform",
+  "AboutRuntime": "Çalışma zamanı",
+  "AboutDocumentation": "Dokümantasyon ↗",
+  "AboutPrivacy": "Gizlilik ↗",
+  "AboutSecurity": "Güvenlik ↗",
+  "AboutSupport": "Destek ↗",
+  "ExternalLinkOpened": "Tarayıcınızda açıldı",
+  "ExternalLinkFailed": "Bağlantı açılamadı"
 }

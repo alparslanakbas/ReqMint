@@ -1577,6 +1577,31 @@ public sealed class MainViewModelWorkspaceTests
         Assert.Equal(string.Empty, viewModel.Url);
     }
 
+    [Fact]
+    public async Task AboutLinks_OpenExpectedTrustedPages()
+    {
+        var links = new RecordingExternalLinkService();
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore(),
+            CreateWorkspacePath(),
+            externalLinkService: links);
+
+        await viewModel.OpenDocumentationCommand.ExecuteAsync(null);
+        await viewModel.OpenPrivacyCommand.ExecuteAsync(null);
+        await viewModel.OpenSecurityCommand.ExecuteAsync(null);
+        await viewModel.OpenSupportCommand.ExecuteAsync(null);
+
+        Assert.Equal(
+            ["/docs", "/privacy", "/security", "/support"],
+            links.OpenedUris.Select(uri => uri.AbsolutePath));
+        Assert.All(links.OpenedUris, uri =>
+        {
+            Assert.Equal(Uri.UriSchemeHttps, uri.Scheme);
+            Assert.Equal("reqmint.alparslanayt.chatgpt.site", uri.Host);
+        });
+        Assert.Equal("Opened in your browser", viewModel.WorkspaceStatus);
+    }
+
     private static MainViewModel CreateViewModel(
         IWorkspaceStore store,
         string directory,
@@ -1593,7 +1618,9 @@ public sealed class MainViewModelWorkspaceTests
         ICollectionRunDataFileService? collectionRunDataFileService = null,
         RecordingCollectionRunHistoryStore? collectionRunHistoryStore = null,
         StubCollectionRunHistoryClearPrompt? collectionRunHistoryClearPrompt = null,
-        ITutorialSessionService? tutorialSessionService = null)
+        ITutorialSessionService? tutorialSessionService = null,
+        IApplicationInfoService? applicationInfoService = null,
+        IExternalLinkService? externalLinkService = null)
     {
         vault ??= new RecordingSecretVault();
         executor ??= new NoOpRequestExecutor();
@@ -1616,7 +1643,9 @@ public sealed class MainViewModelWorkspaceTests
             collectionRunDataFileService ?? new StubCollectionRunDataFileService(),
             collectionRunHistoryStore ?? new RecordingCollectionRunHistoryStore(),
             collectionRunHistoryClearPrompt ?? new StubCollectionRunHistoryClearPrompt(),
-            tutorialSessionService ?? new StubTutorialSessionService(CreateTutorialSession()));
+            tutorialSessionService ?? new StubTutorialSessionService(CreateTutorialSession()),
+            applicationInfoService ?? new RuntimeApplicationInfoService(),
+            externalLinkService ?? new RecordingExternalLinkService());
     }
 
     private static string CreateWorkspacePath() => Path.Combine(
@@ -1808,6 +1837,17 @@ public sealed class MainViewModelWorkspaceTests
 
         public void Dispose()
         {
+        }
+    }
+
+    private sealed class RecordingExternalLinkService : IExternalLinkService
+    {
+        public List<Uri> OpenedUris { get; } = [];
+
+        public Task<bool> OpenAsync(Uri uri)
+        {
+            OpenedUris.Add(uri);
+            return Task.FromResult(true);
         }
     }
 
