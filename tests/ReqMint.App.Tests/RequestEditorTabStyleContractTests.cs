@@ -12,6 +12,11 @@ public sealed class RequestEditorTabStyleContractTests
         Assert.Contains("TabItem.requestEditorTab", app, StringComparison.Ordinal);
         Assert.Contains("TabItem.requestEditorTab:pointerover", app, StringComparison.Ordinal);
         Assert.Contains("TabItem.requestEditorTab:selected", app, StringComparison.Ordinal);
+        Assert.Contains(
+            "TabItem.requestEditorTab:selected /template/ Border#PART_SelectedPipe",
+            app,
+            StringComparison.Ordinal);
+        Assert.Contains("Property=\"IsVisible\" Value=\"False\"", app, StringComparison.Ordinal);
         Assert.Contains("{DynamicResource AccentBrush}", app, StringComparison.Ordinal);
         Assert.Equal(5, CountOccurrences(view, "Classes=\"requestEditorTab\""));
     }

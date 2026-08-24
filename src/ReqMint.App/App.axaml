@@ -145,5 +145,9 @@
             <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
+
+        <Style Selector="TabItem.requestEditorTab:selected /template/ Border#PART_SelectedPipe">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
     </Application.Styles>
 </Application>
