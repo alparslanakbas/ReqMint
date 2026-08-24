@@ -1,0 +1,41 @@
+{
+  "language": "tr-TR",
+  "productName": "ReqMint",
+  "shortTitle": "ReqMint",
+  "shortDescription": "Hesap veya bulut çalışma alanı gerektirmeden HTTP istekleri oluşturup test etmenizi, düzenlemenizi ve paylaşmanızı sağlayan hızlı, yerel öncelikli masaüstü çalışma alanı.",
+  "description": "ReqMint, günlük API çalışmalarınızı odaklı, hızlı ve kontrolünüz altında tutar.\n\nHTTP istekleri oluşturup gönderin, bunları yerel çalışma alanları ve koleksiyonlarda düzenleyin, ortamlar arasında geçiş yapın, yanıtları inceleyin ve tekrarlanabilir doğrulamalar çalıştırın.\n\nÇalışma alanları Git için tasarlanmış, okunabilir dosyalardır. ReqMint tarafından yönetilen değişiklikleri ve farkları inceleyin; hazırlama, commit, güncelleme ve gönderme işlemlerini sessiz depo işlemleri olmadan, kontrollü akışlarla gerçekleştirin.\n\nReqMint; ayarları, sınırlandırılmış geçmişi ve hassas bilgilerden arındırılmış çalışma özetlerini cihazınızda saklar. Hassas ortam değerleri işletim sisteminin kimlik bilgisi kasasını kullanır. Community önizlemesinde ReqMint hesabı, barındırılan çalışma alanı eşitlemesi, reklam veya ürün telemetrisi gerekmez.\n\nRehberli yerel eğitim, üçüncü taraf örnek API'lere bağlanmadan ilk isteğinizi göndermenize yardımcı olur. Türkçe ve İngilizce arayüzler, yapılandırılabilir temalar, klavye dostu iş akışları ve isteğe bağlı arka plan modu farklı geliştirici düzenlerine uyum sağlar.\n\nCommunity önizlemesi ücretsizdir. Herkese açık indirmeler yalnızca yayın paketleri gerekli platform, güvenlik, kurulum, güncelleme ve kaldırma kontrollerini geçtiğinde etkinleştirilir.",
+  "whatsNew": "",
+  "features": [
+    "GET, POST, PUT, PATCH, DELETE, HEAD ve OPTIONS istekleri oluşturun",
+    "Sorgu parametreleri, başlıklar, metin, JSON, XML ve form URL-encoded gövdeleri hazırlayın",
+    "Yerel çalışma alanlarını, koleksiyonları, istekleri ve ortamları düzenleyin",
+    "Hassas ortam değerlerini işletim sisteminin kimlik bilgisi kasasında tutun",
+    "Hassas değerleri gizlenmiş, sınırlandırılmış yerel geçmişte arama yapın",
+    "Koleksiyonları doğrulamalar, CSV veya JSON verileri, iptal, dışa aktarma ve yeniden çalıştırma desteğiyle yürütün",
+    "Git değişikliklerini inceleyin; kontrollü hazırlama, commit, güncelleme ve gönderme akışlarını kullanın",
+    "Örnek verileri üçüncü taraflara göndermeyen, geçici yerel eğitim API'siyle başlayın",
+    "Türkçe veya İngilizceyi seçin ve erişilebilir görsel temalar arasında geçiş yapın",
+    "Kapatma davranışını sessizce değiştirmeyen, isteğe bağlı sistem tepsisi arka plan modunu kullanın"
+  ],
+  "keywords": [
+    "API istemcisi",
+    "HTTP istekleri",
+    "REST testi",
+    "geliştirici araçları",
+    "koleksiyon çalıştırıcı",
+    "Git çalışma alanı",
+    "yerel öncelikli"
+  ],
+  "copyrightAndTrademark": "© 2026 Alparslan Akbaş. ReqMint.",
+  "developedBy": "Alparslan Akbaş",
+  "privacyPolicyUrl": "https://reqmint.alparslanayt.chatgpt.site/privacy",
+  "websiteUrl": "https://reqmint.alparslanayt.chatgpt.site",
+  "supportUrl": "https://reqmint.alparslanayt.chatgpt.site/support",
+  "screenshotCaptions": [
+    "Odaklı yerel çalışma alanından HTTP istekleri oluşturun ve gönderin.",
+    "İstekleri okunabilir koleksiyonlarda düzenleyin ve ortamlar arasında güvenle geçiş yapın.",
+    "Koleksiyonları doğrulamalar, veri yinelemeleri, iptal ve anlaşılır sonuçlarla çalıştırın.",
+    "Açık bir depo işleminden önce ReqMint tarafından yönetilen Git değişikliklerini inceleyin.",
+    "Yerel geçmişi, temaları, dili, arka plan modunu ve destek ayrıntılarını yönetin."
+  ]
+}

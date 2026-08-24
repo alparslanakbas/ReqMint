@@ -47,6 +47,7 @@ docs/      product, architecture, and migration decisions
 - [Background mode](docs/BACKGROUND_MODE.md)
 - [Git integration](docs/GIT_INTEGRATION.md)
 - [Windows packaging](docs/WINDOWS_PACKAGING.md)
+- [Microsoft Store listing kit](docs/MICROSOFT_STORE_LISTING.md)
 - [Linux packaging](docs/LINUX_PACKAGING.md)
 - [macOS packaging](docs/MACOS_PACKAGING.md)
 - [Release readiness](docs/RELEASE_READINESS.md)

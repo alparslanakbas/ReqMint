@@ -1,0 +1,41 @@
+{
+  "language": "en-US",
+  "productName": "ReqMint",
+  "shortTitle": "ReqMint",
+  "shortDescription": "A fast, local-first desktop workspace for building, testing, organizing, and sharing HTTP requests—without a required account or hosted workspace.",
+  "description": "ReqMint keeps everyday API work focused, fast, and under your control.\n\nBuild and send HTTP requests, organize them into local workspaces and collections, switch environments, inspect responses, and run repeatable assertions from one desktop application.\n\nWorkspaces are readable files designed for Git. Review ReqMint-managed changes, inspect diffs, and use guarded stage, commit, update, and push flows without silent repository operations.\n\nReqMint stores settings, bounded history, and sanitized run summaries on your device. Sensitive environment values use the operating system credential vault. There is no required ReqMint account, hosted workspace sync, advertising, or product telemetry in the Community preview.\n\nA guided local tutorial helps you send your first request without contacting a third-party sample API. English and Turkish interfaces, configurable themes, keyboard-friendly workflows, and optional background mode make the app fit different developer setups.\n\nThe Community preview is free. Public downloads activate only after release packages pass the required platform, security, installation, update, and removal checks.",
+  "whatsNew": "",
+  "features": [
+    "Build GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS requests",
+    "Compose query parameters, headers, text, JSON, XML, and form URL-encoded bodies",
+    "Organize local workspaces, collections, requests, and environments",
+    "Keep sensitive environment values in the operating system credential vault",
+    "Search bounded local history with sensitive values redacted",
+    "Run collections with assertions, CSV or JSON data, cancellation, exports, and reruns",
+    "Review Git changes and use guarded stage, commit, update, and push workflows",
+    "Start with a disposable local tutorial API that sends no sample data to third parties",
+    "Choose English or Turkish and switch between accessible visual themes",
+    "Use optional tray background mode without silently changing close behavior"
+  ],
+  "keywords": [
+    "API client",
+    "HTTP requests",
+    "REST testing",
+    "developer tools",
+    "collection runner",
+    "Git workspace",
+    "local first"
+  ],
+  "copyrightAndTrademark": "© 2026 Alparslan Akbaş. ReqMint.",
+  "developedBy": "Alparslan Akbaş",
+  "privacyPolicyUrl": "https://reqmint.alparslanayt.chatgpt.site/privacy",
+  "websiteUrl": "https://reqmint.alparslanayt.chatgpt.site",
+  "supportUrl": "https://reqmint.alparslanayt.chatgpt.site/support",
+  "screenshotCaptions": [
+    "Build and send HTTP requests from a focused local workspace.",
+    "Organize requests into readable collections and switch environments safely.",
+    "Run collections with assertions, data iterations, cancellation, and clear results.",
+    "Review ReqMint-managed Git changes before any explicit repository action.",
+    "Control local history, themes, language, background mode, and support details."
+  ]
+}

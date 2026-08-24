@@ -59,7 +59,8 @@ Before submitting a public build:
 2. Run the **Windows Store bundle** workflow and download the generated `.msixbundle` artifact.
 3. Validate clean install, launch, update, uninstall, file pickers, credential storage, and tray behavior on supported Windows versions.
 4. Run the Windows App Certification Kit.
-5. Review Store artwork, privacy disclosures, screenshots, release notes, and package capabilities.
+5. Complete the [Microsoft Store listing kit](MICROSOFT_STORE_LISTING.md), including its anonymous website-access gate, localized copy, screenshots, privacy disclosures, and private-audience preview.
+6. Review package capabilities against the privacy questionnaire immediately before submission.
 
 ## Microsoft references
 
