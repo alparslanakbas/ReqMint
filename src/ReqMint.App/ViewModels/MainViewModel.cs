@@ -1127,11 +1127,7 @@ public partial class MainViewModel : ViewModelBase
         Guid? selectedEnvironmentId = null)
     {
         CloseCollectionRunner();
-        var isActiveTutorialWorkspace = _activeTutorialSession is { } tutorialSession
-            && string.Equals(
-                directory,
-                tutorialSession.WorkspaceDirectory,
-                StringComparison.OrdinalIgnoreCase);
+        var isActiveTutorialWorkspace = IsActiveTutorialWorkspace(directory);
         if (_activeTutorialSession is not null && !isActiveTutorialWorkspace)
         {
             _activeTutorialSession = null;
@@ -1191,6 +1187,15 @@ public partial class MainViewModel : ViewModelBase
         RenameCollectionCommand.NotifyCanExecuteChanged();
         UpdateCollectionRunAvailability();
     }
+
+    private bool IsActiveTutorialWorkspace(string directory) =>
+        _activeTutorialSession is { } tutorialSession
+        && string.Equals(
+            directory,
+            tutorialSession.WorkspaceDirectory,
+            OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal);
 
     private async Task SelectCollection(Guid collectionId)
     {

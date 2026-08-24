@@ -547,13 +547,22 @@ public sealed class MainViewModelWorkspaceTests
         });
         var tutorialSession = CreateTutorialSession();
         var tutorial = new StubTutorialSessionService(tutorialSession);
+        var git = new StubGitService
+        {
+            Status = new GitRepositoryStatus
+            {
+                RepositoryRoot = tutorialSession.WorkspaceDirectory,
+                Branch = "main",
+            },
+        };
         var viewModel = CreateViewModel(
             store,
             existingDirectory,
             executor: executor,
             historyStore: historyStore,
             appSettings: settings,
-            tutorialSessionService: tutorial);
+            tutorialSessionService: tutorial,
+            gitService: git);
         await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
 
         await viewModel.StartTutorialSampleCommand.ExecuteAsync(null);
@@ -564,6 +573,7 @@ public sealed class MainViewModelWorkspaceTests
         Assert.True(viewModel.IsTutorialSendStep);
         Assert.Equal("ReqMint Tutorial", viewModel.WorkspaceName);
         Assert.Equal("Temporary local workspace", viewModel.WorkspaceLocation);
+        Assert.Equal("Temporary local workspace", viewModel.GitRepositoryRoot);
         Assert.Equal("{{TUTORIAL_BASE_URL}}/api/hello", viewModel.Url);
         Assert.Equal("Tutorial", viewModel.EnvironmentName);
         Assert.Null(store.SavedSnapshot);

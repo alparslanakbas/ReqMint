@@ -37,7 +37,9 @@ public partial class MainViewModel
             GitBranch = status.IsDetached
                 ? Localize("GitDetachedHead", "Detached HEAD")
                 : status.Branch;
-            GitRepositoryRoot = status.RepositoryRoot;
+            GitRepositoryRoot = IsActiveTutorialWorkspace(workspaceDirectory)
+                ? Localize("TutorialWorkspaceLocation", "Temporary local workspace")
+                : status.RepositoryRoot;
             CloseGitDiff();
             CloseGitCommit();
             CloseGitRemote();
