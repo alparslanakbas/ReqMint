@@ -98,8 +98,8 @@ Exit: deterministic runner tests verify totals, failures, cancellation, and reda
 - generate Windows MSIX/MSIXBundle and reserve the Microsoft Store identity
 - create x64 and ARM64 macOS test bundles and a fail-closed Developer ID signing/notarization pipeline; configure release credentials before public distribution
 - publish x64 and ARM64 Linux portable archives, then validate target distributions before selecting a native package format
-- run accessibility, security, migration, clean-install, update, and uninstall tests
-- update public documentation, privacy policy, screenshots, and release notes
+- enforce cross-platform Release tests and dependency vulnerability checks, and record the remaining accessibility, migration, clean-install, update, and uninstall evidence per release candidate
+- publish the privacy and security policies; update screenshots, release notes, and candidate-specific documentation before public distribution
 
 Exit: a new user can complete their first API request without external documentation, and signed beta artifacts are installable and updateable on every supported platform.
 

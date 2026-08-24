@@ -48,6 +48,9 @@ docs/      product, architecture, and migration decisions
 - [Windows packaging](docs/WINDOWS_PACKAGING.md)
 - [Linux packaging](docs/LINUX_PACKAGING.md)
 - [macOS packaging](docs/MACOS_PACKAGING.md)
+- [Release readiness](docs/RELEASE_READINESS.md)
+- [Privacy](PRIVACY.md)
+- [Security policy](SECURITY.md)
 
 ## Build
 

@@ -1,0 +1,73 @@
+name: Quality gates
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cross-platform-tests:
+    name: Release tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - macos-latest
+          - ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore ReqMint.slnx
+
+      - name: Test release build
+        run: dotnet test ReqMint.slnx --configuration Release --no-restore
+
+  dependency-audit:
+    name: Dependency vulnerability audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore ReqMint.slnx
+
+      - name: Reject vulnerable direct or transitive packages
+        shell: pwsh
+        run: |
+          $report = dotnet package list --project ReqMint.slnx --vulnerable --include-transitive --format json --no-restore
+          if ($LASTEXITCODE -ne 0) {
+            throw 'The NuGet vulnerability audit could not be completed.'
+          }
+
+          $json = ($report | ConvertFrom-Json | ConvertTo-Json -Depth 100 -Compress)
+          if ($json -match '"vulnerabilities":\[(?!\])') {
+            $report | Write-Host
+            throw 'A direct or transitive NuGet dependency has a known vulnerability.'
+          }
+
+          'No known vulnerable NuGet dependency was reported.' | Write-Host
