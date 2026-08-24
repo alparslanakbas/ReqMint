@@ -21,6 +21,13 @@ Arabic release gates:
 - a native Arabic reviewer approves terminology, truncation, and bidirectional-text behavior;
 - packaging, localization parity, accessibility, and release-readiness checks pass.
 
+Arabic publication-kit status (development only):
+
+- the application resource set and automated key/placeholder parity checks are implemented;
+- a draft `ar-SA` Partner Center listing and Arabic source documents for onboarding, privacy, security, support, and terminology review are versioned in the repository;
+- public Arabic website routes, five real `ar-SA` screenshots, accessibility review, packaging validation, and native Arabic reviewer approval remain blocking requirements;
+- draft warnings must not be removed and `ar-SA` must not be submitted to Partner Center until every remaining gate is evidenced in the same release candidate.
+
 ### 2. Simplified Chinese
 
 Simplified Chinese (`zh-Hans`) is the second expansion language. It is not exposed until the application resources, onboarding, documentation, support pages, Store listing, screenshots, and native-language review are complete.

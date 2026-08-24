@@ -4,7 +4,7 @@ namespace ReqMint.App.Tests;
 
 public sealed class MicrosoftStoreListingContractTests
 {
-    private static readonly string[] ExpectedLanguages = ["en-US", "tr-TR"];
+    private static readonly string[] ExpectedLanguages = ["en-US", "tr-TR", "ar-SA"];
 
     [Fact]
     public void Listings_CoverSupportedLanguagesAndPartnerCenterLimits()
@@ -67,6 +67,33 @@ public sealed class MicrosoftStoreListingContractTests
         Assert.Contains("Do not submit these URLs while anonymous visitors receive an access prompt", guide, StringComparison.Ordinal);
         Assert.Contains("What's new", guide, StringComparison.Ordinal);
         Assert.Contains("Windows App Certification Kit", guide, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ArabicPublicationKit_RequiresNativeReviewBeforePublicRelease()
+    {
+        var localizationRoot = RepositoryPath("docs", "localization", "ar-SA");
+        var expectedDocuments = new[]
+        {
+            "README.md",
+            "PRIVACY.md",
+            "SECURITY.md",
+            "SUPPORT.md",
+            "TERMINOLOGY.md"
+        };
+
+        Assert.All(
+            expectedDocuments,
+            document => Assert.True(File.Exists(Path.Combine(localizationRoot, document))));
+
+        var terminology = File.ReadAllText(Path.Combine(localizationRoot, "TERMINOLOGY.md"));
+        Assert.Contains("386", terminology, StringComparison.Ordinal);
+        Assert.Contains("متحدث عربي أصلي", terminology, StringComparison.Ordinal);
+
+        var expansionGuide = File.ReadAllText(
+            RepositoryPath("docs", "INTERNATIONAL_EXPANSION.md"));
+        Assert.Contains("Arabic publication-kit status", expansionGuide, StringComparison.Ordinal);
+        Assert.Contains("native Arabic reviewer", expansionGuide, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -1,9 +1,10 @@
 # Microsoft Store listing kit
 
-This kit keeps the first Microsoft Store submission consistent, reviewable, and ready for English and Turkish customers. The canonical Partner Center copy lives in:
+This kit keeps Microsoft Store submissions consistent and reviewable. English and Turkish are the initial reviewed listing sources. Arabic (`ar-SA`) is a Gulf-expansion draft and remains blocked from public submission until the native-language and screenshot gates pass. The canonical Partner Center copy lives in:
 
 - `packaging/windows/store-listing/en-US.json`
 - `packaging/windows/store-listing/tr-TR.json`
+- `packaging/windows/store-listing/ar-SA.json`
 
 Do not maintain separate copy in private notes. Update these files, run the test suite, and copy the validated values into Partner Center.
 
@@ -44,7 +45,7 @@ When the domain is available and approved:
 
 ## Screenshot capture plan
 
-Capture real release UI rather than design mockups. Prepare the same five scenes for `en-US` and `tr-TR`, using the captions stored in each listing JSON file:
+Capture real release UI rather than design mockups. Prepare the same five scenes for `en-US` and `tr-TR`, using the captions stored in each listing JSON file. Capture the matching `ar-SA` scenes only after a native reviewer approves the application terminology and RTL behavior:
 
 Use the disposable **ReqMint Tutorial** workspace as the screenshot dataset. Its local demo API contains no credentials, personal information, external URLs, or third-party requests. The application deliberately replaces its physical temporary path with a localized safe label. Run the seeded collection before capturing the Runner scene, and never substitute a real customer workspace.
 
@@ -56,7 +57,7 @@ Use the disposable **ReqMint Tutorial** workspace as the screenshot dataset. Its
 
 Use PNG images at 1920 × 1080 when possible. Desktop screenshots must be at least 1366 × 768 and no larger than 50 MB. Partner Center permits up to ten desktop screenshots; Microsoft recommends at least four. Keep the most important UI in the upper two-thirds because Store layouts may crop images. Also prepare a 300 × 300 app tile icon.
 
-Use these filenames under `packaging/windows/store-listing/screenshots/<locale>` for both `en-US` and `tr-TR`:
+Use these filenames under `packaging/windows/store-listing/screenshots/<locale>` for `en-US`, `tr-TR`, and—after approval—`ar-SA`:
 
 1. `01-request-builder.png`
 2. `02-collections-environments.png`
@@ -70,7 +71,7 @@ Generate the committed 300 × 300 Store tile after a branding change:
 ./eng/New-WindowsStoreListingAssets.ps1
 ```
 
-After capturing the real release UI, validate both localized screenshot sets before submission:
+After capturing the real release UI, validate the required localized screenshot sets before submission. The validator intentionally covers only locales with approved, committed screenshot sets; add `ar-SA` to it in the same commit as the five reviewed Arabic captures:
 
 ```powershell
 ./eng/Test-WindowsStoreScreenshots.ps1
@@ -81,7 +82,7 @@ After capturing the real release UI, validate both localized screenshot sets bef
 1. Reserve the exact `ReqMint` product name.
 2. Configure the package identity variables described in `docs/WINDOWS_PACKAGING.md`.
 3. Make the website public and verify the website, privacy, and support routes anonymously.
-4. Copy the validated `en-US` and `tr-TR` listing content into Partner Center.
+4. Copy the validated `en-US` and `tr-TR` listing content into Partner Center. Add `ar-SA` only after its native-language review, public Arabic support routes, and screenshots are complete.
 5. Complete the age-rating and privacy questionnaires using the shipped application's actual behavior.
 6. Upload real localized screenshots and the app tile artwork.
 7. Add selected tester Microsoft accounts to the private audience.
