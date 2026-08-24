@@ -28,4 +28,25 @@ public sealed class ApplicationSupportServiceTests
 
         Assert.False(opened);
     }
+
+    [Fact]
+    public void SupportInformation_ContainsOnlyExplicitReleaseFields()
+    {
+        var information = new ApplicationInfoSnapshot(
+            "3.0.0-preview.1",
+            "Test OS",
+            "Arm64",
+            ".NET 10.0.0");
+
+        var report = new SupportInformationService().Create(information);
+
+        Assert.Equal(
+            "ReqMint support information\n"
+            + "Version: 3.0.0-preview.1\n"
+            + "Operating system: Test OS\n"
+            + "Architecture: Arm64\n"
+            + "Runtime: .NET 10.0.0\n"
+            + "Release channel: Community preview",
+            report.ReplaceLineEndings("\n"));
+    }
 }

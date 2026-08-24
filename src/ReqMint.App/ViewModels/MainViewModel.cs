@@ -69,6 +69,8 @@ public partial class MainViewModel : ViewModelBase
 
     public ApplicationInfoSnapshot ApplicationInfo { get; }
 
+    public string SupportInformation { get; }
+
     public bool KeepRunningInBackground
     {
         get => _appSettings.Current.WindowCloseBehavior == WindowCloseBehavior.KeepRunning;
@@ -475,6 +477,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly ICollectionRunHistoryClearPrompt _collectionRunHistoryClearPrompt;
     private readonly ITutorialSessionService _tutorialSessionService;
     private readonly IExternalLinkService _externalLinkService;
+    private readonly IClipboardService _clipboardService;
     private TutorialSession? _activeTutorialSession;
     private WorkspaceSnapshot? _workspaceSnapshot;
     private string? _workspaceDirectory;
@@ -506,7 +509,9 @@ public partial class MainViewModel : ViewModelBase
         ICollectionRunHistoryClearPrompt collectionRunHistoryClearPrompt,
         ITutorialSessionService tutorialSessionService,
         IApplicationInfoService applicationInfoService,
-        IExternalLinkService externalLinkService)
+        IExternalLinkService externalLinkService,
+        ISupportInformationService supportInformationService,
+        IClipboardService clipboardService)
     {
         _requestExecutor = requestExecutor;
         _collectionRunner = collectionRunner;
@@ -528,7 +533,9 @@ public partial class MainViewModel : ViewModelBase
         _collectionRunHistoryClearPrompt = collectionRunHistoryClearPrompt;
         _tutorialSessionService = tutorialSessionService;
         _externalLinkService = externalLinkService;
+        _clipboardService = clipboardService;
         ApplicationInfo = applicationInfoService.Current;
+        SupportInformation = supportInformationService.Create(ApplicationInfo);
         HistoryRetentionLimit = appSettings.Current.HistoryRetentionLimit;
         CollectionRunHistoryRetentionLimit = appSettings.Current.CollectionRunHistoryRetentionLimit;
         ResponsePreviewLimitMegabytes = appSettings.Current.ResponsePreviewLimitMegabytes;
@@ -547,6 +554,15 @@ public partial class MainViewModel : ViewModelBase
 
     [RelayCommand]
     private Task OpenSupportAsync() => OpenExternalLinkAsync(SupportUri);
+
+    [RelayCommand]
+    private async Task CopySupportInformationAsync()
+    {
+        var copied = await _clipboardService.SetTextAsync(SupportInformation);
+        WorkspaceStatus = copied
+            ? Localize("SupportInformationCopied", "Support information copied")
+            : Localize("SupportInformationCopyFailed", "Support information could not be copied");
+    }
 
     private async Task OpenExternalLinkAsync(Uri uri)
     {

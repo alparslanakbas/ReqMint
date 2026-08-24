@@ -334,10 +334,14 @@
   "AboutDescription": "Uygulamanın tam sürümünü görün; ReqMint dokümantasyon, gizlilik, güvenlik ve destek sayfalarını açın.",
   "AboutPlatform": "Platform",
   "AboutRuntime": "Çalışma zamanı",
+  "AboutCopySupport": "Destek bilgisini kopyala",
+  "AboutCopySupportHelp": "Yalnızca sürüm ve platform bilgilerini kopyalar; istek, çalışma alanı veya gizli veri içermez.",
   "AboutDocumentation": "Dokümantasyon ↗",
   "AboutPrivacy": "Gizlilik ↗",
   "AboutSecurity": "Güvenlik ↗",
   "AboutSupport": "Destek ↗",
   "ExternalLinkOpened": "Tarayıcınızda açıldı",
-  "ExternalLinkFailed": "Bağlantı açılamadı"
+  "ExternalLinkFailed": "Bağlantı açılamadı",
+  "SupportInformationCopied": "Destek bilgisi kopyalandı",
+  "SupportInformationCopyFailed": "Destek bilgisi kopyalanamadı"
 }

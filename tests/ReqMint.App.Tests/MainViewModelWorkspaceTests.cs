@@ -1602,6 +1602,25 @@ public sealed class MainViewModelWorkspaceTests
         Assert.Equal("Opened in your browser", viewModel.WorkspaceStatus);
     }
 
+    [Fact]
+    public async Task CopySupportInformation_CopiesOnlyReleaseAndPlatformDetails()
+    {
+        var clipboard = new RecordingClipboardService();
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore(),
+            CreateWorkspacePath(),
+            clipboardService: clipboard);
+
+        await viewModel.CopySupportInformationCommand.ExecuteAsync(null);
+
+        Assert.Equal(viewModel.SupportInformation, clipboard.Text);
+        Assert.DoesNotContain("api.example.com", clipboard.Text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("workspace.json", clipboard.Text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("authorization", clipboard.Text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("token", clipboard.Text, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Support information copied", viewModel.WorkspaceStatus);
+    }
+
     private static MainViewModel CreateViewModel(
         IWorkspaceStore store,
         string directory,
@@ -1620,7 +1639,9 @@ public sealed class MainViewModelWorkspaceTests
         StubCollectionRunHistoryClearPrompt? collectionRunHistoryClearPrompt = null,
         ITutorialSessionService? tutorialSessionService = null,
         IApplicationInfoService? applicationInfoService = null,
-        IExternalLinkService? externalLinkService = null)
+        IExternalLinkService? externalLinkService = null,
+        ISupportInformationService? supportInformationService = null,
+        IClipboardService? clipboardService = null)
     {
         vault ??= new RecordingSecretVault();
         executor ??= new NoOpRequestExecutor();
@@ -1645,7 +1666,9 @@ public sealed class MainViewModelWorkspaceTests
             collectionRunHistoryClearPrompt ?? new StubCollectionRunHistoryClearPrompt(),
             tutorialSessionService ?? new StubTutorialSessionService(CreateTutorialSession()),
             applicationInfoService ?? new RuntimeApplicationInfoService(),
-            externalLinkService ?? new RecordingExternalLinkService());
+            externalLinkService ?? new RecordingExternalLinkService(),
+            supportInformationService ?? new SupportInformationService(),
+            clipboardService ?? new RecordingClipboardService());
     }
 
     private static string CreateWorkspacePath() => Path.Combine(
@@ -1847,6 +1870,17 @@ public sealed class MainViewModelWorkspaceTests
         public Task<bool> OpenAsync(Uri uri)
         {
             OpenedUris.Add(uri);
+            return Task.FromResult(true);
+        }
+    }
+
+    private sealed class RecordingClipboardService : IClipboardService
+    {
+        public string? Text { get; private set; }
+
+        public Task<bool> SetTextAsync(string text)
+        {
+            Text = text;
             return Task.FromResult(true);
         }
     }

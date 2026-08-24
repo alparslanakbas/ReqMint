@@ -759,6 +759,16 @@
                                                        Classes="secondary"
                                                        TextWrapping="Wrap" />
                                         </Grid>
+                                        <Grid ColumnDefinitions="Auto,12,*">
+                                            <Button Classes="primary"
+                                                    Content="{DynamicResource AboutCopySupport}"
+                                                    Command="{Binding CopySupportInformationCommand}" />
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{DynamicResource AboutCopySupportHelp}"
+                                                       Classes="secondary"
+                                                       VerticalAlignment="Center"
+                                                       TextWrapping="Wrap" />
+                                        </Grid>
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <Button Content="{DynamicResource AboutDocumentation}"
                                                     Command="{Binding OpenDocumentationCommand}" />

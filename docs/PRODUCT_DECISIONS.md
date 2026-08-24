@@ -90,6 +90,7 @@ Themes are token-based. Feature views must not contain hard-coded theme colors.
 ## Public support surfaces
 
 - Settings displays the installed application version, operating system, architecture, and .NET runtime so support reports can identify the affected build without collecting telemetry.
+- Copy support info is user-initiated and contains only those four application/platform fields plus the public release channel; request content, URLs, workspace paths, environment values, and credentials are outside the formatter's input.
 - Documentation, privacy, security, and support actions open the canonical ReqMint website through explicit HTTPS links.
 - ReqMint does not upload diagnostics automatically. Users decide what to include in a public issue and security reports use GitHub's private vulnerability channel.
 

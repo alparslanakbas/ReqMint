@@ -69,7 +69,9 @@ public partial class App : Application
                 new AvaloniaCollectionRunHistoryClearPrompt(mainWindow, localization),
                 _tutorialSessionService,
                 new RuntimeApplicationInfoService(),
-                new DesktopExternalLinkService());
+                new DesktopExternalLinkService(),
+                new SupportInformationService(),
+                new AvaloniaClipboardService(mainWindow));
             mainWindow.DataContext = mainViewModel;
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             desktop.MainWindow = mainWindow;

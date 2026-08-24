@@ -334,10 +334,14 @@
   "AboutDescription": "See the exact app version and open ReqMint's public documentation, privacy, security, and support pages.",
   "AboutPlatform": "Platform",
   "AboutRuntime": "Runtime",
+  "AboutCopySupport": "Copy support info",
+  "AboutCopySupportHelp": "Copies version and platform details only—never request, workspace, or secret data.",
   "AboutDocumentation": "Documentation ↗",
   "AboutPrivacy": "Privacy ↗",
   "AboutSecurity": "Security ↗",
   "AboutSupport": "Support ↗",
   "ExternalLinkOpened": "Opened in your browser",
-  "ExternalLinkFailed": "The link could not be opened"
+  "ExternalLinkFailed": "The link could not be opened",
+  "SupportInformationCopied": "Support information copied",
+  "SupportInformationCopyFailed": "Support information could not be copied"
 }
