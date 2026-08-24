@@ -55,6 +55,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
           </nav>
         </article>
       </div>
+      <footer className="inner-footer"><a className="brand" href="/"><span className="brand-mark" aria-hidden="true">R</span><span>ReqMint</span></a><p>Documentation for the public preview.</p><div><a href="/privacy">Privacy</a><a href="/security">Security</a><a href="/support">Support</a></div></footer>
     </main>
   );
 }

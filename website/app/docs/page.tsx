@@ -50,7 +50,7 @@ export default function DocsHome() {
         </div>
       </div>
 
-      <footer className="inner-footer"><a className="brand" href="/"><span className="brand-mark" aria-hidden="true">R</span><span>ReqMint</span></a><p>Documentation for the public preview.</p><div><a href="/downloads">Downloads</a><a href="https://github.com/alparslanakbas/ReqMint/blob/main/PRIVACY.md">Privacy</a></div></footer>
+      <footer className="inner-footer"><a className="brand" href="/"><span className="brand-mark" aria-hidden="true">R</span><span>ReqMint</span></a><p>Documentation for the public preview.</p><div><a href="/downloads">Downloads</a><a href="/privacy">Privacy</a><a href="/support">Support</a></div></footer>
     </main>
   );
 }

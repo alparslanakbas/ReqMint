@@ -41,7 +41,7 @@ export default function DownloadsPage() {
 
       <section className="download-integrity"><div><span className="section-kicker">Release integrity</span><h2>Trust the package, not just the page.</h2></div><div className="integrity-list"><p><b>01 · Tested</b><span>Release tests run on Windows, macOS, and Linux.</span></p><p><b>02 · Verified</b><span>Architectures, metadata, package structure, and checksums are checked automatically.</span></p><p><b>03 · Signed</b><span>Public Windows and macOS packages must pass their platform trust gates.</span></p></div></section>
 
-      <footer className="inner-footer"><a className="brand" href="/"><span className="brand-mark" aria-hidden="true">R</span><span>ReqMint</span></a><p>Public preview coming soon.</p><div><a href="/docs">Documentation</a><a href="https://github.com/alparslanakbas/ReqMint">GitHub</a></div></footer>
+      <footer className="inner-footer"><a className="brand" href="/"><span className="brand-mark" aria-hidden="true">R</span><span>ReqMint</span></a><p>Public preview coming soon.</p><div><a href="/docs">Documentation</a><a href="/privacy">Privacy</a><a href="/support">Support</a></div></footer>
     </main>
   );
 }

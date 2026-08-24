@@ -123,7 +123,7 @@ export default function Home() {
       <footer>
         <a className="brand" href="#top"><BrandMark /><span>ReqMint</span></a>
         <p>API work, without the weight.</p>
-        <div><a href="/docs">Documentation</a><a href="https://github.com/alparslanakbas/ReqMint">GitHub</a><a href="https://github.com/alparslanakbas/ReqMint/blob/main/PRIVACY.md">Privacy</a></div>
+        <div><a href="/docs">Documentation</a><a href="/privacy">Privacy</a><a href="/security">Security</a><a href="/support">Support</a></div>
       </footer>
     </main>
   );

@@ -49,6 +49,21 @@ public sealed class ReleaseReadinessContractTests
         Assert.Contains("directory: /website", dependabot, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Website_ExposesPublicPrivacySecurityAndSupportRoutes()
+    {
+        var privacy = File.ReadAllText(RepositoryPath("website", "app", "privacy", "page.tsx"));
+        var security = File.ReadAllText(RepositoryPath("website", "app", "security", "page.tsx"));
+        var support = File.ReadAllText(RepositoryPath("website", "app", "support", "page.tsx"));
+
+        Assert.Contains("requires no account", privacy, StringComparison.Ordinal);
+        Assert.Contains("does not enable product analytics or crash telemetry", privacy, StringComparison.Ordinal);
+        Assert.Contains("security/advisories/new", security, StringComparison.Ordinal);
+        Assert.Contains("Never publish secrets", security, StringComparison.Ordinal);
+        Assert.Contains("Remove authorization headers", support, StringComparison.Ordinal);
+        Assert.Contains("GitHub issues", support, StringComparison.Ordinal);
+    }
+
     private static string RepositoryPath(params string[] segments)
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

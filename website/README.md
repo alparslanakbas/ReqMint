@@ -8,6 +8,9 @@ The ReqMint website is a presentation, platform-download, and documentation surf
 - `/downloads` — trusted platform channels and release status
 - `/docs` — task-focused documentation index
 - `/docs/:slug` — detailed guides
+- `/privacy` — public privacy policy for Store and release listings
+- `/security` — security scope and private vulnerability reporting
+- `/support` — documentation, bug-reporting, and feature-request paths
 
 Until the public release gates pass, download controls remain visibly unavailable rather than linking to unsigned or temporary workflow artifacts. Microsoft Store and other platform links are activated only after their final listings exist.
 
