@@ -46,6 +46,7 @@ docs/      product, architecture, and migration decisions
 - [Background mode](docs/BACKGROUND_MODE.md)
 - [Git integration](docs/GIT_INTEGRATION.md)
 - [Windows packaging](docs/WINDOWS_PACKAGING.md)
+- [Linux packaging](docs/LINUX_PACKAGING.md)
 
 ## Build
 

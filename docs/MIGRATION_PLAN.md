@@ -97,7 +97,7 @@ Exit: deterministic runner tests verify totals, failures, cancellation, and reda
 - verify that tutorial progress and sample data remain local and can be removed cleanly
 - generate Windows MSIX/MSIXBundle and reserve the Microsoft Store identity
 - add macOS bundles/signing/notarization pipeline
-- add Linux portable package and validate target distributions
+- publish x64 and ARM64 Linux portable archives, then validate target distributions before selecting a native package format
 - run accessibility, security, migration, clean-install, update, and uninstall tests
 - update public documentation, privacy policy, screenshots, and release notes
 

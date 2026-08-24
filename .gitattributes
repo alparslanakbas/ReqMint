@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Keep Unix launch and packaging scripts runnable on Linux checkouts.
+*.sh text eol=lf
+packaging/linux/reqmint text eol=lf

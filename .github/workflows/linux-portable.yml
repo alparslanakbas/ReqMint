@@ -1,0 +1,68 @@
+name: Linux portable packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semantic package version
+        required: true
+        default: 0.1.0-preview.1
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test release build
+        run: dotnet test ReqMint.slnx --configuration Release
+
+  package:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture:
+          - x64
+          - arm64
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build self-contained portable archive
+        shell: bash
+        run: bash ./eng/package-linux.sh '${{ inputs.version }}' '${{ matrix.architecture }}'
+
+      - name: Verify archive and checksum
+        shell: bash
+        run: |
+          cd artifacts/packages/linux
+          sha256sum --check "ReqMint-${{ inputs.version }}-linux-${{ matrix.architecture }}.tar.gz.sha256"
+          tar -tzf "ReqMint-${{ inputs.version }}-linux-${{ matrix.architecture }}.tar.gz" | grep -Fx 'ReqMint/reqmint'
+          tar -tzf "ReqMint-${{ inputs.version }}-linux-${{ matrix.architecture }}.tar.gz" | grep -Fx 'ReqMint/ReqMint.App'
+
+      - name: Upload Linux package
+        uses: actions/upload-artifact@v7
+        with:
+          name: ReqMint-${{ inputs.version }}-linux-${{ matrix.architecture }}
+          path: |
+            artifacts/packages/linux/*.tar.gz
+            artifacts/packages/linux/*.tar.gz.sha256
+          if-no-files-found: error
