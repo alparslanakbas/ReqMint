@@ -42,6 +42,8 @@ macos_directory="$contents_directory/MacOS"
 resources_directory="$contents_directory/Resources"
 plist_template="$repository_root/packaging/macos/Info.plist.in"
 icon_generator="$repository_root/packaging/macos/GenerateAppIcon.swift"
+entitlements_path="$repository_root/packaging/macos/ReqMint.entitlements"
+signing_identity="${REQMINT_MACOS_SIGNING_IDENTITY:-}"
 
 if [[ -z "$output_directory" ]]; then
     output_directory="$repository_root/artifacts/packages/macos"
@@ -113,11 +115,17 @@ create_icon 512 icon_512x512.png
 create_icon 1024 icon_512x512@2x.png
 iconutil --convert icns --output "$resources_directory/ReqMint.icns" "$iconset_directory"
 
-while IFS= read -r -d '' signable_file; do
-    codesign --force --options runtime --sign - "$signable_file"
-done < <(find "$macos_directory" -type f \( -name '*.dylib' -o -name '*.so' -o -perm -111 \) -print0)
+if [[ -z "$signing_identity" ]]; then
+    codesign_arguments=(--force --options runtime --sign - --entitlements "$entitlements_path")
+else
+    codesign_arguments=(--force --options runtime --timestamp --sign "$signing_identity" --entitlements "$entitlements_path")
+fi
 
-codesign --force --options runtime --sign - "$bundle_path"
+while IFS= read -r -d '' signable_file; do
+    codesign "${codesign_arguments[@]}" "$signable_file"
+done < <(find "$macos_directory" -type f -print0)
+
+codesign "${codesign_arguments[@]}" "$bundle_path"
 codesign --verify --deep --strict --verbose=2 "$bundle_path"
 
 archive_name="ReqMint-$version-$build_number-$runtime_identifier.zip"
@@ -130,6 +138,12 @@ ditto -c -k --sequesterRsrc --keepParent "$bundle_path" "$archive_path"
     shasum -a 256 "$archive_name" > "$archive_name.sha256"
 )
 
-printf 'Created ad-hoc signed ReqMint macOS test package: %s\n' "$archive_path"
+if [[ -z "$signing_identity" ]]; then
+    printf 'Created ad-hoc signed ReqMint macOS test package: %s\n' "$archive_path"
+else
+    printf 'Created Developer ID-signed ReqMint macOS package: %s\n' "$archive_path"
+fi
 printf 'Created SHA-256 checksum: %s.sha256\n' "$archive_path"
-printf 'Developer ID signing and Apple notarization are still required for public distribution.\n'
+if [[ -z "$signing_identity" ]]; then
+    printf 'Developer ID signing and Apple notarization are still required for public distribution.\n'
+fi
