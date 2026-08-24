@@ -1,0 +1,81 @@
+name: macOS test packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Three-part application version
+        required: true
+        default: 0.1.0
+        type: string
+      build_number:
+        description: Positive Apple bundle build number
+        required: true
+        default: '1'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test release build
+        run: dotnet test ReqMint.slnx --configuration Release
+
+  package:
+    needs: test
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture:
+          - x64
+          - arm64
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build ad-hoc signed app bundle
+        shell: bash
+        run: bash ./eng/package-macos.sh '${{ inputs.version }}' '${{ inputs.build_number }}' '${{ matrix.architecture }}'
+
+      - name: Verify bundle architecture and metadata
+        shell: bash
+        run: |
+          bundle="artifacts/macos/osx-${{ matrix.architecture }}/ReqMint.app"
+          plutil -lint "$bundle/Contents/Info.plist"
+          codesign --verify --deep --strict --verbose=2 "$bundle"
+
+          if [[ '${{ matrix.architecture }}' == 'x64' ]]; then
+            file "$bundle/Contents/MacOS/ReqMint.App" | grep -F 'x86_64'
+          else
+            file "$bundle/Contents/MacOS/ReqMint.App" | grep -F 'arm64'
+          fi
+
+          cd artifacts/packages/macos
+          shasum -a 256 --check "ReqMint-${{ inputs.version }}-${{ inputs.build_number }}-osx-${{ matrix.architecture }}.zip.sha256"
+
+      - name: Upload macOS test package
+        uses: actions/upload-artifact@v7
+        with:
+          name: ReqMint-${{ inputs.version }}-${{ inputs.build_number }}-osx-${{ matrix.architecture }}
+          path: |
+            artifacts/packages/macos/*.zip
+            artifacts/packages/macos/*.zip.sha256
+          if-no-files-found: error

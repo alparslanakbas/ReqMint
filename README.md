@@ -47,6 +47,7 @@ docs/      product, architecture, and migration decisions
 - [Git integration](docs/GIT_INTEGRATION.md)
 - [Windows packaging](docs/WINDOWS_PACKAGING.md)
 - [Linux packaging](docs/LINUX_PACKAGING.md)
+- [macOS packaging](docs/MACOS_PACKAGING.md)
 
 ## Build
 
