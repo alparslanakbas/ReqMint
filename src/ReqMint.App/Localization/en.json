@@ -5,6 +5,8 @@
   "TextRequestName": "Request name",
   "TextSave": "Save",
   "TextSend": "Send",
+  "TextResponse": "Response",
+  "TextCopy": "Copy",
   "TextParams": "Params",
   "TextHeaders": "Headers",
   "TextBody": "Body",

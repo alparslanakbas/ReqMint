@@ -5,6 +5,8 @@
   "TextRequestName": "İstek adı",
   "TextSave": "Kaydet",
   "TextSend": "Gönder",
+  "TextResponse": "Yanıt",
+  "TextCopy": "Kopyala",
   "TextParams": "Parametreler",
   "TextHeaders": "Başlıklar",
   "TextBody": "Gövde",

@@ -801,10 +801,13 @@
 
                     <Border Grid.Row="1" Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1">
                         <Grid Margin="16,0" ColumnDefinitions="Auto,18,Auto,*,Auto,18,Auto">
-                            <TextBlock Text="Response" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="{DynamicResource TextResponse}" FontWeight="SemiBold" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="2" Text="{Binding ResponseStatus}" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="4" Text="{Binding ResponseTime}" Classes="secondary" VerticalAlignment="Center" />
-                            <Button Grid.Column="6" Content="Copy" Padding="10,4" VerticalAlignment="Center" />
+                            <Button Grid.Column="6"
+                                    Content="{DynamicResource TextCopy}"
+                                    Padding="10,4"
+                                    VerticalAlignment="Center" />
                         </Grid>
                     </Border>
 
