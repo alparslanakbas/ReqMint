@@ -166,18 +166,26 @@ public partial class MainViewModel : ViewModelBase
     public partial bool HasResponse { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRequestsNavigationSelected))]
+    [NotifyPropertyChangedFor(nameof(IsEnvironmentNavigationSelected))]
     public partial int RequestEditorTabIndex { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsRequestWorkspaceVisible))]
+    [NotifyPropertyChangedFor(nameof(IsRequestsNavigationSelected))]
+    [NotifyPropertyChangedFor(nameof(IsEnvironmentNavigationSelected))]
     public partial bool IsApplicationSettingsVisible { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCollectionsVisible))]
+    [NotifyPropertyChangedFor(nameof(IsRequestsNavigationSelected))]
+    [NotifyPropertyChangedFor(nameof(IsEnvironmentNavigationSelected))]
     public partial bool IsHistoryVisible { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCollectionsVisible))]
+    [NotifyPropertyChangedFor(nameof(IsRequestsNavigationSelected))]
+    [NotifyPropertyChangedFor(nameof(IsEnvironmentNavigationSelected))]
     public partial bool IsGitVisible { get; set; }
 
     public bool IsCollectionsVisible => !IsHistoryVisible && !IsGitVisible;
@@ -321,6 +329,8 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsRequestWorkspaceVisible))]
+    [NotifyPropertyChangedFor(nameof(IsRequestsNavigationSelected))]
+    [NotifyPropertyChangedFor(nameof(IsEnvironmentNavigationSelected))]
     public partial bool IsCollectionRunnerVisible { get; set; }
 
     [ObservableProperty]
@@ -438,6 +448,20 @@ public partial class MainViewModel : ViewModelBase
         && !IsGitFastForwardVisible
         && !IsGitPushVisible
         && !IsCollectionRunnerVisible;
+
+    public bool IsRequestsNavigationSelected =>
+        !IsApplicationSettingsVisible
+        && !IsHistoryVisible
+        && !IsGitVisible
+        && !IsCollectionRunnerVisible
+        && RequestEditorTabIndex != EnvironmentEditorTabIndex;
+
+    public bool IsEnvironmentNavigationSelected =>
+        !IsApplicationSettingsVisible
+        && !IsHistoryVisible
+        && !IsGitVisible
+        && !IsCollectionRunnerVisible
+        && RequestEditorTabIndex == EnvironmentEditorTabIndex;
 
     public bool IsGitCommitValidationVisible =>
         !string.IsNullOrEmpty(GitCommitValidationMessage);

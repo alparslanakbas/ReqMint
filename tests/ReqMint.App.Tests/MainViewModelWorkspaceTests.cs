@@ -22,12 +22,16 @@ public sealed class MainViewModelWorkspaceTests
         Assert.Equal(3, viewModel.RequestEditorTabIndex);
         Assert.True(viewModel.IsRequestWorkspaceVisible);
         Assert.False(viewModel.IsApplicationSettingsVisible);
+        Assert.False(viewModel.IsRequestsNavigationSelected);
+        Assert.True(viewModel.IsEnvironmentNavigationSelected);
 
         viewModel.ShowSettingsEditorCommand.Execute(null);
 
         Assert.Equal(3, viewModel.RequestEditorTabIndex);
         Assert.False(viewModel.IsRequestWorkspaceVisible);
         Assert.True(viewModel.IsApplicationSettingsVisible);
+        Assert.False(viewModel.IsRequestsNavigationSelected);
+        Assert.False(viewModel.IsEnvironmentNavigationSelected);
     }
 
     [Fact]

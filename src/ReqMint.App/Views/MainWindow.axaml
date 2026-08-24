@@ -68,25 +68,57 @@
                     BorderThickness="0,0,1,0">
                 <Grid RowDefinitions="*,Auto" Margin="0,12">
                     <StackPanel Grid.Row="0" Spacing="8" HorizontalAlignment="Center">
-                        <Button Classes="rail selected" ToolTip.Tip="{DynamicResource NavRequests}" Content="➤" Command="{Binding ShowCollectionsCommand}" />
-                        <Button Classes="rail" ToolTip.Tip="{DynamicResource NavCollections}" Content="▣" Command="{Binding ShowCollectionsCommand}" />
-                        <Button Classes="rail" ToolTip.Tip="{DynamicResource NavHistory}" Content="◷" Command="{Binding ShowHistoryCommand}" />
                         <Button Classes="rail"
+                                Classes.selected="{Binding IsRequestsNavigationSelected}"
+                                ToolTip.Tip="{DynamicResource NavRequests}"
+                                AutomationProperties.Name="{DynamicResource NavRequests}"
+                                Command="{Binding ShowCollectionsCommand}">
+                            <PathIcon Width="20" Height="20" Data="{StaticResource RailRequestsIcon}" />
+                        </Button>
+                        <Button Classes="rail"
+                                ToolTip.Tip="{DynamicResource NavCollections}"
+                                AutomationProperties.Name="{DynamicResource NavCollections}"
+                                Command="{Binding ShowCollectionsCommand}">
+                            <PathIcon Width="20" Height="20" Data="{StaticResource RailCollectionsIcon}" />
+                        </Button>
+                        <Button Classes="rail"
+                                Classes.selected="{Binding IsHistoryVisible}"
+                                ToolTip.Tip="{DynamicResource NavHistory}"
+                                AutomationProperties.Name="{DynamicResource NavHistory}"
+                                Command="{Binding ShowHistoryCommand}">
+                            <PathIcon Width="20" Height="20" Data="{StaticResource RailHistoryIcon}" />
+                        </Button>
+                        <Button Classes="rail"
+                                Classes.selected="{Binding IsEnvironmentNavigationSelected}"
                                 ToolTip.Tip="{DynamicResource NavEnvironments}"
-                                Content="◇"
-                                Command="{Binding ShowEnvironmentEditorCommand}" />
+                                AutomationProperties.Name="{DynamicResource NavEnvironments}"
+                                Command="{Binding ShowEnvironmentEditorCommand}">
+                            <PathIcon Width="20" Height="20" Data="{StaticResource RailEnvironmentsIcon}" />
+                        </Button>
                         <Button Classes="rail"
+                                Classes.selected="{Binding IsCollectionRunnerVisible}"
                                 ToolTip.Tip="{DynamicResource NavRunner}"
-                                Content="▶"
+                                AutomationProperties.Name="{DynamicResource NavRunner}"
                                 IsEnabled="{Binding IsCollectionRunAvailable}"
-                                Command="{Binding OpenCollectionRunnerCommand}" />
-                        <Button Classes="rail" ToolTip.Tip="{DynamicResource NavGit}" Content="⑂" Command="{Binding ShowGitCommand}" />
+                                Command="{Binding OpenCollectionRunnerCommand}">
+                            <PathIcon Width="20" Height="20" Data="{StaticResource RailRunnerIcon}" />
+                        </Button>
+                        <Button Classes="rail"
+                                Classes.selected="{Binding IsGitVisible}"
+                                ToolTip.Tip="{DynamicResource NavGit}"
+                                AutomationProperties.Name="{DynamicResource NavGit}"
+                                Command="{Binding ShowGitCommand}">
+                            <PathIcon Width="20" Height="20" Data="{StaticResource RailGitIcon}" />
+                        </Button>
                     </StackPanel>
                     <Button Grid.Row="1"
                             Classes="rail"
+                            Classes.selected="{Binding IsApplicationSettingsVisible}"
                             ToolTip.Tip="{DynamicResource NavSettings}"
-                            Content="⚙"
-                            Command="{Binding ShowSettingsEditorCommand}" />
+                            AutomationProperties.Name="{DynamicResource NavSettings}"
+                            Command="{Binding ShowSettingsEditorCommand}">
+                        <PathIcon Width="20" Height="20" Data="{StaticResource RailSettingsIcon}" />
+                    </Button>
                 </Grid>
             </Border>
 
