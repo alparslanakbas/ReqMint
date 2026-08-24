@@ -15,6 +15,9 @@ public sealed class ReleaseReadinessContractTests
         Assert.Contains("dotnet test ReqMint.slnx --configuration Release --no-restore", workflow, StringComparison.Ordinal);
         Assert.Contains("package list --project ReqMint.slnx --vulnerable --include-transitive --format json --no-restore", workflow, StringComparison.Ordinal);
         Assert.Contains("known vulnerability", workflow, StringComparison.Ordinal);
+        Assert.Contains("Website build and audit", workflow, StringComparison.Ordinal);
+        Assert.Contains("npm audit --audit-level=high", workflow, StringComparison.Ordinal);
+        Assert.Contains("npm run build", workflow, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -29,6 +32,21 @@ public sealed class ReleaseReadinessContractTests
         Assert.Contains("private vulnerability reporting", security, StringComparison.Ordinal);
         Assert.Contains("Any failed required gate blocks publication", readiness, StringComparison.Ordinal);
         Assert.Contains("cannot be waived", readiness, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CommercialPlan_KeepsPreviewFreeAndWebsiteOutOfCheckout()
+    {
+        var commercial = File.ReadAllText(RepositoryPath("docs", "COMMERCIAL_PLAN.md"));
+        var website = File.ReadAllText(RepositoryPath("website", "README.md"));
+        var dependabot = File.ReadAllText(RepositoryPath(".github", "dependabot.yml"));
+
+        Assert.Contains("Public preview", commercial, StringComparison.Ordinal);
+        Assert.Contains("USD 39.99 per year", commercial, StringComparison.Ordinal);
+        Assert.Contains("does not collect payment details", commercial, StringComparison.Ordinal);
+        Assert.Contains("does not process payments", website, StringComparison.Ordinal);
+        Assert.Contains("package-ecosystem: npm", dependabot, StringComparison.Ordinal);
+        Assert.Contains("directory: /website", dependabot, StringComparison.Ordinal);
     }
 
     private static string RepositoryPath(params string[] segments)

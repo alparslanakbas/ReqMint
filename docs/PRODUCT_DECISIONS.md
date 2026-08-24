@@ -89,15 +89,16 @@ Themes are token-based. Feature views must not contain hard-coded theme colors.
 
 ## Commercial direction
 
-- **Community**: capable free local API client.
-- **Pro**: advanced productivity, automation, and personal power-user features.
-- **Team**: collaboration, governance, and organization-oriented capabilities.
-- Licensing should be portable across Windows, macOS, and Linux rather than tied to one store account.
-- Pricing and payment infrastructure remain a later decision; Community functionality must not depend on them.
+- **Public preview**: free on every supported platform, with no artificial request limit or payment requirement.
+- **Community**: capable free local API client that keeps the complete daily request loop, workspace portability, privacy, accessibility, themes, localization, and core Git-friendly behavior.
+- **Pro**: target USD 39.99/year with a store-managed trial after paid workflows are implemented and validated; do not anchor the product with a permanently discounted launch price.
+- **Team**: target USD 6/user/month billed annually only after real administration, policy, audit, portable entitlement, and support value exists.
+- The website has no checkout or ReqMint account system. Windows commerce begins through Microsoft Store; other platforms link only to approved distribution channels.
+- Community remains consistent across platforms. Never claim that a Store purchase is portable until a secure cross-platform entitlement actually exists.
+- The complete rationale and rollout gates are recorded in [COMMERCIAL_PLAN.md](COMMERCIAL_PLAN.md).
 
 ## Deferred decisions
 
-- Exact Pro and Team feature boundaries.
-- One-time purchase versus subscription pricing.
-- Whether Store commerce or an independent commerce provider is used.
+- Final Pro and Team feature boundaries after public-preview evidence.
+- Cross-platform Pro entitlement after Windows Store commerce is validated.
 - Optional cloud services and their hosting architecture.

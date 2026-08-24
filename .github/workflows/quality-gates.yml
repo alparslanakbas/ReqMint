@@ -71,3 +71,29 @@ jobs:
           }
 
           'No known vulnerable NuGet dependency was reported.' | Write-Host
+
+  website:
+    name: Website build and audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install pinned dependencies
+        run: npm ci
+
+      - name: Reject vulnerable website dependencies
+        run: npm audit --audit-level=high
+
+      - name: Build website
+        run: npm run build

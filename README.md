@@ -49,6 +49,7 @@ docs/      product, architecture, and migration decisions
 - [Linux packaging](docs/LINUX_PACKAGING.md)
 - [macOS packaging](docs/MACOS_PACKAGING.md)
 - [Release readiness](docs/RELEASE_READINESS.md)
+- [Commercial plan](docs/COMMERCIAL_PLAN.md)
 - [Privacy](PRIVACY.md)
 - [Security policy](SECURITY.md)
 
