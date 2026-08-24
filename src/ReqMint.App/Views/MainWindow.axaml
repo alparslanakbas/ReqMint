@@ -540,19 +540,20 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:EnvironmentVariableViewModel">
                                                 <Grid ColumnDefinitions="220,12,*,12,90" Margin="0,0,0,8">
-                                                    <TextBox Text="{Binding Name}" PlaceholderText="Variable name" />
+                                                    <TextBox Text="{Binding Name}"
+                                                             PlaceholderText="{DynamicResource TextVariableName}" />
                                                     <TextBox Grid.Column="2"
                                                              Text="{Binding Value}"
                                                              IsVisible="{Binding !IsSecret}"
-                                                             PlaceholderText="Value" />
+                                                             PlaceholderText="{DynamicResource TextValue}" />
                                                     <TextBox Grid.Column="2"
                                                              Text="{Binding Value}"
                                                              IsVisible="{Binding IsSecret}"
                                                              PasswordChar="●"
-                                                             PlaceholderText="Secret value" />
+                                                             PlaceholderText="{DynamicResource TextSecretValue}" />
                                                     <CheckBox Grid.Column="4"
                                                               IsChecked="{Binding IsSecret}"
-                                                              Content="Secret"
+                                                              Content="{DynamicResource TextSecret}"
                                                               VerticalAlignment="Center" />
                                                 </Grid>
                                             </DataTemplate>
@@ -568,7 +569,7 @@
                                             Content="{DynamicResource TextSaveEnvironment}"
                                             Command="{Binding SaveEnvironmentCommand}" />
                                     <TextBlock Grid.Column="4"
-                                               Text="Secret inputs are stored in the OS vault and cleared after saving."
+                                               Text="{DynamicResource TextSecretStorageHelp}"
                                                Classes="secondary"
                                                VerticalAlignment="Center"
                                                TextWrapping="Wrap" />

@@ -523,6 +523,11 @@ public partial class MainViewModel : ViewModelBase
         _templateResolver = templateResolver;
         _secretVault = secretVault;
         Localization = localization;
+        WorkspaceStatus = Localize("StatusReady", "Ready");
+        ResponseStatus = Localize("StatusReady", "Ready");
+        ResponseBody = Localize(
+            "ResponseInspectRequest",
+            "Send a request to inspect its response.");
         GitSummary = Localize("GitNoWorkspace", "Open a workspace to inspect Git status");
         _unsavedChangesPrompt = unsavedChangesPrompt;
         _historyStore = historyStore;
@@ -741,9 +746,11 @@ public partial class MainViewModel : ViewModelBase
 
         SelectedBodyType = "None";
         RequestBody = string.Empty;
-        ResponseStatus = "Ready";
+        ResponseStatus = Localize("StatusReady", "Ready");
         ResponseTime = "—";
-        ResponseBody = "Compose and send a new request.";
+        ResponseBody = Localize(
+            "ResponseComposeNewRequest",
+            "Compose and send a new request.");
         WorkspaceStatus = Localize("StatusNewRequest", "New request");
         MarkRequestClean();
     }
@@ -1216,9 +1223,11 @@ public partial class MainViewModel : ViewModelBase
         _selectedCollectionId = collectionId;
 
         LoadRequestDraft(request);
-        ResponseStatus = "Ready";
+        ResponseStatus = Localize("StatusReady", "Ready");
         ResponseTime = "—";
-        ResponseBody = "Send the saved request to inspect its response.";
+        ResponseBody = Localize(
+            "ResponseInspectSavedRequest",
+            "Send the saved request to inspect its response.");
         WorkspaceStatus = Localize("StatusOpenedItem", "Opened {0}", request.Name);
         MarkRequestClean();
     }
