@@ -1,8 +1,8 @@
 # Localization
 
-ReqMint currently ships with English (`en`, culture `en-US`) and Turkish (`tr`, culture `tr-TR`). UI text is loaded from JSON resources under `src/ReqMint.App/Localization` and applied through dynamic Avalonia resources, allowing the language to change without restarting the application.
+ReqMint currently includes English (`en`, culture `en-US`), Turkish (`tr`, culture `tr-TR`), and an Arabic application preview (`ar`). UI text is loaded from JSON resources under `src/ReqMint.App/Localization` and applied through dynamic Avalonia resources, allowing the language to change without restarting the application.
 
-Arabic (`ar`) is the next approved language and Simplified Chinese (`zh-Hans`) follows it. Neither language is shown in the application until its complete resource set, native-language review, documentation, Store listing, screenshots, and support path pass the release gates in [INTERNATIONAL_EXPANSION.md](INTERNATIONAL_EXPANSION.md). Russian is outside the approved expansion scope.
+Arabic is available in development builds for full RTL layout and terminology review. It is not considered a public Gulf release until native-language review, localized documentation, Store listing, screenshots, and support paths pass the release gates in [INTERNATIONAL_EXPANSION.md](INTERNATIONAL_EXPANSION.md). Simplified Chinese (`zh-Hans`) follows it. Russian is outside the approved expansion scope.
 
 The selected language and other device-level preferences, such as request-history retention, are stored in the user's local application-data folder as `ReqMint/ui-settings.json`. The file is deliberately kept outside workspaces so personal preferences are never committed to Git or shared with teammates. Existing language-only settings files remain compatible as new preferences receive safe defaults.
 

@@ -106,6 +106,32 @@ public sealed class LoopbackTutorialSessionServiceTests
     }
 
     [Fact]
+    public async Task StartAsync_LocalizesDemoWorkspaceInArabic()
+    {
+        var root = Path.Combine(
+            Path.GetTempPath(),
+            "ReqMint.Tests",
+            Guid.NewGuid().ToString("N"));
+        var store = new WorkspaceJsonStore();
+
+        using (var service = new LoopbackTutorialSessionService(store, root, () => "ar"))
+        {
+            var session = await service.StartAsync();
+            var loaded = await store.LoadAsync(session.WorkspaceDirectory);
+
+            Assert.Equal("عرض ReqMint المحلي", loaded.Workspace.Name);
+            Assert.Equal("البدء", Assert.Single(loaded.Collections).Name);
+            Assert.Equal("عرض محلي", Assert.Single(loaded.Environments).Name);
+            Assert.Equal("إرسال تحية إلى ReqMint", session.DraftRequest.Name);
+        }
+
+        if (Directory.Exists(root))
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task StartAsync_DemoWorkspaceContainsNoPersistedSecretsOrThirdPartyUrls()
     {
         var root = Path.Combine(

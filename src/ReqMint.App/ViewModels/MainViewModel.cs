@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Text;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -65,7 +66,7 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<EnvironmentVariableViewModel> EnvironmentVariables { get; } = [];
 
-    public LocalizationService Localization { get; }
+    public LocalizationService? Localization { get; }
 
     public ThemeService Themes { get; }
 
@@ -532,6 +533,12 @@ public partial class MainViewModel : ViewModelBase
         _secretVault = secretVault;
         Localization = localization;
         Themes = themes;
+        if (Localization is not null)
+        {
+            Localization.PropertyChanged += OnLocalizationPropertyChanged;
+        }
+
+        RefreshLocalizedShellState();
         WorkspaceStatus = Localize("StatusReady", "Ready");
         ResponseStatus = Localize("StatusReady", "Ready");
         ResponseBody = Localize(
@@ -716,6 +723,52 @@ public partial class MainViewModel : ViewModelBase
 
     private string Localize(string key, string fallback, object first, object second) =>
         string.Format(Localize(key, fallback), first, second);
+
+    private void OnLocalizationPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName != nameof(LocalizationService.SelectedLanguage))
+        {
+            return;
+        }
+
+        RefreshLocalizedShellState();
+        if (!IsSending && !IsWorkspaceBusy)
+        {
+            WorkspaceStatus = Localize("StatusReady", "Ready");
+        }
+
+        if (!HasResponse && !IsSending)
+        {
+            ResponseStatus = Localize("StatusReady", "Ready");
+            ResponseBody = Localize(
+                "ResponseInspectRequest",
+                "Send a request to inspect its response.");
+        }
+
+        if (_workspaceDirectory is null)
+        {
+            GitSummary = Localize("GitNoWorkspace", "Open a workspace to inspect Git status");
+        }
+    }
+
+    private void RefreshLocalizedShellState()
+    {
+        if (_workspaceSnapshot is null)
+        {
+            WorkspaceName = Localize("TextNoWorkspace", "No workspace");
+            WorkspaceLocation = Localize(
+                "TextChooseWorkspace",
+                "Choose a local workspace to begin");
+        }
+
+        if (_workspaceSnapshot is null || _workspaceSnapshot.Environments.Count == 0)
+        {
+            var noEnvironment = Localize("TextNoEnvironment", "No environment");
+            EnvironmentNames.Clear();
+            EnvironmentNames.Add(noEnvironment);
+            EnvironmentName = noEnvironment;
+        }
+    }
 
     [RelayCommand]
     private void AddQueryParameter() => QueryParameters.Add(new RequestFieldViewModel());
@@ -1158,7 +1211,7 @@ public partial class MainViewModel : ViewModelBase
         EnvironmentNames.Clear();
         if (snapshot.Environments.Count == 0)
         {
-            EnvironmentNames.Add("No environment");
+            EnvironmentNames.Add(Localize("TextNoEnvironment", "No environment"));
         }
         else
         {

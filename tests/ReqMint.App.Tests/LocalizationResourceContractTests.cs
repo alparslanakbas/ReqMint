@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using ReqMint.App.Services;
 
 namespace ReqMint.App.Tests;
@@ -32,12 +33,21 @@ public sealed class LocalizationResourceContractTests
                 resources.Keys.Order(StringComparer.Ordinal));
             Assert.DoesNotContain(resources, resource =>
                 string.IsNullOrWhiteSpace(resource.Value));
+            foreach (var resource in resources)
+            {
+                Assert.Equal(
+                    FormatPlaceholders(english[resource.Key]),
+                    FormatPlaceholders(resource.Value));
+            }
         }
 
         Assert.Equal("Response", english["TextResponse"]);
         Assert.Equal("Yanıt", turkish["TextResponse"]);
         Assert.Equal("Copy", english["TextCopy"]);
         Assert.Equal("Kopyala", turkish["TextCopy"]);
+        var arabic = ReadResources("ar");
+        Assert.Equal("الاستجابة", arabic["TextResponse"]);
+        Assert.Equal("نسخ", arabic["TextCopy"]);
     }
 
     [Fact]
@@ -125,6 +135,13 @@ public sealed class LocalizationResourceContractTests
         return JsonSerializer.Deserialize<Dictionary<string, string>>(
             File.ReadAllText(path))!;
     }
+
+    private static string[] FormatPlaceholders(string value) =>
+        Regex.Matches(value, @"\{\d+\}")
+            .Select(match => match.Value)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
 
     private static string RepositoryPath(params string[] segments)
     {

@@ -277,23 +277,33 @@ public sealed class LoopbackTutorialSessionService : ITutorialSessionService
         string ReleaseRequestName)
     {
         public static TutorialCopy ForLanguage(string? languageCode) =>
-            string.Equals(languageCode, "tr", StringComparison.OrdinalIgnoreCase)
-                ? new TutorialCopy(
+            languageCode?.ToLowerInvariant() switch
+        {
+            "tr" => new TutorialCopy(
                     "ReqMint Yerel Demo",
                     "Başlangıç",
                     "Yerel Demo",
                     "ReqMint'e merhaba de",
                     "Servis sağlığını kontrol et",
                     "Aktif projeleri listele",
-                    "Güncel sürümü incele")
-                : new TutorialCopy(
+                    "Güncel sürümü incele"),
+            "ar" => new TutorialCopy(
+                    "عرض ReqMint المحلي",
+                    "البدء",
+                    "عرض محلي",
+                    "إرسال تحية إلى ReqMint",
+                    "فحص صحة الخدمة",
+                    "عرض مشاريع API النشطة",
+                    "فحص الإصدار الحالي"),
+            _ => new TutorialCopy(
                     "ReqMint Local Demo",
                     "Getting Started",
                     "Local Demo",
                     "Say hello to ReqMint",
                     "Check service health",
                     "List active API projects",
-                    "Inspect current release");
+                    "Inspect current release"),
+        };
     }
 
     private static async Task RunServerAsync(

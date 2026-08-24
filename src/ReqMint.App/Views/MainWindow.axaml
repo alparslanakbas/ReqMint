@@ -9,7 +9,7 @@
         mc:Ignorable="d"
         d:DesignWidth="1440"
         d:DesignHeight="900"
-        Title="ReqMint — API work, without the weight."
+        Title="{DynamicResource AppWindowTitle}"
         Width="1440"
         Height="900"
         Icon="/Assets/TrayIcon.png"
@@ -40,7 +40,7 @@
                 <Button Grid.Column="2"
                         HorizontalContentAlignment="Stretch"
                         Command="{Binding OpenWorkspaceCommand}"
-                        ToolTip.Tip="Open a local ReqMint workspace">
+                        ToolTip.Tip="{DynamicResource TooltipOpenWorkspace}">
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Text="{Binding WorkspaceName}" TextTrimming="CharacterEllipsis" />
                         <TextBlock Grid.Column="1" Text="⌄" Classes="secondary" />
@@ -56,7 +56,7 @@
                           ItemsSource="{Binding EnvironmentNames}"
                           SelectedItem="{Binding EnvironmentName}"
                           HorizontalContentAlignment="Stretch"
-                          ToolTip.Tip="Active environment" />
+                          ToolTip.Tip="{DynamicResource TooltipActiveEnvironment}" />
             </Grid>
         </Border>
 
@@ -68,23 +68,23 @@
                     BorderThickness="0,0,1,0">
                 <Grid RowDefinitions="*,Auto" Margin="0,12">
                     <StackPanel Grid.Row="0" Spacing="8" HorizontalAlignment="Center">
-                        <Button Classes="rail selected" ToolTip.Tip="Requests" Content="➤" Command="{Binding ShowCollectionsCommand}" />
-                        <Button Classes="rail" ToolTip.Tip="Collections" Content="▣" Command="{Binding ShowCollectionsCommand}" />
-                        <Button Classes="rail" ToolTip.Tip="History" Content="◷" Command="{Binding ShowHistoryCommand}" />
+                        <Button Classes="rail selected" ToolTip.Tip="{DynamicResource NavRequests}" Content="➤" Command="{Binding ShowCollectionsCommand}" />
+                        <Button Classes="rail" ToolTip.Tip="{DynamicResource NavCollections}" Content="▣" Command="{Binding ShowCollectionsCommand}" />
+                        <Button Classes="rail" ToolTip.Tip="{DynamicResource NavHistory}" Content="◷" Command="{Binding ShowHistoryCommand}" />
                         <Button Classes="rail"
-                                ToolTip.Tip="Environments"
+                                ToolTip.Tip="{DynamicResource NavEnvironments}"
                                 Content="◇"
                                 Command="{Binding ShowEnvironmentEditorCommand}" />
                         <Button Classes="rail"
-                                ToolTip.Tip="Runner"
+                                ToolTip.Tip="{DynamicResource NavRunner}"
                                 Content="▶"
                                 IsEnabled="{Binding IsCollectionRunAvailable}"
                                 Command="{Binding OpenCollectionRunnerCommand}" />
-                        <Button Classes="rail" ToolTip.Tip="Git" Content="⑂" Command="{Binding ShowGitCommand}" />
+                        <Button Classes="rail" ToolTip.Tip="{DynamicResource NavGit}" Content="⑂" Command="{Binding ShowGitCommand}" />
                     </StackPanel>
                     <Button Grid.Row="1"
                             Classes="rail"
-                            ToolTip.Tip="Settings"
+                            ToolTip.Tip="{DynamicResource NavSettings}"
                             Content="⚙"
                             Command="{Binding ShowSettingsEditorCommand}" />
                 </Grid>
@@ -105,14 +105,14 @@
                                 Height="30"
                                 Padding="0"
                                 Command="{Binding CreateWorkspaceCommand}"
-                                ToolTip.Tip="Create a workspace in a local folder" />
+                                ToolTip.Tip="{DynamicResource TooltipCreateWorkspace}" />
                         <Button Grid.Column="3"
                                 Content="＋"
                                 Width="30"
                                 Height="30"
                                 Padding="0"
                                 Command="{Binding NewRequestCommand}"
-                                ToolTip.Tip="Create a new request" />
+                                ToolTip.Tip="{DynamicResource TooltipCreateRequest}" />
                     </Grid>
 
                     <TextBox Grid.Row="1" Margin="12,0,12,12" PlaceholderText="{DynamicResource TextFilterRequests}" />
@@ -407,7 +407,7 @@
                               ItemsSource="{Binding Methods}"
                               SelectedItem="{Binding SelectedMethod}"
                               HorizontalContentAlignment="Stretch" />
-                    <TextBox Grid.Column="2" Text="{Binding Url}" Classes="technical" PlaceholderText="Enter an HTTP or HTTPS URL" />
+                    <TextBox Grid.Column="2" Text="{Binding Url}" Classes="technical" PlaceholderText="{DynamicResource PlaceholderUrl}" />
                     <Button Grid.Column="4"
                             Content="{DynamicResource TextSave}"
                             Command="{Binding SaveRequestCommand}" />
@@ -470,8 +470,8 @@
                                             <DataTemplate x:DataType="vm:RequestFieldViewModel">
                                                 <Grid ColumnDefinitions="32,220,12,*" Margin="0,0,0,8">
                                                     <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" />
-                                                    <TextBox Grid.Column="1" Text="{Binding Name}" Classes="technical" PlaceholderText="Parameter name" />
-                                                    <TextBox Grid.Column="3" Text="{Binding Value}" Classes="technical" PlaceholderText="Value" />
+                                                    <TextBox Grid.Column="1" Text="{Binding Name}" Classes="technical" PlaceholderText="{DynamicResource PlaceholderParameterName}" />
+                                                    <TextBox Grid.Column="3" Text="{Binding Value}" Classes="technical" PlaceholderText="{DynamicResource TextValue}" />
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -492,8 +492,8 @@
                                             <DataTemplate x:DataType="vm:RequestFieldViewModel">
                                                 <Grid ColumnDefinitions="32,220,12,*" Margin="0,0,0,8">
                                                     <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" />
-                                                    <TextBox Grid.Column="1" Text="{Binding Name}" Classes="technical" PlaceholderText="Header name" />
-                                                    <TextBox Grid.Column="3" Text="{Binding Value}" Classes="technical" PlaceholderText="Value" />
+                                                    <TextBox Grid.Column="1" Text="{Binding Name}" Classes="technical" PlaceholderText="{DynamicResource PlaceholderHeaderName}" />
+                                                    <TextBox Grid.Column="3" Text="{Binding Value}" Classes="technical" PlaceholderText="{DynamicResource TextValue}" />
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -512,7 +512,7 @@
                                     <ComboBox ItemsSource="{Binding BodyTypes}"
                                               SelectedItem="{Binding SelectedBodyType}" />
                                     <TextBlock Grid.Column="2"
-                                               Text="Body content is sent with the selected media type."
+                                               Text="{DynamicResource BodyContentHelp}"
                                                Classes="secondary"
                                                VerticalAlignment="Center" />
                                 </Grid>
@@ -524,7 +524,7 @@
                                          TextWrapping="NoWrap"
                                          VerticalContentAlignment="Top"
                                          FontFamily="Cascadia Mono, Consolas"
-                                         PlaceholderText="Select a body type, then enter request content..." />
+                                         PlaceholderText="{DynamicResource BodyPlaceholder}" />
                             </Grid>
                         </TabItem>
 
@@ -728,7 +728,7 @@
                                             Content="{DynamicResource TextRenameCollection}"
                                             Command="{Binding RenameCollectionCommand}" />
                                 </Grid>
-                                <TextBlock Text="The request and response preview are cancelled when this limit is reached."
+                                <TextBlock Text="{DynamicResource RequestLimitReached}"
                                            Classes="secondary"
                                            TextWrapping="Wrap" />
                                 <Border Margin="0,18,0,6"
@@ -1827,8 +1827,8 @@
         <!-- Global status -->
         <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
             <Grid Margin="14,0" ColumnDefinitions="Auto,16,Auto,*,Auto">
-                <TextBlock Text="ReqMint preview" Classes="secondary" VerticalAlignment="Center" FontSize="11" />
-                <TextBlock Grid.Column="2" Text="API work, without the weight." Classes="secondary" VerticalAlignment="Center" FontSize="11" />
+                <TextBlock Text="{DynamicResource AppPreviewLabel}" Classes="secondary" VerticalAlignment="Center" FontSize="11" />
+                <TextBlock Grid.Column="2" Text="{DynamicResource AppTagline}" Classes="secondary" VerticalAlignment="Center" FontSize="11" />
                 <TextBlock Grid.Column="4" Text="{Binding WorkspaceStatus}" Classes="secondary" VerticalAlignment="Center" FontSize="11" />
             </Grid>
         </Border>

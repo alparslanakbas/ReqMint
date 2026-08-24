@@ -15,6 +15,7 @@ public partial class LocalizationService : ObservableObject
     [
         new("en", "English", "en-US"),
         new("tr", "Türkçe", "tr-TR"),
+        new("ar", "العربية", "ar"),
     ];
 
     [ObservableProperty]

@@ -12,7 +12,7 @@ Market validation begins in Saudi Arabia and the United Arab Emirates. Qatar, Ku
 
 Arabic release gates:
 
-- every English application resource has a reviewed Arabic equivalent;
+- every English application resource has an Arabic equivalent and automated key/format-placeholder parity checks pass;
 - onboarding, empty states, prompts, errors, settings, tray actions, and accessibility names are translated;
 - navigation mirrors correctly at the minimum supported window size;
 - protocol and code-oriented fields preserve left-to-right selection, caret movement, and copy behavior;
