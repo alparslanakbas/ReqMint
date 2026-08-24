@@ -45,6 +45,7 @@ public partial class MainViewModel
             await RefreshGitStatusAsync(session.WorkspaceDirectory, cancellationToken);
             ResetRequestDraft();
             LoadRequestDraft(session.DraftRequest);
+            RequestEditorTabIndex = 0;
             _activeTutorialSession = session;
             TutorialGuideStage = TutorialGuideStage.Send;
             IsTutorialGuideVisible = true;

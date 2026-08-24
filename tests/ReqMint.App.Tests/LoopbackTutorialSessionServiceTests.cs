@@ -21,7 +21,7 @@ public sealed class LoopbackTutorialSessionServiceTests
             workspaceDirectory = session.WorkspaceDirectory;
             var loaded = await store.LoadAsync(workspaceDirectory);
 
-            Assert.Equal("ReqMint Tutorial", loaded.Workspace.Name);
+            Assert.Equal("ReqMint Local Demo", loaded.Workspace.Name);
             var demoRequests = Assert.Single(loaded.Collections).Requests;
             Assert.Collection(
                 demoRequests,
@@ -68,6 +68,37 @@ public sealed class LoopbackTutorialSessionServiceTests
         }
 
         Assert.False(Directory.Exists(workspaceDirectory));
+        if (Directory.Exists(root))
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task StartAsync_LocalizesDemoWorkspaceFromCurrentApplicationLanguage()
+    {
+        var root = Path.Combine(
+            Path.GetTempPath(),
+            "ReqMint.Tests",
+            Guid.NewGuid().ToString("N"));
+        var store = new WorkspaceJsonStore();
+
+        using (var service = new LoopbackTutorialSessionService(store, root, () => "tr"))
+        {
+            var session = await service.StartAsync();
+            var loaded = await store.LoadAsync(session.WorkspaceDirectory);
+
+            Assert.Equal("ReqMint Yerel Demo", loaded.Workspace.Name);
+            Assert.Equal("Başlangıç", Assert.Single(loaded.Collections).Name);
+            Assert.Equal("Yerel Demo", Assert.Single(loaded.Environments).Name);
+            Assert.Equal("ReqMint'e merhaba de", session.DraftRequest.Name);
+            Assert.Collection(
+                Assert.Single(loaded.Collections).Requests,
+                request => Assert.Equal("Servis sağlığını kontrol et", request.Name),
+                request => Assert.Equal("Aktif projeleri listele", request.Name),
+                request => Assert.Equal("Güncel sürümü incele", request.Name));
+        }
+
         if (Directory.Exists(root))
         {
             Directory.Delete(root, recursive: true);

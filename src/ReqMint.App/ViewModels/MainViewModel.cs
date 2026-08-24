@@ -163,6 +163,9 @@ public partial class MainViewModel : ViewModelBase
     public partial bool HasResponse { get; set; }
 
     [ObservableProperty]
+    public partial int RequestEditorTabIndex { get; set; }
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCollectionsVisible))]
     public partial bool IsHistoryVisible { get; set; }
 

@@ -45,7 +45,8 @@ public partial class App : Application
             var workspaceStore = new WorkspaceJsonStore();
             _tutorialSessionService = new LoopbackTutorialSessionService(
                 workspaceStore,
-                Path.Combine(Path.GetTempPath(), "ReqMint", "Tutorial"));
+                Path.Combine(Path.GetTempPath(), "ReqMint", "Tutorial"),
+                () => localization.SelectedLanguage.Code);
             var mainViewModel = new MainViewModel(
                 _requestExecutor,
                 new CollectionRunner(_requestExecutor, templateResolver),

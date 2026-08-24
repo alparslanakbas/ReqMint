@@ -13,6 +13,36 @@ namespace ReqMint.App.Tests;
 public sealed class MainViewModelWorkspaceTests
 {
     [Fact]
+    public void RailNavigation_SelectsEnvironmentAndSettingsEditorTabs()
+    {
+        var viewModel = CreateViewModel(new RecordingWorkspaceStore(), CreateWorkspacePath());
+
+        viewModel.ShowEnvironmentEditorCommand.Execute(null);
+
+        Assert.Equal(3, viewModel.RequestEditorTabIndex);
+        Assert.True(viewModel.IsRequestWorkspaceVisible);
+
+        viewModel.ShowSettingsEditorCommand.Execute(null);
+
+        Assert.Equal(4, viewModel.RequestEditorTabIndex);
+        Assert.True(viewModel.IsRequestWorkspaceVisible);
+    }
+
+    [Fact]
+    public async Task StartingTutorial_ReturnsComposerToParametersTab()
+    {
+        var viewModel = CreateViewModel(new RecordingWorkspaceStore(), CreateWorkspacePath());
+        viewModel.ShowSettingsEditorCommand.Execute(null);
+        viewModel.OnboardingStep = JsonAppSettingsService.MaximumOnboardingStep;
+        viewModel.IsOnboardingVisible = true;
+
+        await viewModel.StartTutorialSampleCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, viewModel.RequestEditorTabIndex);
+        Assert.True(viewModel.IsTutorialGuideVisible);
+    }
+
+    [Fact]
     public async Task CreateWorkspaceCommand_CreatesInitialCollectionAndEnablesSaving()
     {
         var directory = Path.Combine(Path.GetTempPath(), "ReqMint.Tests", Guid.NewGuid().ToString("N"));

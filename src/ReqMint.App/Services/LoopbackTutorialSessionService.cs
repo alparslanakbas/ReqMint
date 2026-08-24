@@ -14,6 +14,7 @@ public sealed class LoopbackTutorialSessionService : ITutorialSessionService
     private static readonly byte[] HeaderTerminator = "\r\n\r\n"u8.ToArray();
     private readonly IWorkspaceStore _workspaceStore;
     private readonly string _tutorialRoot;
+    private readonly Func<string> _languageProvider;
     private readonly SemaphoreSlim _startLock = new(1, 1);
     private TcpListener? _listener;
     private CancellationTokenSource? _shutdown;
@@ -23,12 +24,14 @@ public sealed class LoopbackTutorialSessionService : ITutorialSessionService
 
     public LoopbackTutorialSessionService(
         IWorkspaceStore workspaceStore,
-        string tutorialRoot)
+        string tutorialRoot,
+        Func<string>? languageProvider = null)
     {
         ArgumentNullException.ThrowIfNull(workspaceStore);
         ArgumentException.ThrowIfNullOrWhiteSpace(tutorialRoot);
         _workspaceStore = workspaceStore;
         _tutorialRoot = Path.GetFullPath(tutorialRoot);
+        _languageProvider = languageProvider ?? (() => "en");
     }
 
     public async Task<TutorialSession> StartAsync(
@@ -51,7 +54,10 @@ public sealed class LoopbackTutorialSessionService : ITutorialSessionService
             var workspaceDirectory = Path.Combine(
                 _tutorialRoot,
                 Guid.NewGuid().ToString("N"));
-            var session = CreateSession(workspaceDirectory, baseUri);
+            var session = CreateSession(
+                workspaceDirectory,
+                baseUri,
+                TutorialCopy.ForLanguage(_languageProvider()));
 
             try
             {
@@ -110,20 +116,23 @@ public sealed class LoopbackTutorialSessionService : ITutorialSessionService
         _startLock.Dispose();
     }
 
-    private static TutorialSession CreateSession(string workspaceDirectory, Uri baseUri)
+    private static TutorialSession CreateSession(
+        string workspaceDirectory,
+        Uri baseUri,
+        TutorialCopy copy)
     {
         var collectionId = Guid.NewGuid();
         var environmentId = Guid.NewGuid();
         var collection = new CollectionDocument
         {
             Id = collectionId,
-            Name = "Getting Started",
-            Requests = CreateDemoRequests(),
+            Name = copy.CollectionName,
+            Requests = CreateDemoRequests(copy),
         };
         var environment = new EnvironmentDocument
         {
             Id = environmentId,
-            Name = "Tutorial",
+            Name = copy.EnvironmentName,
             Variables =
             [
                 new EnvironmentVariable(
@@ -134,7 +143,7 @@ public sealed class LoopbackTutorialSessionService : ITutorialSessionService
         var workspace = new WorkspaceDocument
         {
             Id = Guid.NewGuid(),
-            Name = "ReqMint Tutorial",
+            Name = copy.WorkspaceName,
             Collections =
             [
                 new WorkspaceFileReference(
@@ -153,7 +162,7 @@ public sealed class LoopbackTutorialSessionService : ITutorialSessionService
         var request = new RequestDocument
         {
             Id = Guid.NewGuid(),
-            Name = "Say hello to ReqMint",
+            Name = copy.DraftRequestName,
             Method = "GET",
             Url = "{{TUTORIAL_BASE_URL}}/api/hello",
             Headers = [new RequestField("Accept", "application/json")],
@@ -182,12 +191,12 @@ public sealed class LoopbackTutorialSessionService : ITutorialSessionService
             environmentId);
     }
 
-    private static IReadOnlyList<RequestDocument> CreateDemoRequests() =>
+    private static IReadOnlyList<RequestDocument> CreateDemoRequests(TutorialCopy copy) =>
     [
         new RequestDocument
         {
             Id = Guid.NewGuid(),
-            Name = "Check service health",
+            Name = copy.HealthRequestName,
             Method = "GET",
             Url = "{{TUTORIAL_BASE_URL}}/api/health",
             Headers = [new RequestField("Accept", "application/json")],
@@ -214,7 +223,7 @@ public sealed class LoopbackTutorialSessionService : ITutorialSessionService
         new RequestDocument
         {
             Id = Guid.NewGuid(),
-            Name = "List active API projects",
+            Name = copy.ProjectsRequestName,
             Method = "GET",
             Url = "{{TUTORIAL_BASE_URL}}/api/projects",
             QueryParameters = [new RequestField("status", "active")],
@@ -237,7 +246,7 @@ public sealed class LoopbackTutorialSessionService : ITutorialSessionService
         new RequestDocument
         {
             Id = Guid.NewGuid(),
-            Name = "Inspect current release",
+            Name = copy.ReleaseRequestName,
             Method = "GET",
             Url = "{{TUTORIAL_BASE_URL}}/api/releases/current",
             Headers = [new RequestField("Accept", "application/json")],
@@ -257,6 +266,35 @@ public sealed class LoopbackTutorialSessionService : ITutorialSessionService
             ],
         },
     ];
+
+    private sealed record TutorialCopy(
+        string WorkspaceName,
+        string CollectionName,
+        string EnvironmentName,
+        string DraftRequestName,
+        string HealthRequestName,
+        string ProjectsRequestName,
+        string ReleaseRequestName)
+    {
+        public static TutorialCopy ForLanguage(string? languageCode) =>
+            string.Equals(languageCode, "tr", StringComparison.OrdinalIgnoreCase)
+                ? new TutorialCopy(
+                    "ReqMint Yerel Demo",
+                    "Başlangıç",
+                    "Yerel Demo",
+                    "ReqMint'e merhaba de",
+                    "Servis sağlığını kontrol et",
+                    "Aktif projeleri listele",
+                    "Güncel sürümü incele")
+                : new TutorialCopy(
+                    "ReqMint Local Demo",
+                    "Getting Started",
+                    "Local Demo",
+                    "Say hello to ReqMint",
+                    "Check service health",
+                    "List active API projects",
+                    "Inspect current release");
+    }
 
     private static async Task RunServerAsync(
         TcpListener listener,

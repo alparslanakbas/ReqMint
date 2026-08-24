@@ -70,11 +70,22 @@
                         <Button Classes="rail selected" ToolTip.Tip="Requests" Content="➤" Command="{Binding ShowCollectionsCommand}" />
                         <Button Classes="rail" ToolTip.Tip="Collections" Content="▣" Command="{Binding ShowCollectionsCommand}" />
                         <Button Classes="rail" ToolTip.Tip="History" Content="◷" Command="{Binding ShowHistoryCommand}" />
-                        <Button Classes="rail" ToolTip.Tip="Environments" Content="◇" />
-                        <Button Classes="rail" ToolTip.Tip="Runner" Content="▶" />
+                        <Button Classes="rail"
+                                ToolTip.Tip="Environments"
+                                Content="◇"
+                                Command="{Binding ShowEnvironmentEditorCommand}" />
+                        <Button Classes="rail"
+                                ToolTip.Tip="Runner"
+                                Content="▶"
+                                IsEnabled="{Binding IsCollectionRunAvailable}"
+                                Command="{Binding OpenCollectionRunnerCommand}" />
                         <Button Classes="rail" ToolTip.Tip="Git" Content="⑂" Command="{Binding ShowGitCommand}" />
                     </StackPanel>
-                    <Button Grid.Row="1" Classes="rail" ToolTip.Tip="Settings" Content="⚙" />
+                    <Button Grid.Row="1"
+                            Classes="rail"
+                            ToolTip.Tip="Settings"
+                            Content="⚙"
+                            Command="{Binding ShowSettingsEditorCommand}" />
                 </Grid>
             </Border>
 
@@ -446,7 +457,9 @@
                 </Border>
 
                 <Grid Grid.Row="3" RowDefinitions="2*,42,3*">
-                    <TabControl Grid.Row="0" Background="{DynamicResource AppBackgroundBrush}">
+                    <TabControl Grid.Row="0"
+                                Background="{DynamicResource AppBackgroundBrush}"
+                                SelectedIndex="{Binding RequestEditorTabIndex}">
                         <TabItem Header="{DynamicResource TextParams}">
                             <Grid RowDefinitions="*,Auto" Margin="18,12">
                                 <ScrollViewer Grid.Row="0">
