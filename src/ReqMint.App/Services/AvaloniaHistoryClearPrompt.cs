@@ -12,9 +12,11 @@ public sealed class AvaloniaHistoryClearPrompt(
         var dialog = new Window
         {
             Title = localization.GetString("ClearHistoryTitle") ?? "Clear request history",
+            Icon = owner.Icon,
             Width = 460,
             Height = 205,
             CanResize = false,
+            ShowInTaskbar = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
         };
         var clear = new Button

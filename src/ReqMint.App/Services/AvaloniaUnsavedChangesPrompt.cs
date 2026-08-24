@@ -12,9 +12,11 @@ public sealed class AvaloniaUnsavedChangesPrompt(
         var dialog = new Window
         {
             Title = localization.GetString("UnsavedTitle") ?? "Unsaved changes",
+            Icon = owner.Icon,
             Width = 440,
             Height = 190,
             CanResize = false,
+            ShowInTaskbar = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
         };
         var save = new Button

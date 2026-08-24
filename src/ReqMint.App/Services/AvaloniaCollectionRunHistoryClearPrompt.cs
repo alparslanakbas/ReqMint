@@ -13,9 +13,11 @@ public sealed class AvaloniaCollectionRunHistoryClearPrompt(
         {
             Title = localization.GetString("CollectionRunHistoryClearTitle")
                 ?? "Clear collection run history",
+            Icon = owner.Icon,
             Width = 470,
             Height = 205,
             CanResize = false,
+            ShowInTaskbar = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
         };
         var clear = new Button

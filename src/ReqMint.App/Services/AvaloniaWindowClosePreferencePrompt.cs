@@ -15,6 +15,7 @@ public sealed class AvaloniaWindowClosePreferencePrompt(
         var dialog = new Window
         {
             Title = Text("CloseBehaviorPromptTitle", "Close ReqMint"),
+            Icon = owner.Icon,
             Width = 520,
             Height = 245,
             CanResize = false,
