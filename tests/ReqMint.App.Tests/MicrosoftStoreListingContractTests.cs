@@ -69,6 +69,24 @@ public sealed class MicrosoftStoreListingContractTests
         Assert.Contains("Windows App Certification Kit", guide, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void StoreArtworkTools_GenerateRequiredTileAndValidateLocalizedScreenshots()
+    {
+        var artworkGenerator = File.ReadAllText(
+            RepositoryPath("eng", "New-WindowsStoreListingAssets.ps1"));
+        var screenshotValidator = File.ReadAllText(
+            RepositoryPath("eng", "Test-WindowsStoreScreenshots.ps1"));
+
+        Assert.Contains("ReqMint-Store-Tile-300x300.png", artworkGenerator, StringComparison.Ordinal);
+        Assert.Contains("$size = 300", artworkGenerator, StringComparison.Ordinal);
+        Assert.Contains("@('en-US', 'tr-TR')", screenshotValidator, StringComparison.Ordinal);
+        Assert.Contains("01-request-builder.png", screenshotValidator, StringComparison.Ordinal);
+        Assert.Contains("05-settings-support.png", screenshotValidator, StringComparison.Ordinal);
+        Assert.Contains("$maximumFileSize = 50MB", screenshotValidator, StringComparison.Ordinal);
+        Assert.Contains("$minimumWidth = 1366", screenshotValidator, StringComparison.Ordinal);
+        Assert.Contains("$minimumHeight = 768", screenshotValidator, StringComparison.Ordinal);
+    }
+
     private static string ListingPath(string language) =>
         RepositoryPath("packaging", "windows", "store-listing", $"{language}.json");
 
