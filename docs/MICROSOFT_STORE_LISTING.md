@@ -46,6 +46,8 @@ When the domain is available and approved:
 
 Capture real release UI rather than design mockups. Prepare the same five scenes for `en-US` and `tr-TR`, using the captions stored in each listing JSON file:
 
+Use the disposable **ReqMint Tutorial** workspace as the screenshot dataset. Its local demo API contains no credentials, personal information, external URLs, or third-party requests. Run the seeded collection before capturing the Runner scene, and never substitute a real customer workspace.
+
 1. Request builder and response inspector
 2. Collections and environment switching
 3. Collection Runner results and assertions

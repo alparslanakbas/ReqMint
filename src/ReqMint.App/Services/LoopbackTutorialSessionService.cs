@@ -118,6 +118,7 @@ public sealed class LoopbackTutorialSessionService : ITutorialSessionService
         {
             Id = collectionId,
             Name = "Getting Started",
+            Requests = CreateDemoRequests(),
         };
         var environment = new EnvironmentDocument
         {
@@ -180,6 +181,82 @@ public sealed class LoopbackTutorialSessionService : ITutorialSessionService
             collectionId,
             environmentId);
     }
+
+    private static IReadOnlyList<RequestDocument> CreateDemoRequests() =>
+    [
+        new RequestDocument
+        {
+            Id = Guid.NewGuid(),
+            Name = "Check service health",
+            Method = "GET",
+            Url = "{{TUTORIAL_BASE_URL}}/api/health",
+            Headers = [new RequestField("Accept", "application/json")],
+            TimeoutSeconds = 10,
+            Assertions =
+            [
+                new RequestAssertion
+                {
+                    Kind = RequestAssertionKind.StatusCodeEquals,
+                    ExpectedStatusCode = 200,
+                },
+                new RequestAssertion
+                {
+                    Kind = RequestAssertionKind.MaximumDuration,
+                    MaximumDurationMilliseconds = 1_000,
+                },
+                new RequestAssertion
+                {
+                    Kind = RequestAssertionKind.JsonPointerExists,
+                    JsonPointer = "/status",
+                },
+            ],
+        },
+        new RequestDocument
+        {
+            Id = Guid.NewGuid(),
+            Name = "List active API projects",
+            Method = "GET",
+            Url = "{{TUTORIAL_BASE_URL}}/api/projects",
+            QueryParameters = [new RequestField("status", "active")],
+            Headers = [new RequestField("Accept", "application/json")],
+            TimeoutSeconds = 10,
+            Assertions =
+            [
+                new RequestAssertion
+                {
+                    Kind = RequestAssertionKind.StatusCodeEquals,
+                    ExpectedStatusCode = 200,
+                },
+                new RequestAssertion
+                {
+                    Kind = RequestAssertionKind.JsonPointerExists,
+                    JsonPointer = "/data",
+                },
+            ],
+        },
+        new RequestDocument
+        {
+            Id = Guid.NewGuid(),
+            Name = "Inspect current release",
+            Method = "GET",
+            Url = "{{TUTORIAL_BASE_URL}}/api/releases/current",
+            Headers = [new RequestField("Accept", "application/json")],
+            TimeoutSeconds = 10,
+            Assertions =
+            [
+                new RequestAssertion
+                {
+                    Kind = RequestAssertionKind.StatusCodeEquals,
+                    ExpectedStatusCode = 200,
+                },
+                new RequestAssertion
+                {
+                    Kind = RequestAssertionKind.JsonPointerExists,
+                    JsonPointer = "/version",
+                },
+            ],
+        },
+    ];
 
     private static async Task RunServerAsync(
         TcpListener listener,
@@ -275,19 +352,19 @@ public sealed class LoopbackTutorialSessionService : ITutorialSessionService
                 return;
             }
 
-            if (!Uri.TryCreate($"http://localhost{parts[1]}", UriKind.Absolute, out var target)
-                || !string.Equals(target.AbsolutePath, "/api/hello", StringComparison.Ordinal))
+            if (!Uri.TryCreate($"http://localhost{parts[1]}", UriKind.Absolute, out var target))
             {
                 await WriteResponseAsync(stream, 404, "Not Found", ErrorJson(), requestTimeout.Token);
                 return;
             }
 
-            var body = JsonSerializer.SerializeToUtf8Bytes(new
+            var body = CreateResponseBody(target.AbsolutePath);
+            if (body is null)
             {
-                message = "Hello from ReqMint",
-                source = "local-tutorial",
-                success = true,
-            });
+                await WriteResponseAsync(stream, 404, "Not Found", ErrorJson(), requestTimeout.Token);
+                return;
+            }
+
             await WriteResponseAsync(stream, 200, "OK", body, requestTimeout.Token);
         }
         catch (OperationCanceledException) when (requestTimeout.IsCancellationRequested)
@@ -297,6 +374,40 @@ public sealed class LoopbackTutorialSessionService : ITutorialSessionService
         {
         }
     }
+
+    private static byte[]? CreateResponseBody(string path) => path switch
+    {
+        "/api/hello" => JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            message = "Hello from ReqMint",
+            source = "local-tutorial",
+            success = true,
+        }),
+        "/api/health" => JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            status = "healthy",
+            service = "ReqMint Local Demo API",
+            environment = "local",
+        }),
+        "/api/projects" => JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            data = new[]
+            {
+                new { id = "proj_101", name = "Payments API", status = "active" },
+                new { id = "proj_102", name = "Customer Portal", status = "active" },
+                new { id = "proj_103", name = "Inventory Service", status = "active" },
+            },
+            total = 3,
+        }),
+        "/api/releases/current" => JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            version = "1.0.0-preview.1",
+            channel = "Community Preview",
+            platforms = new[] { "Windows", "macOS", "Linux" },
+            ready = true,
+        }),
+        _ => null,
+    };
 
     private static byte[] ErrorJson() =>
         "{\"error\":\"Tutorial endpoint not found\"}"u8.ToArray();
