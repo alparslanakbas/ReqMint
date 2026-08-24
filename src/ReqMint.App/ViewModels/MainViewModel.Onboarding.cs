@@ -36,6 +36,7 @@ public partial class MainViewModel
         try
         {
             var session = await _tutorialSessionService.StartAsync(cancellationToken);
+            _activeTutorialSession = session;
             ApplyWorkspace(
                 session.Snapshot,
                 session.WorkspaceDirectory,
@@ -46,7 +47,6 @@ public partial class MainViewModel
             ResetRequestDraft();
             LoadRequestDraft(session.DraftRequest);
             RequestEditorTabIndex = 0;
-            _activeTutorialSession = session;
             TutorialGuideStage = TutorialGuideStage.Send;
             IsTutorialGuideVisible = true;
             IsOnboardingVisible = false;

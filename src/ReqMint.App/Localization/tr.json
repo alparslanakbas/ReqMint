@@ -192,6 +192,7 @@
   "OnboardingFinish": "Tamamla",
   "OnboardingCompletedStatus": "ReqMint'e hoş geldiniz",
   "TutorialStartSample": "Yerel bir istek dene",
+  "TutorialWorkspaceLocation": "Geçici yerel çalışma alanı",
   "TutorialGuideTitle": "Yönlendirmeli yerel istek",
   "TutorialSendInstruction": "2 adımın 1.'si · Adres Tutorial ortamını kullanıyor. Bu cihazdaki loopback API'yi çağırmak için Gönder'i seçin.",
   "TutorialSaveInstruction": "2 adımın 2.'si · 200 yanıtını ve JSON gövdesini inceleyin, ardından isteği Başlangıç koleksiyonuna eklemek için Kaydet'i seçin.",

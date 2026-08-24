@@ -192,6 +192,7 @@
   "OnboardingFinish": "Finish",
   "OnboardingCompletedStatus": "Welcome to ReqMint",
   "TutorialStartSample": "Try a local request",
+  "TutorialWorkspaceLocation": "Temporary local workspace",
   "TutorialGuideTitle": "Guided local request",
   "TutorialSendInstruction": "Step 1 of 2 · The URL uses the Tutorial environment. Select Send to call the loopback API on this device.",
   "TutorialSaveInstruction": "Step 2 of 2 · Review the 200 response and JSON body, then select Save to add this request to Getting Started.",

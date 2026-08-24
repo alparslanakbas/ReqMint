@@ -563,6 +563,7 @@ public sealed class MainViewModelWorkspaceTests
         Assert.True(viewModel.IsTutorialGuideVisible);
         Assert.True(viewModel.IsTutorialSendStep);
         Assert.Equal("ReqMint Tutorial", viewModel.WorkspaceName);
+        Assert.Equal("Temporary local workspace", viewModel.WorkspaceLocation);
         Assert.Equal("{{TUTORIAL_BASE_URL}}/api/hello", viewModel.Url);
         Assert.Equal("Tutorial", viewModel.EnvironmentName);
         Assert.Null(store.SavedSnapshot);
@@ -579,6 +580,7 @@ public sealed class MainViewModelWorkspaceTests
         await viewModel.SaveRequestCommand.ExecuteAsync(null);
 
         Assert.True(viewModel.IsTutorialCompleteStep);
+        Assert.Equal("Temporary local workspace", viewModel.WorkspaceLocation);
         Assert.Equal("First local request completed", viewModel.WorkspaceStatus);
         Assert.Equal(
             "Say hello to ReqMint",

@@ -1120,11 +1120,12 @@ public partial class MainViewModel : ViewModelBase
         Guid? selectedEnvironmentId = null)
     {
         CloseCollectionRunner();
-        if (_activeTutorialSession is { } tutorialSession
-            && !string.Equals(
+        var isActiveTutorialWorkspace = _activeTutorialSession is { } tutorialSession
+            && string.Equals(
                 directory,
                 tutorialSession.WorkspaceDirectory,
-                StringComparison.OrdinalIgnoreCase))
+                StringComparison.OrdinalIgnoreCase);
+        if (_activeTutorialSession is not null && !isActiveTutorialWorkspace)
         {
             _activeTutorialSession = null;
             IsTutorialGuideVisible = false;
@@ -1138,7 +1139,9 @@ public partial class MainViewModel : ViewModelBase
             collection => collection.Id == _selectedCollectionId)?.Name ?? "Requests";
 
         WorkspaceName = snapshot.Workspace.Name;
-        WorkspaceLocation = directory;
+        WorkspaceLocation = isActiveTutorialWorkspace
+            ? Localize("TutorialWorkspaceLocation", "Temporary local workspace")
+            : directory;
         EnvironmentNames.Clear();
         if (snapshot.Environments.Count == 0)
         {
