@@ -62,6 +62,14 @@ jobs:
           plutil -lint "$bundle/Contents/Info.plist"
           codesign --verify --deep --strict --verbose=2 "$bundle"
 
+          test -x "$bundle/Contents/MacOS/ReqMint.App"
+          test -f "$bundle/Contents/Resources/ReqMint.App.dll"
+          test -L "$bundle/Contents/MacOS/ReqMint.App.dll"
+          test "$(readlink "$bundle/Contents/MacOS/ReqMint.App.dll")" = '../Resources/ReqMint.App.dll'
+          test -f "$bundle/Contents/Frameworks/libcoreclr.dylib"
+          test -L "$bundle/Contents/MacOS/libcoreclr.dylib"
+          test "$(readlink "$bundle/Contents/MacOS/libcoreclr.dylib")" = '../Frameworks/libcoreclr.dylib'
+
           if [[ '${{ matrix.architecture }}' == 'x64' ]]; then
             file "$bundle/Contents/MacOS/ReqMint.App" | grep -F 'x86_64'
           else

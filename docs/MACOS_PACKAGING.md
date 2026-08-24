@@ -24,11 +24,24 @@ bash ./eng/package-macos.sh 0.1.0 1 x64
 
 Artifacts are written under `artifacts/packages/macos`. ReqMint currently supports macOS 14 and newer in line with the active .NET 10 support boundary.
 
-## Public distribution gate
+## Public distribution workflow
 
 Direct public distribution requires a valid **Developer ID Application** certificate, hardened runtime, a secure timestamp, submission through `notarytool`, successful Apple notarization, and a stapled ticket. Certificate data, passwords, and App Store Connect API keys must be stored only as GitHub Actions secrets.
 
-The next macOS release slice will add this opt-in signing and notarization workflow. It will fail closed unless every required secret is configured; the ad-hoc test workflow will remain separate.
+Configure these repository secrets with values from the Apple Developer portal and the exported Developer ID certificate:
+
+| Repository secret | Value |
+| --- | --- |
+| `REQMINT_APPLE_CERTIFICATE_BASE64` | Base64-encoded Developer ID Application `.p12` file |
+| `REQMINT_APPLE_CERTIFICATE_PASSWORD` | Password used when exporting the `.p12` file |
+| `REQMINT_APPLE_SIGNING_IDENTITY` | Full identity beginning with `Developer ID Application:` |
+| `REQMINT_APPLE_NOTARY_KEY_BASE64` | Base64-encoded App Store Connect API `.p8` key |
+| `REQMINT_APPLE_NOTARY_KEY_ID` | App Store Connect API key ID |
+| `REQMINT_APPLE_NOTARY_ISSUER_ID` | App Store Connect issuer ID |
+
+After all six secrets are configured, run **Actions → macOS notarized packages**. The workflow imports credentials into an ephemeral keychain, signs every native component with hardened runtime and a secure timestamp, submits both architecture packages through `notarytool`, staples and validates the tickets, then removes the temporary certificate, API key, and keychain even if the job fails.
+
+The workflow deliberately fails before packaging when any credential is absent or the signing identity is not a `Developer ID Application` identity. The separate ad-hoc test workflow never receives Apple secrets.
 
 ## References
 

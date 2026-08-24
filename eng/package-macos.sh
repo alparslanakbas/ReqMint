@@ -40,6 +40,7 @@ bundle_path="$working_directory/ReqMint.app"
 contents_directory="$bundle_path/Contents"
 macos_directory="$contents_directory/MacOS"
 resources_directory="$contents_directory/Resources"
+frameworks_directory="$contents_directory/Frameworks"
 plist_template="$repository_root/packaging/macos/Info.plist.in"
 icon_generator="$repository_root/packaging/macos/GenerateAppIcon.swift"
 entitlements_path="$repository_root/packaging/macos/ReqMint.entitlements"
@@ -60,7 +61,7 @@ case "$working_directory" in
 esac
 
 rm -rf -- "$working_directory"
-mkdir -p -- "$macos_directory" "$resources_directory"
+mkdir -p -- "$macos_directory" "$resources_directory" "$frameworks_directory"
 
 dotnet publish "$project_path" \
     --configuration Release \
@@ -83,7 +84,23 @@ if find "$publish_directory" -type f -name '*.pdb' -print -quit | grep -q .; the
     exit 1
 fi
 
-cp -a -- "$publish_directory/." "$macos_directory/"
+while IFS= read -r -d '' published_file; do
+    file_name="$(basename -- "$published_file")"
+    case "$file_name" in
+        ReqMint.App|createdump)
+            cp -a -- "$published_file" "$macos_directory/$file_name"
+            ;;
+        *.dylib|*.so)
+            cp -a -- "$published_file" "$frameworks_directory/$file_name"
+            ln -s "../Frameworks/$file_name" "$macos_directory/$file_name"
+            ;;
+        *)
+            cp -a -- "$published_file" "$resources_directory/$file_name"
+            ln -s "../Resources/$file_name" "$macos_directory/$file_name"
+            ;;
+    esac
+done < <(find "$publish_directory" -mindepth 1 -maxdepth 1 -type f -print0)
+
 chmod 755 "$macos_directory/ReqMint.App"
 
 sed \
@@ -116,16 +133,19 @@ create_icon 1024 icon_512x512@2x.png
 iconutil --convert icns --output "$resources_directory/ReqMint.icns" "$iconset_directory"
 
 if [[ -z "$signing_identity" ]]; then
-    codesign_arguments=(--force --options runtime --sign - --entitlements "$entitlements_path")
+    nested_codesign_arguments=(--force --options runtime --sign -)
+    app_codesign_arguments=(--force --options runtime --sign - --entitlements "$entitlements_path")
 else
-    codesign_arguments=(--force --options runtime --timestamp --sign "$signing_identity" --entitlements "$entitlements_path")
+    nested_codesign_arguments=(--force --options runtime --timestamp --sign "$signing_identity")
+    app_codesign_arguments=(--force --options runtime --timestamp --sign "$signing_identity" --entitlements "$entitlements_path")
 fi
 
 while IFS= read -r -d '' signable_file; do
-    codesign "${codesign_arguments[@]}" "$signable_file"
-done < <(find "$macos_directory" -type f -print0)
+    codesign "${nested_codesign_arguments[@]}" "$signable_file"
+done < <(find "$frameworks_directory" "$macos_directory" -type f ! -name 'ReqMint.App' -print0)
 
-codesign "${codesign_arguments[@]}" "$bundle_path"
+codesign "${app_codesign_arguments[@]}" "$macos_directory/ReqMint.App"
+codesign "${app_codesign_arguments[@]}" "$bundle_path"
 codesign --verify --deep --strict --verbose=2 "$bundle_path"
 
 archive_name="ReqMint-$version-$build_number-$runtime_identifier.zip"

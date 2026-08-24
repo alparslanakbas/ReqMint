@@ -37,12 +37,45 @@ public sealed class MacOsPackagingContractTests
         Assert.Contains("- x64", workflow, StringComparison.Ordinal);
         Assert.Contains("- arm64", workflow, StringComparison.Ordinal);
         Assert.Contains("codesign --verify --deep --strict", workflow, StringComparison.Ordinal);
+        Assert.Contains("Contents/Resources/ReqMint.App.dll", workflow, StringComparison.Ordinal);
+        Assert.Contains("Contents/Frameworks/libcoreclr.dylib", workflow, StringComparison.Ordinal);
         Assert.Contains("./eng/package-macos.sh", workflow, StringComparison.Ordinal);
         Assert.Contains("--self-contained true", script, StringComparison.Ordinal);
-        Assert.Contains("--options runtime --sign -", script, StringComparison.Ordinal);
+        Assert.Contains("frameworks_directory=", script, StringComparison.Ordinal);
+        Assert.Contains("ln -s \"../Frameworks/$file_name\"", script, StringComparison.Ordinal);
+        Assert.Contains("ln -s \"../Resources/$file_name\"", script, StringComparison.Ordinal);
+        Assert.Contains("nested_codesign_arguments=(--force --options runtime --sign -)", script, StringComparison.Ordinal);
+        Assert.Contains("app_codesign_arguments=(--force --options runtime --sign - --entitlements", script, StringComparison.Ordinal);
+        Assert.Contains("app_codesign_arguments=(--force --options runtime --timestamp --sign \"$signing_identity\" --entitlements", script, StringComparison.Ordinal);
         Assert.Contains("Developer ID signing and Apple notarization are still required", script, StringComparison.Ordinal);
         Assert.Contains("ditto -c -k --sequesterRsrc --keepParent", script, StringComparison.Ordinal);
         Assert.Contains("shasum -a 256", script, StringComparison.Ordinal);
+
+        var entitlements = File.ReadAllText(
+            RepositoryPath("packaging", "macos", "ReqMint.entitlements"));
+        Assert.Contains("com.apple.security.cs.allow-jit", entitlements, StringComparison.Ordinal);
+        Assert.DoesNotContain("com.apple.security.get-task-allow", entitlements, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NotarizedWorkflow_FailsClosedAndRemovesTemporaryCredentials()
+    {
+        var workflow = File.ReadAllText(RepositoryPath(".github", "workflows", "macos-notarized.yml"));
+
+        Assert.Contains("secrets.REQMINT_APPLE_CERTIFICATE_BASE64", workflow, StringComparison.Ordinal);
+        Assert.Contains("secrets.REQMINT_APPLE_CERTIFICATE_PASSWORD", workflow, StringComparison.Ordinal);
+        Assert.Contains("secrets.REQMINT_APPLE_SIGNING_IDENTITY", workflow, StringComparison.Ordinal);
+        Assert.Contains("secrets.REQMINT_APPLE_NOTARY_KEY_BASE64", workflow, StringComparison.Ordinal);
+        Assert.Contains("secrets.REQMINT_APPLE_NOTARY_KEY_ID", workflow, StringComparison.Ordinal);
+        Assert.Contains("secrets.REQMINT_APPLE_NOTARY_ISSUER_ID", workflow, StringComparison.Ordinal);
+        Assert.Contains("Configure the required Apple release secrets", workflow, StringComparison.Ordinal);
+        Assert.Contains("Developer ID Application:", workflow, StringComparison.Ordinal);
+        Assert.Contains("xcrun notarytool submit", workflow, StringComparison.Ordinal);
+        Assert.Contains("xcrun stapler staple", workflow, StringComparison.Ordinal);
+        Assert.Contains("spctl --assess", workflow, StringComparison.Ordinal);
+        Assert.Contains("if: always()", workflow, StringComparison.Ordinal);
+        Assert.Contains("security delete-keychain", workflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("vars.REQMINT_APPLE", workflow, StringComparison.Ordinal);
     }
 
     private static string RepositoryPath(params string[] segments)

@@ -1,0 +1,170 @@
+name: macOS notarized packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Three-part application version
+        required: true
+        default: 0.1.0
+        type: string
+      build_number:
+        description: Positive Apple bundle build number
+        required: true
+        default: '1'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test release build
+        run: dotnet test ReqMint.slnx --configuration Release
+
+  package:
+    needs: test
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture:
+          - x64
+          - arm64
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Validate Apple release credentials
+        shell: bash
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.REQMINT_APPLE_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.REQMINT_APPLE_CERTIFICATE_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.REQMINT_APPLE_SIGNING_IDENTITY }}
+          NOTARY_KEY_BASE64: ${{ secrets.REQMINT_APPLE_NOTARY_KEY_BASE64 }}
+          NOTARY_KEY_ID: ${{ secrets.REQMINT_APPLE_NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.REQMINT_APPLE_NOTARY_ISSUER_ID }}
+        run: |
+          missing=()
+          [[ -n "$CERTIFICATE_BASE64" ]] || missing+=(REQMINT_APPLE_CERTIFICATE_BASE64)
+          [[ -n "$CERTIFICATE_PASSWORD" ]] || missing+=(REQMINT_APPLE_CERTIFICATE_PASSWORD)
+          [[ -n "$SIGNING_IDENTITY" ]] || missing+=(REQMINT_APPLE_SIGNING_IDENTITY)
+          [[ -n "$NOTARY_KEY_BASE64" ]] || missing+=(REQMINT_APPLE_NOTARY_KEY_BASE64)
+          [[ -n "$NOTARY_KEY_ID" ]] || missing+=(REQMINT_APPLE_NOTARY_KEY_ID)
+          [[ -n "$NOTARY_ISSUER_ID" ]] || missing+=(REQMINT_APPLE_NOTARY_ISSUER_ID)
+
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Configure the required Apple release secrets: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+
+          if [[ "$SIGNING_IDENTITY" != 'Developer ID Application:'* ]]; then
+            printf 'REQMINT_APPLE_SIGNING_IDENTITY must identify a Developer ID Application certificate.\n' >&2
+            exit 1
+          fi
+
+      - name: Import Developer ID certificate and notarization key
+        shell: bash
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.REQMINT_APPLE_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.REQMINT_APPLE_CERTIFICATE_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.REQMINT_APPLE_SIGNING_IDENTITY }}
+          NOTARY_KEY_BASE64: ${{ secrets.REQMINT_APPLE_NOTARY_KEY_BASE64 }}
+          NOTARY_KEY_ID: ${{ secrets.REQMINT_APPLE_NOTARY_KEY_ID }}
+        run: |
+          keychain_path="$RUNNER_TEMP/reqmint-signing.keychain-db"
+          keychain_password="$(uuidgen)"
+          certificate_path="$RUNNER_TEMP/reqmint-developer-id.p12"
+          notary_key_path="$RUNNER_TEMP/AuthKey_${NOTARY_KEY_ID}.p8"
+
+          printf 'REQMINT_KEYCHAIN_PATH=%s\n' "$keychain_path" >> "$GITHUB_ENV"
+          printf 'REQMINT_CERTIFICATE_PATH=%s\n' "$certificate_path" >> "$GITHUB_ENV"
+          printf 'REQMINT_NOTARY_KEY_PATH=%s\n' "$notary_key_path" >> "$GITHUB_ENV"
+
+          printf '%s' "$CERTIFICATE_BASE64" | base64 -D > "$certificate_path"
+          printf '%s' "$NOTARY_KEY_BASE64" | base64 -D > "$notary_key_path"
+          chmod 600 "$certificate_path" "$notary_key_path"
+
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security import "$certificate_path" -k "$keychain_path" -P "$CERTIFICATE_PASSWORD" -A -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain_path"
+          security list-keychains -d user -s "$keychain_path"
+
+          security find-identity -v -p codesigning "$keychain_path" | grep -F -- "$SIGNING_IDENTITY"
+
+      - name: Build Developer ID-signed app bundle
+        shell: bash
+        env:
+          REQMINT_MACOS_SIGNING_IDENTITY: ${{ secrets.REQMINT_APPLE_SIGNING_IDENTITY }}
+        run: bash ./eng/package-macos.sh '${{ inputs.version }}' '${{ inputs.build_number }}' '${{ matrix.architecture }}'
+
+      - name: Submit to Apple notarization and staple ticket
+        shell: bash
+        env:
+          NOTARY_KEY_ID: ${{ secrets.REQMINT_APPLE_NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.REQMINT_APPLE_NOTARY_ISSUER_ID }}
+        run: |
+          bundle="artifacts/macos/osx-${{ matrix.architecture }}/ReqMint.app"
+          archive="artifacts/packages/macos/ReqMint-${{ inputs.version }}-${{ inputs.build_number }}-osx-${{ matrix.architecture }}.zip"
+
+          codesign --verify --deep --strict --verbose=2 "$bundle"
+          xcrun notarytool submit "$archive" \
+            --key "$REQMINT_NOTARY_KEY_PATH" \
+            --key-id "$NOTARY_KEY_ID" \
+            --issuer "$NOTARY_ISSUER_ID" \
+            --wait \
+            --timeout 30m
+
+          xcrun stapler staple "$bundle"
+          xcrun stapler validate "$bundle"
+          spctl --assess --type execute --verbose=4 "$bundle"
+
+          rm -f -- "$archive" "$archive.sha256"
+          ditto -c -k --sequesterRsrc --keepParent "$bundle" "$archive"
+          (
+            cd artifacts/packages/macos
+            shasum -a 256 "$(basename "$archive")" > "$(basename "$archive").sha256"
+          )
+
+      - name: Upload notarized macOS package
+        uses: actions/upload-artifact@v7
+        with:
+          name: ReqMint-${{ inputs.version }}-${{ inputs.build_number }}-notarized-osx-${{ matrix.architecture }}
+          path: |
+            artifacts/packages/macos/*.zip
+            artifacts/packages/macos/*.zip.sha256
+          if-no-files-found: error
+
+      - name: Remove temporary Apple credentials
+        if: always()
+        shell: bash
+        run: |
+          if [[ -n "${REQMINT_KEYCHAIN_PATH:-}" && -f "$REQMINT_KEYCHAIN_PATH" ]]; then
+            security delete-keychain "$REQMINT_KEYCHAIN_PATH"
+          fi
+
+          if [[ -n "${REQMINT_CERTIFICATE_PATH:-}" ]]; then
+            rm -f -- "$REQMINT_CERTIFICATE_PATH"
+          fi
+
+          if [[ -n "${REQMINT_NOTARY_KEY_PATH:-}" ]]; then
+            rm -f -- "$REQMINT_NOTARY_KEY_PATH"
+          fi
