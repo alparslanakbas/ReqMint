@@ -40,6 +40,7 @@ public partial class App : Application
                 "ReqMint");
             var settings = new JsonAppSettingsService(applicationData);
             var localization = new LocalizationService(settings);
+            var themes = new ThemeService(settings);
             var mainWindow = new MainWindow();
             var databasePath = Path.Combine(applicationData, "reqmint.db");
             var workspaceStore = new WorkspaceJsonStore();
@@ -55,6 +56,7 @@ public partial class App : Application
                 templateResolver,
                 secretVault,
                 localization,
+                themes,
                 new AvaloniaUnsavedChangesPrompt(mainWindow, localization),
                 new SqliteRequestHistoryStore(databasePath),
                 new AvaloniaHistoryClearPrompt(mainWindow, localization),

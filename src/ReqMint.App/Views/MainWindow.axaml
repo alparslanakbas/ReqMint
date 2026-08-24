@@ -834,6 +834,208 @@
                 </Border>
             </Grid>
 
+            <Grid IsVisible="{Binding IsApplicationSettingsVisible}"
+                  RowDefinitions="76,*"
+                  Background="{DynamicResource AppBackgroundBrush}">
+                <Border Grid.Row="0"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="0,0,0,1">
+                    <StackPanel Margin="24,12" Spacing="3">
+                        <TextBlock Text="{DynamicResource ApplicationSettingsTitle}"
+                                   FontSize="22"
+                                   FontWeight="SemiBold" />
+                        <TextBlock Text="{DynamicResource ApplicationSettingsSubtitle}"
+                                   Classes="secondary" />
+                    </StackPanel>
+                </Border>
+
+                <ScrollViewer Grid.Row="1">
+                    <Grid Margin="24" ColumnDefinitions="*,18,*" RowDefinitions="Auto,18,Auto">
+                        <Border Grid.Column="0"
+                                Padding="20"
+                                Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="12">
+                            <StackPanel Spacing="13">
+                                <Grid ColumnDefinitions="Auto,12,*">
+                                    <Border Width="38" Height="38" CornerRadius="10"
+                                            Background="{DynamicResource AccentMutedBrush}">
+                                        <TextBlock Text="◐" FontSize="18"
+                                                   Foreground="{DynamicResource AccentBrush}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                        <TextBlock Text="{DynamicResource AppearanceTitle}"
+                                                   FontSize="17" FontWeight="SemiBold" />
+                                        <TextBlock Text="{DynamicResource AppearanceHelp}"
+                                                   Classes="secondary" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Text="{DynamicResource ThemeLabel}" FontWeight="SemiBold" />
+                                <ComboBox ItemsSource="{Binding Themes.Themes}"
+                                          SelectedItem="{Binding Themes.SelectedTheme}"
+                                          HorizontalContentAlignment="Stretch">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="services:ThemeOption">
+                                            <Grid ColumnDefinitions="Auto,10,*">
+                                                <StackPanel Orientation="Horizontal" Spacing="3">
+                                                    <Ellipse Width="9" Height="9" Fill="{Binding Accent}" />
+                                                    <Ellipse Width="9" Height="9" Fill="{Binding MethodGet}" />
+                                                    <Ellipse Width="9" Height="9" Fill="{Binding Warning}" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="2" Text="{Binding DisplayName}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <Border Height="64"
+                                        Background="{DynamicResource SurfaceRaisedBrush}"
+                                        BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="9">
+                                    <Grid Margin="14" ColumnDefinitions="Auto,12,*,Auto">
+                                        <Ellipse Width="16" Height="16" Fill="{DynamicResource AccentBrush}" />
+                                        <StackPanel Grid.Column="2" Spacing="5" VerticalAlignment="Center">
+                                            <Border Height="7" Width="138" HorizontalAlignment="Left"
+                                                    Background="{DynamicResource TextPrimaryBrush}" CornerRadius="4" />
+                                            <Border Height="6" Width="205" HorizontalAlignment="Left"
+                                                    Background="{DynamicResource TextSecondaryBrush}" CornerRadius="3" />
+                                        </StackPanel>
+                                        <Button Grid.Column="3" Classes="primary" Content="ReqMint" />
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="2"
+                                Padding="20"
+                                Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="12">
+                            <StackPanel Spacing="12">
+                                <Grid ColumnDefinitions="Auto,12,*">
+                                    <Border Width="38" Height="38" CornerRadius="10"
+                                            Background="{DynamicResource AccentMutedBrush}">
+                                        <TextBlock Text="⚙" FontSize="17"
+                                                   Foreground="{DynamicResource AccentBrush}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                        <TextBlock Text="{DynamicResource PreferencesTitle}"
+                                                   FontSize="17" FontWeight="SemiBold" />
+                                        <TextBlock Text="{DynamicResource PreferencesHelp}"
+                                                   Classes="secondary" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Text="{DynamicResource TextLanguage}" FontWeight="SemiBold" />
+                                <ComboBox ItemsSource="{Binding Localization.Languages}"
+                                          SelectedItem="{Binding Localization.SelectedLanguage}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="services:LanguageOption">
+                                            <TextBlock Text="{Binding DisplayName}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <TextBlock Text="{DynamicResource CloseBehaviorSettingsTitle}"
+                                           FontWeight="SemiBold" Margin="0,4,0,0" />
+                                <CheckBox Content="{DynamicResource CloseBehaviorKeepRunningSetting}"
+                                          IsChecked="{Binding KeepRunningInBackground}" />
+                                <Grid ColumnDefinitions="Auto,12,*">
+                                    <Button Content="{DynamicResource CloseBehaviorAskAgain}"
+                                            Command="{Binding ResetWindowClosePreferenceCommand}" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{DynamicResource CloseBehaviorSettingsHelp}"
+                                               Classes="secondary"
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                                <Grid ColumnDefinitions="Auto,12,*" Margin="0,4,0,0">
+                                    <Button Content="{DynamicResource OnboardingRestart}"
+                                            Command="{Binding RestartOnboardingCommand}" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{DynamicResource OnboardingSettingsHelp}"
+                                               Classes="secondary"
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="2" Grid.ColumnSpan="3"
+                                Padding="20"
+                                Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="12">
+                            <Grid ColumnDefinitions="*,28,*">
+                                <StackPanel Spacing="11">
+                                    <Grid ColumnDefinitions="48,14,*,Auto">
+                                        <Border Width="48" Height="48"
+                                                Background="{DynamicResource AccentBrush}"
+                                                CornerRadius="12">
+                                            <TextBlock Text="R➜"
+                                                       Foreground="{DynamicResource AppBackgroundBrush}"
+                                                       FontSize="14" FontWeight="Bold"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="3">
+                                            <TextBlock Text="{DynamicResource AboutTitle}"
+                                                       FontSize="18" FontWeight="SemiBold" />
+                                            <TextBlock Text="{DynamicResource AboutCommunityPreview}"
+                                                       Classes="secondary" />
+                                        </StackPanel>
+                                        <Border Grid.Column="3" Padding="9,5"
+                                                Background="{DynamicResource SurfaceHoverBrush}"
+                                                CornerRadius="12" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding ApplicationInfo.Version}"
+                                                       Foreground="{DynamicResource AccentBrush}"
+                                                       FontWeight="SemiBold" />
+                                        </Border>
+                                    </Grid>
+                                    <TextBlock Text="{DynamicResource AboutDescription}"
+                                               Classes="secondary" TextWrapping="Wrap" />
+                                    <Grid ColumnDefinitions="95,*" RowDefinitions="Auto,6,Auto">
+                                        <TextBlock Text="{DynamicResource AboutPlatform}" FontWeight="SemiBold" />
+                                        <TextBlock Grid.Column="1" Text="{Binding ApplicationInfo.PlatformSummary}"
+                                                   Classes="secondary" TextWrapping="Wrap" />
+                                        <TextBlock Grid.Row="2" Text="{DynamicResource AboutRuntime}" FontWeight="SemiBold" />
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ApplicationInfo.Runtime}"
+                                                   Classes="secondary" TextWrapping="Wrap" />
+                                    </Grid>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="12" VerticalAlignment="Center">
+                                    <Grid ColumnDefinitions="Auto,12,*">
+                                        <Button Classes="primary"
+                                                Content="{DynamicResource AboutCopySupport}"
+                                                Command="{Binding CopySupportInformationCommand}" />
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{DynamicResource AboutCopySupportHelp}"
+                                                   Classes="secondary" TextWrapping="Wrap"
+                                                   VerticalAlignment="Center" />
+                                    </Grid>
+                                    <WrapPanel Orientation="Horizontal">
+                                        <Button Margin="0,0,8,8" Content="{DynamicResource AboutDocumentation}"
+                                                Command="{Binding OpenDocumentationCommand}" />
+                                        <Button Margin="0,0,8,8" Content="{DynamicResource AboutPrivacy}"
+                                                Command="{Binding OpenPrivacyCommand}" />
+                                        <Button Margin="0,0,8,8" Content="{DynamicResource AboutSecurity}"
+                                                Command="{Binding OpenSecurityCommand}" />
+                                        <Button Margin="0,0,0,8" Content="{DynamicResource AboutSupport}"
+                                                Command="{Binding OpenSupportCommand}" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+
             <Grid RowDefinitions="56,*" IsVisible="{Binding IsCollectionRunnerVisible}">
                 <Border Grid.Row="0"
                         Background="{DynamicResource SurfaceBrush}"

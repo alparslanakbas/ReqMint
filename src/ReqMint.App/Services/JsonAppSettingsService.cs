@@ -74,6 +74,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 
     private static AppSettings Normalize(AppSettings settings) => settings with
     {
+        Theme = ThemeCatalog.Find(settings.Theme)?.Id ?? ThemeCatalog.DefaultId,
         HistoryRetentionLimit = Math.Clamp(
             settings.HistoryRetentionLimit,
             MinimumHistoryRetentionLimit,

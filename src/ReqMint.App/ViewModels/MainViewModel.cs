@@ -67,6 +67,8 @@ public partial class MainViewModel : ViewModelBase
 
     public LocalizationService Localization { get; }
 
+    public ThemeService Themes { get; }
+
     public ApplicationInfoSnapshot ApplicationInfo { get; }
 
     public string SupportInformation { get; }
@@ -164,6 +166,10 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial int RequestEditorTabIndex { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRequestWorkspaceVisible))]
+    public partial bool IsApplicationSettingsVisible { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCollectionsVisible))]
@@ -424,7 +430,8 @@ public partial class MainViewModel : ViewModelBase
         && !IsCollectionRunDataBusy;
 
     public bool IsRequestWorkspaceVisible =>
-        !IsGitDiffVisible
+        !IsApplicationSettingsVisible
+        && !IsGitDiffVisible
         && !IsGitCommitVisible
         && !IsGitRemoteVisible
         && !IsGitFastForwardVisible
@@ -500,6 +507,7 @@ public partial class MainViewModel : ViewModelBase
         RequestTemplateResolver templateResolver,
         ISecretVault secretVault,
         LocalizationService localization,
+        ThemeService themes,
         IUnsavedChangesPrompt unsavedChangesPrompt,
         IRequestHistoryStore historyStore,
         IHistoryClearPrompt historyClearPrompt,
@@ -523,6 +531,7 @@ public partial class MainViewModel : ViewModelBase
         _templateResolver = templateResolver;
         _secretVault = secretVault;
         Localization = localization;
+        Themes = themes;
         WorkspaceStatus = Localize("StatusReady", "Ready");
         ResponseStatus = Localize("StatusReady", "Ready");
         ResponseBody = Localize(
@@ -1127,6 +1136,7 @@ public partial class MainViewModel : ViewModelBase
         Guid? selectedEnvironmentId = null)
     {
         CloseCollectionRunner();
+        IsApplicationSettingsVisible = false;
         var isActiveTutorialWorkspace = IsActiveTutorialWorkspace(directory);
         if (_activeTutorialSession is not null && !isActiveTutorialWorkspace)
         {

@@ -11,6 +11,8 @@ public sealed record AppSettings
 {
     public string? Language { get; init; }
 
+    public string Theme { get; init; } = ThemeCatalog.DefaultId;
+
     public int HistoryRetentionLimit { get; init; } = 200;
 
     public int CollectionRunHistoryRetentionLimit { get; init; } = 50;

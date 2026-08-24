@@ -14,6 +14,7 @@ public sealed class JsonAppSettingsServiceTests
         store.Update(new AppSettings
         {
             Language = "tr",
+            Theme = "aurora-glass",
             HistoryRetentionLimit = 350,
             CollectionRunHistoryRetentionLimit = 80,
             ResponsePreviewLimitMegabytes = 7,
@@ -24,6 +25,7 @@ public sealed class JsonAppSettingsServiceTests
         var reloaded = new JsonAppSettingsService(directory.Path);
 
         Assert.Equal("tr", reloaded.Current.Language);
+        Assert.Equal("aurora-glass", reloaded.Current.Theme);
         Assert.Equal(350, reloaded.Current.HistoryRetentionLimit);
         Assert.Equal(80, reloaded.Current.CollectionRunHistoryRetentionLimit);
         Assert.Equal(7, reloaded.Current.ResponsePreviewLimitMegabytes);
@@ -118,6 +120,21 @@ public sealed class JsonAppSettingsServiceTests
         var store = new JsonAppSettingsService(directory.Path);
 
         Assert.Equal(WindowCloseBehavior.Ask, store.Current.WindowCloseBehavior);
+    }
+
+    [Fact]
+    public void LoadingSettings_NormalizesUnknownTheme()
+    {
+        using var directory = new TemporaryDirectory();
+        var path = System.IO.Path.Combine(directory.Path, "ui-settings.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new AppSettings
+        {
+            Theme = "not-a-theme",
+        }));
+
+        var store = new JsonAppSettingsService(directory.Path);
+
+        Assert.Equal(ThemeCatalog.DefaultId, store.Current.Theme);
     }
 
     private sealed class TemporaryDirectory : IDisposable

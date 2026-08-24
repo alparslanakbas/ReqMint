@@ -31,6 +31,7 @@ public partial class MainViewModel
 
         IsHistoryVisible = false;
         IsGitVisible = false;
+        IsApplicationSettingsVisible = false;
         CloseGitDiff();
         CloseGitCommit();
         CloseGitRemote();

@@ -40,6 +40,7 @@ public partial class MainViewModel
     [RelayCommand]
     private void ShowCollections()
     {
+        IsApplicationSettingsVisible = false;
         IsHistoryVisible = false;
         IsGitVisible = false;
         CloseGitDiff();
@@ -48,6 +49,7 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task ShowHistoryAsync(CancellationToken cancellationToken)
     {
+        IsApplicationSettingsVisible = false;
         IsHistoryVisible = true;
         IsGitVisible = false;
         CloseGitDiff();

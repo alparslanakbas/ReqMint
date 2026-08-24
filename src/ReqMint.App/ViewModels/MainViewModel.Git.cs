@@ -12,6 +12,7 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task ShowGitAsync(CancellationToken cancellationToken)
     {
+        IsApplicationSettingsVisible = false;
         IsHistoryVisible = false;
         IsGitVisible = true;
 

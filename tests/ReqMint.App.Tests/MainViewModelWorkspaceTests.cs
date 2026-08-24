@@ -21,11 +21,13 @@ public sealed class MainViewModelWorkspaceTests
 
         Assert.Equal(3, viewModel.RequestEditorTabIndex);
         Assert.True(viewModel.IsRequestWorkspaceVisible);
+        Assert.False(viewModel.IsApplicationSettingsVisible);
 
         viewModel.ShowSettingsEditorCommand.Execute(null);
 
-        Assert.Equal(4, viewModel.RequestEditorTabIndex);
-        Assert.True(viewModel.IsRequestWorkspaceVisible);
+        Assert.Equal(3, viewModel.RequestEditorTabIndex);
+        Assert.False(viewModel.IsRequestWorkspaceVisible);
+        Assert.True(viewModel.IsApplicationSettingsVisible);
     }
 
     [Fact]
@@ -1687,6 +1689,7 @@ public sealed class MainViewModelWorkspaceTests
     {
         vault ??= new RecordingSecretVault();
         executor ??= new NoOpRequestExecutor();
+        appSettings ??= new StubAppSettingsService();
         var templateResolver = new RequestTemplateResolver(vault);
         return new MainViewModel(
             executor,
@@ -1696,10 +1699,11 @@ public sealed class MainViewModelWorkspaceTests
             templateResolver,
             vault,
             localization: null!,
+            new ThemeService(appSettings),
             prompt ?? new StubUnsavedChangesPrompt(),
             historyStore ?? new RecordingHistoryStore(),
             historyClearPrompt ?? new StubHistoryClearPrompt(),
-            appSettings ?? new StubAppSettingsService(),
+            appSettings,
             gitService ?? new StubGitService(),
             gitSecretScanner ?? new StubGitSecretScanner(),
             collectionRunExportService ?? new RecordingCollectionRunExportService(),
