@@ -64,6 +64,50 @@ public sealed class ReleaseReadinessContractTests
         Assert.Contains("GitHub issues", support, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Website_ExposesArabicRtlCustomerJourneyAsNativeReviewDraft()
+    {
+        var arabicRoot = RepositoryPath("website", "app", "ar");
+        var requiredPages = new[]
+        {
+            "page.tsx",
+            Path.Combine("downloads", "page.tsx"),
+            Path.Combine("docs", "page.tsx"),
+            Path.Combine("privacy", "page.tsx"),
+            Path.Combine("security", "page.tsx"),
+            Path.Combine("support", "page.tsx")
+        };
+
+        Assert.All(requiredPages, page => Assert.True(File.Exists(Path.Combine(arabicRoot, page))));
+
+        var arabicShell = File.ReadAllText(
+            RepositoryPath("website", "app", "components", "ArabicShell.tsx"));
+        var arabicGuides = File.ReadAllText(
+            RepositoryPath("website", "app", "lib", "docs-ar.ts"));
+        var expansion = File.ReadAllText(
+            RepositoryPath("docs", "INTERNATIONAL_EXPANSION.md"));
+
+        Assert.Contains("dir=\"rtl\"", arabicShell, StringComparison.Ordinal);
+        Assert.Contains("/ar/privacy", arabicShell, StringComparison.Ordinal);
+        Assert.Contains("security/advisories/new", File.ReadAllText(
+            Path.Combine(arabicRoot, "security", "page.tsx")), StringComparison.Ordinal);
+        Assert.Equal(8, CountOccurrences(arabicGuides, "slug: '"));
+        Assert.Contains("native Arabic reviewer", expansion, StringComparison.Ordinal);
+    }
+
+    private static int CountOccurrences(string value, string search)
+    {
+        var count = 0;
+        var index = 0;
+        while ((index = value.IndexOf(search, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += search.Length;
+        }
+
+        return count;
+    }
+
     private static string RepositoryPath(params string[] segments)
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

@@ -13,6 +13,7 @@ export default function SecurityPage() {
       title="Report privately."
       accent="Protect users first."
       summary="Potential vulnerabilities belong in ReqMint’s private GitHub reporting channel—not in public issues, logs, screenshots, or workspace files."
+      arabicHref="/ar/security"
     >
       <section id="report"><span className="section-number">01</span><h2>Report a vulnerability privately</h2><p>Use GitHub&apos;s private vulnerability reporting form. Include the affected version or commit, operating system, reproducible steps, impact, and any suggested mitigation.</p><a className="button button-primary trust-action" href="https://github.com/alparslanakbas/ReqMint/security/advisories/new">Open private report <span aria-hidden="true">↗</span></a><aside className="doc-note warning"><b>Never publish secrets</b><p>Do not place credentials, tokens, private request or response content, exploit details, signing material, or user data in a public issue.</p></aside></section>
       <section id="scope"><span className="section-number">02</span><h2>High-priority scope</h2><ul><li>Credential disclosure or unsafe secret persistence</li><li>Unsafe workspace or collection parsing</li><li>Command or code execution</li><li>Certificate-verification bypass</li><li>Unexpected or unauthorized network activity</li><li>Git operations outside the user-confirmed scope</li></ul></section>

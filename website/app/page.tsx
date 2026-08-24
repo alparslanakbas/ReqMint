@@ -17,7 +17,10 @@ export default function Home() {
           <a href="/docs">Docs</a>
           <a href="https://github.com/alparslanakbas/ReqMint">GitHub</a>
         </nav>
-        <a className="header-cta" href="/docs">Read the docs <span aria-hidden="true">↗</span></a>
+        <div className="header-actions">
+          <a className="language-link" href="/ar" lang="ar" dir="rtl">العربية</a>
+          <a className="header-cta" href="/docs">Read the docs <span aria-hidden="true">↗</span></a>
+        </div>
       </header>
 
       <section className="hero hero-showcase" id="top">

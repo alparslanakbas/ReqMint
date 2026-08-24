@@ -19,6 +19,7 @@ export default function SupportPage() {
       title="Start with the right"
       accent="support path."
       summary="Documentation handles the common workflows. GitHub issues keep ordinary bugs and ideas transparent. Sensitive security reports always stay private."
+      arabicHref="/ar/support"
     >
       <div className="support-grid">
         {supportPaths.map((path) => <section key={path.number}><span className="section-number">{path.number}</span><h2>{path.title}</h2><p>{path.copy}</p><a className="text-link" href={path.href}>{path.label} <span aria-hidden="true">→</span></a></section>)}

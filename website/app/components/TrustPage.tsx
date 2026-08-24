@@ -6,16 +6,17 @@ type TrustPageProps = {
   accent: string;
   summary: string;
   updated?: string;
+  arabicHref?: string;
   children: ReactNode;
 };
 
-export function TrustPage({ eyebrow, title, accent, summary, updated, children }: TrustPageProps) {
+export function TrustPage({ eyebrow, title, accent, summary, updated, arabicHref = '/ar', children }: TrustPageProps) {
   return (
     <main className="trust-shell">
       <header className="site-header docs-header">
         <a className="brand" href="/" aria-label="ReqMint home"><span className="brand-mark" aria-hidden="true">R</span><span>ReqMint</span></a>
         <nav className="desktop-nav" aria-label="Primary navigation"><a href="/#product">Product</a><a href="/downloads">Downloads</a><a href="/docs">Docs</a><a href="https://github.com/alparslanakbas/ReqMint">GitHub</a></nav>
-        <a className="header-cta" href="/support">Get help <span aria-hidden="true">↗</span></a>
+        <div className="header-actions"><a className="language-link" href={arabicHref} lang="ar" dir="rtl">العربية</a><a className="header-cta" href="/support">Get help <span aria-hidden="true">↗</span></a></div>
       </header>
 
       <section className="trust-hero">

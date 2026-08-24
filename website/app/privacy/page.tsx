@@ -14,6 +14,7 @@ export default function PrivacyPage() {
       accent="under your control."
       summary="ReqMint is a local-first developer tool. The public preview requires no account, includes no advertising, and does not upload workspaces to a ReqMint service."
       updated="24 August 2026"
+      arabicHref="/ar/privacy"
     >
       <section id="local-data"><span className="section-number">01</span><h2>Data stored on your device</h2><p>ReqMint stores settings, onboarding progress, request history, collection-run summaries, and user-selected workspaces locally. Workspace files remain in the folder you choose and can be reviewed or shared like ordinary files.</p><p>History retention is bounded. Sensitive request headers and configured secret values are redacted before history is persisted.</p></section>
       <section id="network"><span className="section-number">02</span><h2>Network activity</h2><p>ReqMint sends HTTP traffic when you run a request or collection. The local onboarding sample uses a temporary loopback service and does not require an external API.</p><p>Git network operations require an explicit action and use the remote configured in your repository. ReqMint does not provide a hosted synchronization service.</p></section>

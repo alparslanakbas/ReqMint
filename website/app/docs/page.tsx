@@ -14,7 +14,7 @@ export default function DocsHome() {
       <header className="site-header docs-header">
         <a className="brand" href="/" aria-label="ReqMint home"><span className="brand-mark" aria-hidden="true">R</span><span>ReqMint</span></a>
         <nav className="desktop-nav" aria-label="Primary navigation"><a href="/">Product</a><a href="/downloads">Downloads</a><a className="nav-active" href="/docs">Docs</a><a href="https://github.com/alparslanakbas/ReqMint">GitHub</a></nav>
-        <a className="header-cta" href="https://github.com/alparslanakbas/ReqMint/issues">Get help <span aria-hidden="true">↗</span></a>
+        <div className="header-actions"><a className="language-link" href="/ar/docs" lang="ar" dir="rtl">العربية</a><a className="header-cta" href="https://github.com/alparslanakbas/ReqMint/issues">Get help <span aria-hidden="true">↗</span></a></div>
       </header>
 
       <section className="docs-hero">

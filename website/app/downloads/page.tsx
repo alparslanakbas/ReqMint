@@ -17,7 +17,7 @@ export default function DownloadsPage() {
       <header className="site-header docs-header">
         <a className="brand" href="/" aria-label="ReqMint home"><span className="brand-mark" aria-hidden="true">R</span><span>ReqMint</span></a>
         <nav className="desktop-nav" aria-label="Primary navigation"><a href="/">Product</a><a className="nav-active" href="/downloads">Downloads</a><a href="/docs">Docs</a><a href="https://github.com/alparslanakbas/ReqMint">GitHub</a></nav>
-        <a className="header-cta" href="/docs/quick-start">Quick start <span aria-hidden="true">↗</span></a>
+        <div className="header-actions"><a className="language-link" href="/ar/downloads" lang="ar" dir="rtl">العربية</a><a className="header-cta" href="/docs/quick-start">Quick start <span aria-hidden="true">↗</span></a></div>
       </header>
 
       <section className="downloads-hero">
