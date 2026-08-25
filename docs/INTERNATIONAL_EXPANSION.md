@@ -26,7 +26,8 @@ Arabic publication-kit status (development only):
 - the application resource set and automated key/placeholder parity checks are implemented;
 - a draft `ar-SA` Partner Center listing and Arabic source documents for onboarding, privacy, security, support, and terminology review are versioned in the repository;
 - Arabic RTL product, download, documentation, privacy, security, and support routes are implemented as a review draft, including eight task-focused guides and reciprocal language navigation;
-- anonymous production access, five real `ar-SA` screenshots, accessibility review, packaging validation, and native Arabic reviewer approval remain blocking requirements;
+- localized automation names cover the primary workspace controls and every icon-only action, while theme-aware focus indicators provide a keyboard-review baseline;
+- anonymous production access, five real `ar-SA` screenshots, manual keyboard and screen-reader review, contrast verification, packaging validation, and native Arabic reviewer approval remain blocking requirements;
 - draft warnings must not be removed and `ar-SA` must not be submitted to Partner Center until every remaining gate is evidenced in the same release candidate.
 
 ### 2. Simplified Chinese

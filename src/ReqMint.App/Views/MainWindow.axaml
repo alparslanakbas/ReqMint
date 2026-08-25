@@ -40,6 +40,7 @@
                 <Button Grid.Column="2"
                         HorizontalContentAlignment="Stretch"
                         Command="{Binding OpenWorkspaceCommand}"
+                        AutomationProperties.Name="{DynamicResource TooltipOpenWorkspace}"
                         ToolTip.Tip="{DynamicResource TooltipOpenWorkspace}">
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Text="{Binding WorkspaceName}" TextTrimming="CharacterEllipsis" />
@@ -50,12 +51,14 @@
                 <TextBox Grid.Column="4"
                          Height="34"
                          VerticalAlignment="Center"
+                         AutomationProperties.Name="{DynamicResource TextSearch}"
                          PlaceholderText="{DynamicResource TextSearch}" />
 
                 <ComboBox Grid.Column="6"
                           ItemsSource="{Binding EnvironmentNames}"
                           SelectedItem="{Binding EnvironmentName}"
                           HorizontalContentAlignment="Stretch"
+                          AutomationProperties.Name="{DynamicResource TooltipActiveEnvironment}"
                           ToolTip.Tip="{DynamicResource TooltipActiveEnvironment}" />
             </Grid>
         </Border>
@@ -137,6 +140,7 @@
                                 Height="30"
                                 Padding="0"
                                 Command="{Binding CreateWorkspaceCommand}"
+                                AutomationProperties.Name="{DynamicResource TooltipCreateWorkspace}"
                                 ToolTip.Tip="{DynamicResource TooltipCreateWorkspace}" />
                         <Button Grid.Column="3"
                                 Content="＋"
@@ -144,6 +148,7 @@
                                 Height="30"
                                 Padding="0"
                                 Command="{Binding NewRequestCommand}"
+                                AutomationProperties.Name="{DynamicResource TooltipCreateRequest}"
                                 ToolTip.Tip="{DynamicResource TooltipCreateRequest}" />
                     </Grid>
 
@@ -223,6 +228,7 @@
                                 Height="30"
                                 Padding="0"
                                 Command="{Binding ClearHistoryCommand}"
+                                AutomationProperties.Name="{DynamicResource TextClearHistory}"
                                 ToolTip.Tip="{DynamicResource TextClearHistory}" />
                         <Button Grid.Column="3"
                                 Content="↻"
@@ -230,6 +236,7 @@
                                 Height="30"
                                 Padding="0"
                                 Command="{Binding ShowHistoryCommand}"
+                                AutomationProperties.Name="{DynamicResource TextRefreshHistory}"
                                 ToolTip.Tip="{DynamicResource TextRefreshHistory}" />
                     </Grid>
 
@@ -305,6 +312,7 @@
                                     Height="30"
                                     Padding="0"
                                     Command="{Binding ShowGitCommand}"
+                                    AutomationProperties.Name="{DynamicResource TextRefreshGit}"
                                     ToolTip.Tip="{DynamicResource TextRefreshGit}" />
                         </Grid>
 
@@ -1100,6 +1108,7 @@
                                 Height="30"
                                 Padding="0"
                                 IsEnabled="{Binding IsCollectionRunnerInteractionEnabled}"
+                                AutomationProperties.Name="{DynamicResource CollectionRunClose}"
                                 Command="{Binding CloseCollectionRunnerCommand}" />
                     </Grid>
                 </Border>
@@ -1202,12 +1211,14 @@
                                         Content="↻"
                                         IsEnabled="{Binding IsCollectionRunnerInteractionEnabled}"
                                         Command="{Binding RefreshCollectionRunHistoryCommand}"
+                                        AutomationProperties.Name="{DynamicResource CollectionRunHistoryRefresh}"
                                         ToolTip.Tip="{DynamicResource CollectionRunHistoryRefresh}" />
                                 <Button Grid.Column="7"
                                         Content="⌫"
                                         IsVisible="{Binding !IsCollectionRunHistoryEmpty}"
                                         IsEnabled="{Binding IsCollectionRunnerInteractionEnabled}"
                                         Command="{Binding ClearCollectionRunHistoryCommand}"
+                                        AutomationProperties.Name="{DynamicResource CollectionRunHistoryClear}"
                                         ToolTip.Tip="{DynamicResource CollectionRunHistoryClear}" />
                             </Grid>
                             <Grid Grid.Row="2" ColumnDefinitions="Auto,6,Auto,6,Auto,6,Auto,12,Auto,*">
@@ -1323,6 +1334,7 @@
                                 Height="30"
                                 Padding="0"
                                 Command="{Binding CloseGitDiffCommand}"
+                                AutomationProperties.Name="{DynamicResource GitDiffClose}"
                                 ToolTip.Tip="{DynamicResource GitDiffClose}" />
                     </Grid>
                 </Border>
@@ -1486,6 +1498,7 @@
                                 Height="30"
                                 Padding="0"
                                 IsEnabled="{Binding !IsGitCommitBusy}"
+                                AutomationProperties.Name="{DynamicResource GitCommitCancel}"
                                 Command="{Binding CancelGitCommitCommand}" />
                     </Grid>
                 </Border>
@@ -1575,6 +1588,7 @@
                                 Height="30"
                                 Padding="0"
                                 IsEnabled="{Binding !IsGitRemoteBusy}"
+                                AutomationProperties.Name="{DynamicResource GitRemoteCancel}"
                                 Command="{Binding CancelGitRemoteCommand}" />
                     </Grid>
                 </Border>
@@ -1664,6 +1678,7 @@
                                 Height="30"
                                 Padding="0"
                                 IsEnabled="{Binding !IsGitFastForwardBusy}"
+                                AutomationProperties.Name="{DynamicResource GitFastForwardCancel}"
                                 Command="{Binding CancelGitFastForwardCommand}" />
                     </Grid>
                 </Border>
@@ -1770,6 +1785,7 @@
                                 Height="30"
                                 Padding="0"
                                 IsEnabled="{Binding !IsGitPushBusy}"
+                                AutomationProperties.Name="{DynamicResource GitPushCancel}"
                                 Command="{Binding CancelGitPushCommand}" />
                     </Grid>
                 </Border>

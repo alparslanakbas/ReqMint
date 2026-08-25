@@ -149,6 +149,17 @@
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         </Style>
 
+        <Style Selector="Button:focus, TextBox:focus, ComboBox:focus, TabItem:focus">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+
+        <Style Selector="Button.rail:focus">
+            <Setter Property="Background" Value="{DynamicResource AccentMutedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+
         <Style Selector="TabItem.requestEditorTab">
             <Setter Property="MinHeight" Value="38" />
             <Setter Property="Margin" Value="0,0,4,0" />
