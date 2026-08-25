@@ -18,6 +18,8 @@ Use `-LayoutOnly` to prepare and validate the self-contained package layout on a
 ./eng/package-windows.ps1 -Version 1.0.0.0 -Architecture x64 -LayoutOnly
 ```
 
+The quality workflow performs this layout validation independently for both `x64` and `arm64`. It also keeps the approved Store screenshot check in a separate Windows job so image validation is not repeated for each architecture.
+
 ## Connect the Microsoft Store identity
 
 Reserve `ReqMint` in Partner Center before the public submission. Copy the exact values shown under the product's package identity into these GitHub repository variables:

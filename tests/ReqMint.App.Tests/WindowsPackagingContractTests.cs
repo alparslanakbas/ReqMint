@@ -78,9 +78,13 @@ public sealed class WindowsPackagingContractTests
     {
         var workflow = File.ReadAllText(RepositoryPath(".github", "workflows", "quality-gates.yml"));
 
-        Assert.Contains("windows-store-readiness", workflow, StringComparison.Ordinal);
+        Assert.Contains("windows-store-assets", workflow, StringComparison.Ordinal);
+        Assert.Contains("windows-store-layout", workflow, StringComparison.Ordinal);
         Assert.Contains("./eng/Test-WindowsStoreScreenshots.ps1", workflow, StringComparison.Ordinal);
         Assert.Contains("./eng/package-windows.ps1", workflow, StringComparison.Ordinal);
+        Assert.Contains("- x64", workflow, StringComparison.Ordinal);
+        Assert.Contains("- arm64", workflow, StringComparison.Ordinal);
+        Assert.Contains("${{ matrix.architecture }}", workflow, StringComparison.Ordinal);
         Assert.Contains("-LayoutOnly", workflow, StringComparison.Ordinal);
     }
 

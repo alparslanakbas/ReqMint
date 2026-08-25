@@ -72,9 +72,26 @@ jobs:
 
           'No known vulnerable NuGet dependency was reported.' | Write-Host
 
-  windows-store-readiness:
-    name: Windows Store layout and approved screenshots
+  windows-store-assets:
+    name: Approved Windows Store screenshots
     runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Validate approved localized screenshots
+        shell: pwsh
+        run: ./eng/Test-WindowsStoreScreenshots.ps1
+
+  windows-store-layout:
+    name: Windows Store layout (${{ matrix.architecture }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture:
+          - x64
+          - arm64
     steps:
       - name: Check out source
         uses: actions/checkout@v6
@@ -84,13 +101,9 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Validate approved localized screenshots
+      - name: Validate self-contained package layout
         shell: pwsh
-        run: ./eng/Test-WindowsStoreScreenshots.ps1
-
-      - name: Validate self-contained x64 package layout
-        shell: pwsh
-        run: ./eng/package-windows.ps1 -Version 1.0.0.0 -Architecture x64 -LayoutOnly
+        run: ./eng/package-windows.ps1 -Version 1.0.0.0 -Architecture '${{ matrix.architecture }}' -LayoutOnly
 
   website:
     name: Website build and audit
