@@ -1645,7 +1645,7 @@ public sealed class MainViewModelWorkspaceTests
         Assert.All(links.OpenedUris, uri =>
         {
             Assert.Equal(Uri.UriSchemeHttps, uri.Scheme);
-            Assert.Equal("reqmint.alparslanayt.chatgpt.site", uri.Host);
+            Assert.Equal("reqmintapp.github.io", uri.Host);
         });
         Assert.Equal("Opened in your browser", viewModel.WorkspaceStatus);
     }

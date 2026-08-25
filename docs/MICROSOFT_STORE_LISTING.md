@@ -23,24 +23,24 @@ Private audience is the safe beta path because Microsoft permits a private produ
 
 | Partner Center field | URL |
 | --- | --- |
-| Website | `https://reqmint.alparslanayt.chatgpt.site` |
-| Privacy policy | `https://reqmint.alparslanayt.chatgpt.site/privacy` |
-| Support | `https://reqmint.alparslanayt.chatgpt.site/support` |
+| Website | `https://reqmintapp.github.io` |
+| Privacy policy | `https://reqmintapp.github.io/privacy` |
+| Support | `https://reqmintapp.github.io/support` |
 
-The current website deployment is owner-only. **Do not submit these URLs while anonymous visitors receive an access prompt.** Publishing the site and verifying all three URLs in a signed-out browser is a required Store submission gate. Keep payments out of the website; Store purchase and installation remain the trusted route.
+The GitHub Pages deployment is public and must keep the website, privacy, and support routes reachable without an account. Verify all three URLs in a signed-out browser immediately before every Store submission. Keep payments out of the website; Store purchase and installation remain the trusted route.
 
 ## Website hosting and domain decision
 
-Keep the production website on its existing Sites deployment. It already uses the Cloudflare-compatible application build and can accept a custom domain, so migrating the same marketing site to Vercel would add a second hosting system without improving the customer experience. Vercel Hobby is restricted to personal, non-commercial use; a revenue-oriented ReqMint launch would require a paid commercial plan.
+The production website is published from the public `ReqMintApp/reqmintapp.github.io` repository through GitHub Actions. The separate repository keeps the product website, documentation, and trust pages independently deployable while the application repository remains focused on desktop development. The previous Sites address remains only as a transition fallback and is not the canonical Store URL.
 
 The preferred launch domain is `reqmint.dev`, subject to availability when it is purchased. `getreqmint.dev` and `reqmintapp.com` are fallback candidates. Domain registration is separate from hosting. Do not purchase or connect a domain without an explicit owner approval.
 
 When the domain is available and approved:
 
 1. Purchase it from a registrar account controlled by the product owner.
-2. Add it in the Site settings and apply the provided DNS records.
+2. Add it in the GitHub Pages settings and apply the provided DNS records.
 3. Verify HTTPS and all public routes in a signed-out browser.
-4. Replace the temporary `chatgpt.site` website, privacy, support, and documentation URLs across the app, website metadata, Store listing JSON, and release documentation.
+4. Replace the temporary `github.io` website, privacy, support, and documentation URLs across the app, website metadata, Store listing JSON, and release documentation.
 5. Run the full release and Store-listing checks before public submission.
 
 ## Screenshot capture plan

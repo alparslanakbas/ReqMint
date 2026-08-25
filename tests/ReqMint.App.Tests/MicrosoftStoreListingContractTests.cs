@@ -64,7 +64,7 @@ public sealed class MicrosoftStoreListingContractTests
         var guide = File.ReadAllText(RepositoryPath("docs", "MICROSOFT_STORE_LISTING.md"));
 
         Assert.Contains("Private audience", guide, StringComparison.Ordinal);
-        Assert.Contains("Do not submit these URLs while anonymous visitors receive an access prompt", guide, StringComparison.Ordinal);
+        Assert.Contains("Verify all three URLs in a signed-out browser", guide, StringComparison.Ordinal);
         Assert.Contains("What's new", guide, StringComparison.Ordinal);
         Assert.Contains("Windows App Certification Kit", guide, StringComparison.Ordinal);
     }
@@ -175,7 +175,7 @@ public sealed class MicrosoftStoreListingContractTests
         Assert.True(Uri.TryCreate(value, UriKind.Absolute, out var uri));
         Assert.NotNull(uri);
         Assert.Equal(Uri.UriSchemeHttps, uri.Scheme);
-        Assert.Equal("reqmint.alparslanayt.chatgpt.site", uri.Host);
+        Assert.Equal("reqmintapp.github.io", uri.Host);
         Assert.Equal(expectedPath, uri.AbsolutePath);
     }
 

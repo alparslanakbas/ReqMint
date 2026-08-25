@@ -28,9 +28,9 @@
   ],
   "copyrightAndTrademark": "© 2026 Alparslan Akbaş. ReqMint.",
   "developedBy": "Alparslan Akbaş",
-  "privacyPolicyUrl": "https://reqmint.alparslanayt.chatgpt.site/privacy",
-  "websiteUrl": "https://reqmint.alparslanayt.chatgpt.site",
-  "supportUrl": "https://reqmint.alparslanayt.chatgpt.site/support",
+  "privacyPolicyUrl": "https://reqmintapp.github.io/privacy",
+  "websiteUrl": "https://reqmintapp.github.io",
+  "supportUrl": "https://reqmintapp.github.io/support",
   "screenshotCaptions": [
     "Build and send HTTP requests from a focused local workspace.",
     "Organize requests into readable collections and switch environments safely.",

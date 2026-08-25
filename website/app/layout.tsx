@@ -4,7 +4,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'ReqMint — API work, without the weight',
   description: 'A fast, local-first desktop workspace for building, testing, and sharing HTTP requests.',
-  metadataBase: new URL('https://reqmint.alparslanayt.chatgpt.site'),
+  metadataBase: new URL('https://reqmintapp.github.io'),
   icons: { icon: '/reqmint-icon.png' },
   openGraph: {
     title: 'ReqMint — API work, without the weight',

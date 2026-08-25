@@ -17,10 +17,10 @@ namespace ReqMint.App.ViewModels;
 
 public partial class MainViewModel : ViewModelBase
 {
-    private static readonly Uri DocumentationUri = new("https://reqmint.alparslanayt.chatgpt.site/docs");
-    private static readonly Uri PrivacyUri = new("https://reqmint.alparslanayt.chatgpt.site/privacy");
-    private static readonly Uri SecurityUri = new("https://reqmint.alparslanayt.chatgpt.site/security");
-    private static readonly Uri SupportUri = new("https://reqmint.alparslanayt.chatgpt.site/support");
+    private static readonly Uri DocumentationUri = new("https://reqmintapp.github.io/docs");
+    private static readonly Uri PrivacyUri = new("https://reqmintapp.github.io/privacy");
+    private static readonly Uri SecurityUri = new("https://reqmintapp.github.io/security");
+    private static readonly Uri SupportUri = new("https://reqmintapp.github.io/support");
 
     public IReadOnlyList<string> Methods { get; } =
         ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
