@@ -77,6 +77,22 @@ After capturing the real release UI, validate the required localized screenshot 
 ./eng/Test-WindowsStoreScreenshots.ps1
 ```
 
+After a native Arabic reviewer approves terminology and RTL behavior, create a disposable `ar-SA` capture session. The explicit approval switch records the operator's decision only in the ignored capture artifact; it does not mark Arabic as publication-ready in the repository:
+
+```powershell
+./eng/New-WindowsStoreScreenshotCapturePlan.ps1 -Locale ar-SA -NativeReviewApproved
+```
+
+Place the five real Release-build PNG files beside the generated `capture-plan.json`, then validate the draft without adding Arabic to the default approved locale set:
+
+```powershell
+./eng/Test-WindowsStoreScreenshots.ps1 `
+  -ScreenshotRoot ./artifacts/store-capture `
+  -Locales ar-SA
+```
+
+Only after reviewer approval, visual inspection, and successful validation should the five PNG files move to `packaging/windows/store-listing/screenshots/ar-SA`. Add `ar-SA` to the validator's default locale list in that same commit. Never commit `capture-plan.json`; it is session evidence, not Store artwork.
+
 ## Final Partner Center checklist
 
 1. Reserve the exact `ReqMint` product name.

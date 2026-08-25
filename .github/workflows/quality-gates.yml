@@ -72,6 +72,26 @@ jobs:
 
           'No known vulnerable NuGet dependency was reported.' | Write-Host
 
+  windows-store-readiness:
+    name: Windows Store layout and approved screenshots
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Validate approved localized screenshots
+        shell: pwsh
+        run: ./eng/Test-WindowsStoreScreenshots.ps1
+
+      - name: Validate self-contained x64 package layout
+        shell: pwsh
+        run: ./eng/package-windows.ps1 -Version 1.0.0.0 -Architecture x64 -LayoutOnly
+
   website:
     name: Website build and audit
     runs-on: ubuntu-latest

@@ -103,6 +103,8 @@ public sealed class MicrosoftStoreListingContractTests
             RepositoryPath("eng", "New-WindowsStoreListingAssets.ps1"));
         var screenshotValidator = File.ReadAllText(
             RepositoryPath("eng", "Test-WindowsStoreScreenshots.ps1"));
+        var capturePlanner = File.ReadAllText(
+            RepositoryPath("eng", "New-WindowsStoreScreenshotCapturePlan.ps1"));
 
         Assert.Contains("ReqMint-Store-Tile-300x300.png", artworkGenerator, StringComparison.Ordinal);
         Assert.Contains("$size = 300", artworkGenerator, StringComparison.Ordinal);
@@ -112,6 +114,11 @@ public sealed class MicrosoftStoreListingContractTests
         Assert.Contains("$maximumFileSize = 50MB", screenshotValidator, StringComparison.Ordinal);
         Assert.Contains("$minimumWidth = 1366", screenshotValidator, StringComparison.Ordinal);
         Assert.Contains("$minimumHeight = 768", screenshotValidator, StringComparison.Ordinal);
+        Assert.Contains("[string[]] $Locales = @('en-US', 'tr-TR')", screenshotValidator, StringComparison.Ordinal);
+        Assert.Contains("-not $NativeReviewApproved", capturePlanner, StringComparison.Ordinal);
+        Assert.Contains("pending-real-capture", capturePlanner, StringComparison.Ordinal);
+        Assert.Contains("Capture the real Release application UI", capturePlanner, StringComparison.Ordinal);
+        Assert.DoesNotContain(".png' | New-Item", capturePlanner, StringComparison.Ordinal);
     }
 
     private static string ListingPath(string language) =>

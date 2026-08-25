@@ -74,6 +74,17 @@ public sealed class WindowsPackagingContractTests
     }
 
     [Fact]
+    public void QualityWorkflow_ValidatesApprovedScreenshotsAndWindowsPackageLayout()
+    {
+        var workflow = File.ReadAllText(RepositoryPath(".github", "workflows", "quality-gates.yml"));
+
+        Assert.Contains("windows-store-readiness", workflow, StringComparison.Ordinal);
+        Assert.Contains("./eng/Test-WindowsStoreScreenshots.ps1", workflow, StringComparison.Ordinal);
+        Assert.Contains("./eng/package-windows.ps1", workflow, StringComparison.Ordinal);
+        Assert.Contains("-LayoutOnly", workflow, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void BundleScript_BuildsX64AndArm64WithOneStoreIdentity()
     {
         var script = File.ReadAllText(RepositoryPath("eng", "package-windows-bundle.ps1"));
@@ -86,6 +97,16 @@ public sealed class WindowsPackagingContractTests
         Assert.Contains(".msixbundle", script, StringComparison.Ordinal);
         Assert.Contains("ReqMint.Development", script, StringComparison.Ordinal);
         Assert.Contains("CN=ReqMint Development", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WindowsPackageScript_IsolatesDotnetBuildArtifactsFromRunningPreviews()
+    {
+        var script = File.ReadAllText(RepositoryPath("eng", "package-windows.ps1"));
+
+        Assert.Contains("$dotnetArtifactsDirectory", script, StringComparison.Ordinal);
+        Assert.Contains("'--artifacts-path', $dotnetArtifactsDirectory", script, StringComparison.Ordinal);
+        Assert.Contains("$workingDirectory", script, StringComparison.Ordinal);
     }
 
     private static string RepositoryPath(params string[] segments)

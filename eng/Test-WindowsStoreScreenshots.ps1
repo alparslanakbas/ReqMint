@@ -1,6 +1,9 @@
 [CmdletBinding()]
 param(
-    [string] $ScreenshotRoot = (Join-Path $PSScriptRoot '..\packaging\windows\store-listing\screenshots')
+    [string] $ScreenshotRoot = (Join-Path $PSScriptRoot '..\packaging\windows\store-listing\screenshots'),
+
+    [ValidateSet('en-US', 'tr-TR', 'ar-SA')]
+    [string[]] $Locales = @('en-US', 'tr-TR')
 )
 
 Set-StrictMode -Version Latest
@@ -13,7 +16,6 @@ if (-not $isWindowsPlatform) {
 
 Add-Type -AssemblyName System.Drawing
 
-$expectedLocales = @('en-US', 'tr-TR')
 $expectedFiles = @(
     '01-request-builder.png',
     '02-collections-environments.png',
@@ -25,6 +27,11 @@ $maximumFileSize = 50MB
 $minimumWidth = 1366
 $minimumHeight = 768
 $resolvedScreenshotRoot = [System.IO.Path]::GetFullPath($ScreenshotRoot)
+$expectedLocales = @($Locales | Select-Object -Unique)
+
+if ($expectedLocales.Count -ne $Locales.Count) {
+    throw 'Screenshot locales must not contain duplicate values.'
+}
 
 foreach ($locale in $expectedLocales) {
     $localeDirectory = Join-Path $resolvedScreenshotRoot $locale
@@ -60,4 +67,4 @@ foreach ($locale in $expectedLocales) {
     }
 }
 
-Write-Host "Validated localized Microsoft Store screenshots in $resolvedScreenshotRoot"
+Write-Host "Validated Microsoft Store screenshots for $($expectedLocales -join ', ') in $resolvedScreenshotRoot"

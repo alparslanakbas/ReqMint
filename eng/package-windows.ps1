@@ -48,6 +48,7 @@ $resolvedOutputDirectory = [System.IO.Path]::GetFullPath($OutputDirectory)
 $workingDirectory = Join-Path $repositoryRoot "artifacts\msix\$Architecture"
 $layoutDirectory = Join-Path $workingDirectory 'layout'
 $publishDirectory = Join-Path $workingDirectory 'publish'
+$dotnetArtifactsDirectory = Join-Path $workingDirectory 'dotnet'
 $assetsDirectory = Join-Path $layoutDirectory 'Assets'
 
 if (Test-Path -LiteralPath $workingDirectory) {
@@ -65,6 +66,7 @@ $publishArguments = @(
     '--runtime', $runtimeIdentifier,
     '--self-contained', 'true',
     '--output', $publishDirectory,
+    '--artifacts-path', $dotnetArtifactsDirectory,
     '-p:PublishSingleFile=false',
     '-p:DebugSymbols=false',
     '-p:DebugType=None',
