@@ -67,6 +67,7 @@ public sealed class WindowsPackagingContractTests
         Assert.Contains("REQMINT_STORE_PUBLISHER", workflow, StringComparison.Ordinal);
         Assert.Contains("REQMINT_STORE_PUBLISHER_DISPLAY_NAME", workflow, StringComparison.Ordinal);
         Assert.Contains("Validate Microsoft Store identity", workflow, StringComparison.Ordinal);
+        Assert.Contains("./eng/Test-WindowsStoreIdentity.ps1", workflow, StringComparison.Ordinal);
         Assert.Contains("./eng/package-windows-bundle.ps1", workflow, StringComparison.Ordinal);
         Assert.Contains("*.msixbundle", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("else { 'ReqMint.Development' }", workflow, StringComparison.Ordinal);
@@ -111,6 +112,40 @@ public sealed class WindowsPackagingContractTests
         Assert.Contains("$dotnetArtifactsDirectory", script, StringComparison.Ordinal);
         Assert.Contains("'--artifacts-path', $dotnetArtifactsDirectory", script, StringComparison.Ordinal);
         Assert.Contains("$workingDirectory", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StoreIdentitySetup_ChangesOnlyExpectedGitHubVariablesAndSupportsWhatIf()
+    {
+        var validator = File.ReadAllText(RepositoryPath("eng", "Test-WindowsStoreIdentity.ps1"));
+        var configurator = File.ReadAllText(RepositoryPath("eng", "Set-GitHubWindowsStoreIdentity.ps1"));
+
+        Assert.Contains("ReqMint.Development", validator, StringComparison.Ordinal);
+        Assert.Contains("CN=ReqMint Development", validator, StringComparison.Ordinal);
+        Assert.Contains("begin with CN=", validator, StringComparison.Ordinal);
+        Assert.Contains("SupportsShouldProcess", configurator, StringComparison.Ordinal);
+        Assert.Contains("REQMINT_STORE_IDENTITY_NAME", configurator, StringComparison.Ordinal);
+        Assert.Contains("REQMINT_STORE_PUBLISHER", configurator, StringComparison.Ordinal);
+        Assert.Contains("REQMINT_STORE_PUBLISHER_DISPLAY_NAME", configurator, StringComparison.Ordinal);
+        Assert.Contains("gh variable set", configurator, StringComparison.Ordinal);
+        Assert.Contains("without printing their values", configurator, StringComparison.Ordinal);
+        Assert.DoesNotContain("gh secret set", configurator, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PrivatePreviewPreflight_RequiresPublicWebsiteBundleAndApprovedScreenshots()
+    {
+        var preflight = File.ReadAllText(
+            RepositoryPath("eng", "Test-WindowsStorePrivatePreviewReadiness.ps1"));
+        var guide = File.ReadAllText(RepositoryPath("docs", "PARTNER_CENTER_SETUP.md"));
+
+        Assert.Contains("WebsiteAnonymousAccessVerified", preflight, StringComparison.Ordinal);
+        Assert.Contains(".msixbundle", preflight, StringComparison.Ordinal);
+        Assert.Contains("Test-WindowsStoreScreenshots.ps1", preflight, StringComparison.Ordinal);
+        Assert.Contains("SHA256", preflight, StringComparison.Ordinal);
+        Assert.Contains("private-audience preview", guide, StringComparison.Ordinal);
+        Assert.Contains("-WhatIf", guide, StringComparison.Ordinal);
+        Assert.Contains("Windows App Certification Kit", guide, StringComparison.Ordinal);
     }
 
     private static string RepositoryPath(params string[] segments)

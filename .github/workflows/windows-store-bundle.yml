@@ -32,18 +32,10 @@ jobs:
       - name: Validate Microsoft Store identity
         shell: pwsh
         run: |
-          $missingVariables = @()
-          if ([string]::IsNullOrWhiteSpace($env:REQMINT_IDENTITY_NAME)) { $missingVariables += 'REQMINT_STORE_IDENTITY_NAME' }
-          if ([string]::IsNullOrWhiteSpace($env:REQMINT_PUBLISHER)) { $missingVariables += 'REQMINT_STORE_PUBLISHER' }
-          if ([string]::IsNullOrWhiteSpace($env:REQMINT_PUBLISHER_DISPLAY_NAME)) { $missingVariables += 'REQMINT_STORE_PUBLISHER_DISPLAY_NAME' }
-
-          if ($missingVariables.Count -gt 0) {
-            throw "Configure these GitHub repository variables with the exact Partner Center values: $($missingVariables -join ', ')"
-          }
-
-          if ($env:REQMINT_IDENTITY_NAME -eq 'ReqMint.Development' -or $env:REQMINT_PUBLISHER -eq 'CN=ReqMint Development') {
-            throw 'Development identity values cannot be used for a Microsoft Store bundle.'
-          }
+          ./eng/Test-WindowsStoreIdentity.ps1 `
+            -IdentityName $env:REQMINT_IDENTITY_NAME `
+            -Publisher $env:REQMINT_PUBLISHER `
+            -PublisherDisplayName $env:REQMINT_PUBLISHER_DISPLAY_NAME
 
       - name: Test release build
         run: dotnet test ReqMint.slnx --configuration Release

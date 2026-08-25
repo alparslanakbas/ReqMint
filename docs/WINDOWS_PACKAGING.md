@@ -51,6 +51,8 @@ After reserving the app name and configuring all three repository variables, ope
 3. creates self-contained x64 and ARM64 packages with the same identity, publisher, and version;
 4. combines them into `ReqMint_<version>.msixbundle` and uploads that Store submission artifact.
 
+Follow [Partner Center and private preview setup](PARTNER_CENTER_SETUP.md) to validate the exact identity values, configure only the expected GitHub variables, build the real bundle, and run the local private-preview preflight.
+
 The bundle workflow has no development identity fallback. This prevents a structurally valid but unusable package from being mistaken for the real Store submission.
 
 ## Release checklist

@@ -97,6 +97,8 @@ Only after reviewer approval, visual inspection, and successful validation shoul
 
 ## Final Partner Center checklist
 
+Use [Partner Center and private preview setup](PARTNER_CENTER_SETUP.md) for the identity-variable and bundle-preflight commands.
+
 1. Reserve the exact `ReqMint` product name.
 2. Configure the package identity variables described in `docs/WINDOWS_PACKAGING.md`.
 3. Make the website public and verify the website, privacy, and support routes anonymously.
