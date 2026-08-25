@@ -30,6 +30,29 @@ public sealed class SystemGitServiceDiffTests
     }
 
     [Fact]
+    public async Task GetDiffAsync_PreservesUtf8CharactersInPreview()
+    {
+        using var repository = await TemporaryGitRepository.CreateAsync();
+        await repository.WriteAsync(
+            "collections/getting-started.json",
+            "{\"name\":\"Güncel sürümü incele\",\"requests\":[]}");
+        await repository.CommitAllAsync("initial workspace");
+        await repository.WriteAsync(
+            "collections/getting-started.json",
+            "{\"name\":\"Ekip API sürümünü gözden geçir\",\"requests\":[]}");
+
+        var preview = await new SystemGitService().GetDiffAsync(
+            repository.Path,
+            "collections/getting-started.json",
+            GitDiffScope.WorkingTree);
+
+        Assert.Equal(GitDiffPreviewState.Available, preview.State);
+        Assert.Contains("-\u007b\"name\":\"Güncel sürümü incele\"", preview.Content, StringComparison.Ordinal);
+        Assert.Contains("+\u007b\"name\":\"Ekip API sürümünü gözden geçir\"", preview.Content, StringComparison.Ordinal);
+        Assert.DoesNotContain("GÃ¼ncel", preview.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task GetDiffAsync_ReturnsPreviewForUntrackedManagedFiles()
     {
         using var repository = await TemporaryGitRepository.CreateAsync();

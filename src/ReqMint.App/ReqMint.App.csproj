@@ -6,6 +6,10 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(StoreCaptureMode)' == 'true'">
+    <DefineConstants>$(DefineConstants);STORE_CAPTURE</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />

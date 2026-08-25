@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text;
 using ReqMint.Core.Git;
 
 namespace ReqMint.Platform.Git;
@@ -1116,6 +1117,8 @@ public sealed class SystemGitService : IGitService
             FileName = "git",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
             UseShellExecute = false,
             CreateNoWindow = true,
         };

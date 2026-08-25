@@ -38,6 +38,14 @@ public partial class App : Application
             var applicationData = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "ReqMint");
+#if STORE_CAPTURE
+            var captureApplicationData = Environment.GetEnvironmentVariable(
+                "REQMINT_STORE_CAPTURE_DATA");
+            if (!string.IsNullOrWhiteSpace(captureApplicationData))
+            {
+                applicationData = Path.GetFullPath(captureApplicationData);
+            }
+#endif
             var settings = new JsonAppSettingsService(applicationData);
             var localization = new LocalizationService(settings);
             var themes = new ThemeService(settings);
@@ -87,6 +95,11 @@ public partial class App : Application
                 new WindowCloseCoordinator(
                     settings,
                     new AvaloniaWindowClosePreferencePrompt(mainWindow, localization)));
+#if STORE_CAPTURE
+            StoreScreenshotCaptureCoordinator.Attach(
+                mainWindow,
+                mainViewModel);
+#endif
             desktop.Exit += (_, _) =>
             {
                 _desktopApplicationController?.Dispose();

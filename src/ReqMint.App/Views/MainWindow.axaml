@@ -807,7 +807,7 @@
                                         <TextBlock Text="{DynamicResource AboutDescription}"
                                                    Classes="secondary"
                                                    TextWrapping="Wrap" />
-                                        <Grid ColumnDefinitions="115,*" RowDefinitions="Auto,6,Auto">
+                                        <Grid ColumnDefinitions="135,*" RowDefinitions="Auto,6,Auto">
                                             <TextBlock Text="{DynamicResource AboutPlatform}" FontWeight="SemiBold" />
                                             <TextBlock Grid.Column="1"
                                                        Text="{Binding ApplicationInfo.PlatformSummary}"
@@ -1048,7 +1048,7 @@
                                     </Grid>
                                     <TextBlock Text="{DynamicResource AboutDescription}"
                                                Classes="secondary" TextWrapping="Wrap" />
-                                    <Grid ColumnDefinitions="95,*" RowDefinitions="Auto,6,Auto">
+                                    <Grid ColumnDefinitions="135,*" RowDefinitions="Auto,6,Auto">
                                         <TextBlock Text="{DynamicResource AboutPlatform}" FontWeight="SemiBold" />
                                         <TextBlock Grid.Column="1" Text="{Binding ApplicationInfo.PlatformSummary}"
                                                    Classes="secondary" TextWrapping="Wrap" />

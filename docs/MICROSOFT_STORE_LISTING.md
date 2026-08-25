@@ -65,6 +65,18 @@ Use these filenames under `packaging/windows/store-listing/screenshots/<locale>`
 4. `04-git-workflow.png`
 5. `05-settings-support.png`
 
+Generate fresh `en-US` and `tr-TR` images from the current Release UI in isolated,
+disposable application-data directories:
+
+```powershell
+./eng/Capture-WindowsStoreScreenshots.ps1
+```
+
+The capture-only build flag is not enabled in normal Release or Store packages. The
+command writes its reviewed candidates beneath `artifacts/store-capture/approved`
+and validates their filenames, dimensions, format, and size. Visually inspect all
+ten images before replacing the committed canonical set.
+
 Generate the committed 300 × 300 Store tile after a branding change:
 
 ```powershell
