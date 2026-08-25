@@ -1,0 +1,62 @@
+name: macOS early-access feedback
+description: Share launch and usability feedback for an Intel or Apple silicon preview build.
+title: "[macOS preview]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for testing ReqMint on a real Mac. Never include API keys, passwords, authorization headers, cookies, private URLs, request or response bodies, customer data, workspace paths, or other sensitive information.
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: Mac architecture
+      options:
+        - Apple silicon (M1 or newer)
+        - Intel
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Mac model
+      description: For example, MacBook Air M2 or Intel MacBook Pro 2019.
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: 15.6.1
+    validations:
+      required: true
+  - type: dropdown
+    id: launch
+    attributes:
+      label: First-launch result
+      options:
+        - Opened successfully after Control-click and Open
+        - Opened successfully without an extra step
+        - macOS blocked the application
+        - Application opened and then crashed
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: experience
+    attributes:
+      label: What happened?
+      description: Describe the smallest safe set of steps, what you expected, and what actually happened.
+    validations:
+      required: true
+  - type: textarea
+    id: usability
+    attributes:
+      label: Usability feedback
+      description: Optional feedback about layout, text, keyboard use, scaling, or platform fit.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safe reporting confirmation
+      options:
+        - label: I removed credentials, private content, customer data, and sensitive paths from this report.
+          required: true

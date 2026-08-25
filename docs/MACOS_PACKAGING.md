@@ -13,6 +13,8 @@ The workflow runs the full Release test suite on macOS, creates both architectur
 
 These artifacts are test packages. An ad-hoc signature does not establish the developer's identity and the archives are not notarized, so they must not be presented as public production downloads.
 
+A versioned GitHub pre-release may expose an ad-hoc package only as a voluntary **early-access test build** when the release notes and website disclose the missing Developer ID identity and Apple notarization before download. The notice must also state that physical-device lifecycle checks are pending, real credentials and sensitive data must not be used, Gatekeeper must not be disabled system-wide, and the package is not a production or marketplace release. This exception never satisfies or waives the public production release gates below.
+
 ## Build locally
 
 On a Mac with the .NET 10 SDK and Xcode command-line tools:

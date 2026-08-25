@@ -37,3 +37,5 @@ For each candidate, record:
 - signing, notarization, and store-certification results without copying secrets.
 
 Any failed required gate blocks publication. A waived gate must identify the owner, user impact, mitigation, expiry, and follow-up issue; security, credential protection, signing, notarization, and store-certification gates cannot be waived for a public package.
+
+An explicitly labelled GitHub **pre-release test build** is not a public production release and does not claim these gates. If an ad-hoc macOS test archive is shared for voluntary early access, its release page and download page must disclose the unverified developer identity, missing notarization, pending physical-device checks, sensitive-data restriction, lack of automatic updates, and the option to wait for the verified marketplace release. Production language, paid promotion, or silent Gatekeeper-bypass instructions are prohibited until every macOS lifecycle gate passes.
