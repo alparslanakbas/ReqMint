@@ -76,6 +76,7 @@ public sealed class MicrosoftStoreListingContractTests
         var expectedDocuments = new[]
         {
             "README.md",
+            "NATIVE_REVIEW.md",
             "PRIVACY.md",
             "SECURITY.md",
             "SUPPORT.md",
@@ -115,10 +116,33 @@ public sealed class MicrosoftStoreListingContractTests
         Assert.Contains("$minimumWidth = 1366", screenshotValidator, StringComparison.Ordinal);
         Assert.Contains("$minimumHeight = 768", screenshotValidator, StringComparison.Ordinal);
         Assert.Contains("[string[]] $Locales = @('en-US', 'tr-TR')", screenshotValidator, StringComparison.Ordinal);
-        Assert.Contains("-not $NativeReviewApproved", capturePlanner, StringComparison.Ordinal);
+        Assert.Contains("-ReviewEvidencePath", capturePlanner, StringComparison.Ordinal);
+        Assert.Contains("Assert-ReqMintArabicReviewEvidence", capturePlanner, StringComparison.Ordinal);
         Assert.Contains("pending-real-capture", capturePlanner, StringComparison.Ordinal);
         Assert.Contains("Capture the real Release application UI", capturePlanner, StringComparison.Ordinal);
         Assert.DoesNotContain(".png' | New-Item", capturePlanner, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ArabicNativeReview_RequiresCurrentSourcesAndEveryStringApproval()
+    {
+        var exporter = File.ReadAllText(
+            RepositoryPath("eng", "New-ArabicLocalizationReviewKit.ps1"));
+        var tools = File.ReadAllText(
+            RepositoryPath("eng", "ArabicLocalizationReviewTools.ps1"));
+        var validator = File.ReadAllText(
+            RepositoryPath("eng", "Test-ArabicLocalizationReviewEvidence.ps1"));
+        var guide = File.ReadAllText(
+            RepositoryPath("docs", "localization", "ar-SA", "NATIVE_REVIEW.md"));
+
+        Assert.Contains("strings.csv", exporter, StringComparison.Ordinal);
+        Assert.Contains("ReviewerStatus = 'pending'", exporter, StringComparison.Ordinal);
+        Assert.Contains("Get-ReqMintArabicReviewFingerprint", tools, StringComparison.Ordinal);
+        Assert.Contains("Every Arabic application string must be approved", tools, StringComparison.Ordinal);
+        Assert.Contains("reviewedStringsSha256", tools, StringComparison.Ordinal);
+        Assert.Contains("Assert-ReqMintArabicReviewEvidence", validator, StringComparison.Ordinal);
+        Assert.Contains("100%, 125%, and 150%", guide, StringComparison.Ordinal);
+        Assert.Contains("Only validated evidence", guide, StringComparison.Ordinal);
     }
 
     private static string ListingPath(string language) =>

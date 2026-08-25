@@ -77,10 +77,12 @@ After capturing the real release UI, validate the required localized screenshot 
 ./eng/Test-WindowsStoreScreenshots.ps1
 ```
 
-After a native Arabic reviewer approves terminology and RTL behavior, create a disposable `ar-SA` capture session. The explicit approval switch records the operator's decision only in the ignored capture artifact; it does not mark Arabic as publication-ready in the repository:
+Prepare and complete the [native Arabic review workflow](localization/ar-SA/NATIVE_REVIEW.md). After its evidence validator passes, create a disposable `ar-SA` capture session. The capture planner revalidates the evidence fingerprint and every string approval before it creates the ignored capture artifact:
 
 ```powershell
-./eng/New-WindowsStoreScreenshotCapturePlan.ps1 -Locale ar-SA -NativeReviewApproved
+./eng/New-WindowsStoreScreenshotCapturePlan.ps1 `
+  -Locale ar-SA `
+  -ReviewEvidencePath ./artifacts/localization-review/ar-SA/review-evidence.json
 ```
 
 Place the five real Release-build PNG files beside the generated `capture-plan.json`, then validate the draft without adding Arabic to the default approved locale set:

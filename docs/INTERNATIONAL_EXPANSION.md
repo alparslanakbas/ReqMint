@@ -28,6 +28,7 @@ Arabic publication-kit status (development only):
 - Arabic RTL product, download, documentation, privacy, security, and support routes are implemented as a review draft, including eight task-focused guides and reciprocal language navigation;
 - localized automation names cover the primary workspace controls and every icon-only action, theme-aware focus indicators provide a keyboard-review baseline, and automated contrast checks enforce core text and focus thresholds across all fourteen themes;
 - the Store capture planner requires an explicit native-review acknowledgement, prepares only an ignored evidence plan, and never generates placeholder artwork; CI validates approved localized screenshots and the self-contained Windows package layout;
+- the native-review kit exports all 386 application strings with source context, fingerprints every Arabic application, Store, documentation, and website source, and blocks screenshot preparation until a named reviewer approves every string and real RTL scenario;
 - anonymous production access, five reviewed real `ar-SA` screenshots, manual keyboard, screen-reader, and operating-system high-contrast review, final x64/ARM64 Store-bundle validation, and native Arabic reviewer approval remain blocking requirements;
 - draft warnings must not be removed and `ar-SA` must not be submitted to Partner Center until every remaining gate is evidenced in the same release candidate.
 

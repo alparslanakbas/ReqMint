@@ -4,6 +4,8 @@ ReqMint currently includes English (`en`, culture `en-US`), Turkish (`tr`, cultu
 
 Arabic is available in development builds for full RTL layout and terminology review. It is not considered a public Gulf release until native-language review, localized documentation, Store listing, screenshots, and support paths pass the release gates in [INTERNATIONAL_EXPANSION.md](INTERNATIONAL_EXPANSION.md). Simplified Chinese (`zh-Hans`) follows it. Russian is outside the approved expansion scope.
 
+Generate the evidence-bound Arabic reviewer package with `./eng/New-ArabicLocalizationReviewKit.ps1`. The complete procedure and required real-application scenarios are documented in [the native Arabic review workflow](localization/ar-SA/NATIVE_REVIEW.md). Pending or stale evidence cannot unlock Store screenshot preparation.
+
 The selected language and other device-level preferences, such as request-history retention, are stored in the user's local application-data folder as `ReqMint/ui-settings.json`. The file is deliberately kept outside workspaces so personal preferences are never committed to Git or shared with teammates. Existing language-only settings files remain compatible as new preferences receive safe defaults.
 
 `LanguageOption` separates the resource code from the formatting culture and derives text direction from .NET culture metadata. The main shell mirrors automatically for right-to-left languages. Protocol-oriented content—including URLs, headers, JSON, environment keys, paths, Git diffs, and response bodies—uses an explicit left-to-right direction so technical values remain readable inside an Arabic shell.

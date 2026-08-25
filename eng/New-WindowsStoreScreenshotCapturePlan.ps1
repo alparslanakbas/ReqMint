@@ -5,7 +5,7 @@ param(
 
     [string] $OutputRoot = (Join-Path $PSScriptRoot '..\artifacts\store-capture'),
 
-    [switch] $NativeReviewApproved
+    [string] $ReviewEvidencePath
 )
 
 Set-StrictMode -Version Latest
@@ -16,11 +16,19 @@ if (-not $isWindowsPlatform) {
     throw 'Microsoft Store screenshots must be prepared on Windows.'
 }
 
-if ($Locale -eq 'ar-SA' -and -not $NativeReviewApproved) {
-    throw 'Arabic capture requires native terminology and RTL approval. Re-run with -NativeReviewApproved only after that review is recorded.'
+$repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$reviewEvidence = $null
+if ($Locale -eq 'ar-SA') {
+    if ([string]::IsNullOrWhiteSpace($ReviewEvidencePath)) {
+        throw 'Arabic capture requires validated native-review evidence. Pass -ReviewEvidencePath after completing the review kit.'
+    }
+
+    . (Join-Path $PSScriptRoot 'ArabicLocalizationReviewTools.ps1')
+    $reviewEvidence = Assert-ReqMintArabicReviewEvidence `
+        -RepositoryRoot $repositoryRoot `
+        -EvidencePath $ReviewEvidencePath
 }
 
-$repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $listingPath = Join-Path $repositoryRoot "packaging\windows\store-listing\$Locale.json"
 if (-not (Test-Path -LiteralPath $listingPath -PathType Leaf)) {
     throw "Missing Microsoft Store listing source: $listingPath"
@@ -64,7 +72,8 @@ $plan = [ordered]@{
     product = 'ReqMint'
     locale = $Locale
     generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('O')
-    nativeReviewApproved = [bool]$NativeReviewApproved
+    nativeReviewApproved = $null -ne $reviewEvidence
+    reviewSourceFingerprint = if ($null -ne $reviewEvidence) { $reviewEvidence.sourceFingerprint } else { $null }
     sourceWorkspace = 'ReqMint Tutorial'
     requiredResolution = '1920x1080 preferred; 1366x768 minimum'
     safety = @(
