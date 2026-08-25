@@ -110,8 +110,8 @@ public static class ThemeCatalog
     public static IReadOnlyList<ThemeOption> All { get; } =
     [
         new(DefaultId, "Graphite Mint", false, "#08110F", "#0D1715", "#111D1B", "#162321", "#263734", "#EEF7F4", "#91A49F", "#21D6A0", "#0D6B53", "#4B9BFF", "#FFB454", "#4ADE80", "#FB7185", "#60A5FA", "#D908110F"),
-        new("clean-light", "Clean Light", true, "#F7FAF9", "#FFFFFF", "#F0F5F3", "#E5EFEC", "#CAD8D4", "#17211F", "#60736D", "#0A9B73", "#BDEBDE", "#2563EB", "#B45309", "#16803A", "#C2415A", "#2563EB", "#99081412"),
-        new("soft-gray", "Soft Gray", true, "#F2F3F5", "#FAFAFB", "#E8EAED", "#DEE1E5", "#C6CBD1", "#20242A", "#69717C", "#4F6BED", "#CDD5FA", "#2563EB", "#A15C00", "#18794E", "#C2415A", "#4F6BED", "#9920242A"),
+        new("clean-light", "Clean Light", true, "#F7FAF9", "#FFFFFF", "#F0F5F3", "#E5EFEC", "#CAD8D4", "#17211F", "#60736D", "#087F5F", "#BDEBDE", "#2563EB", "#B45309", "#16803A", "#C2415A", "#2563EB", "#99081412"),
+        new("soft-gray", "Soft Gray", true, "#F2F3F5", "#FAFAFB", "#E8EAED", "#DEE1E5", "#C6CBD1", "#20242A", "#666E78", "#4660D2", "#CDD5FA", "#2563EB", "#A15C00", "#18794E", "#C2415A", "#4F6BED", "#9920242A"),
         new("midnight", "Midnight", false, "#080B18", "#0E1326", "#151B31", "#1C2542", "#2B3659", "#F1F4FF", "#97A3C7", "#8B5CF6", "#4C2A85", "#60A5FA", "#FBBF24", "#34D399", "#FB7185", "#818CF8", "#D9080B18"),
         new("ocean", "Ocean", false, "#03131A", "#071E28", "#0B2834", "#103746", "#1C4B5C", "#EAFBFF", "#8FBBC7", "#22D3EE", "#0E6675", "#38BDF8", "#FBBF24", "#34D399", "#FB7185", "#38BDF8", "#D903131A"),
         new("forest", "Forest", false, "#07130B", "#0D1D12", "#13281A", "#1A3523", "#2B4C34", "#F0F9F1", "#9BB7A0", "#65D46E", "#286B35", "#4AA3FF", "#F2B84B", "#5FE38A", "#FF7B8B", "#69A7FF", "#D907130B"),
@@ -122,7 +122,7 @@ public static class ThemeCatalog
         new("high-contrast", "High Contrast", false, "#000000", "#050505", "#101010", "#1D1D1D", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFF200", "#5C5700", "#00B7FF", "#FFF200", "#00FF66", "#FF4D6D", "#00B7FF", "#E6000000"),
         new("chroma-rgb", "Chroma RGB", false, "#07070C", "#0E0E17", "#151522", "#202033", "#373752", "#F8F7FF", "#A7A3C2", "#00F5D4", "#006B60", "#00BBF9", "#FEE440", "#00F5D4", "#F15BB5", "#9B5DE5", "#DC07070C"),
         new("aurora-glass", "Aurora Glass", false, "#081018", "#0D1822", "#122431", "#193342", "#2B4C5C", "#EEFAFF", "#91B5C2", "#5EEAD4", "#176B65", "#67E8F9", "#FBCB66", "#63E6A6", "#FF7FA3", "#A78BFA", "#D9081018"),
-        new("titanium-frost", "Titanium Frost", true, "#EEF3F7", "#F8FAFC", "#E4EBF0", "#D8E3EA", "#BBC9D3", "#17212B", "#61717E", "#1677A8", "#B9DCEC", "#2563EB", "#A05A00", "#16805A", "#C23E5A", "#4F6BED", "#9917212B"),
+        new("titanium-frost", "Titanium Frost", true, "#EEF3F7", "#F8FAFC", "#E4EBF0", "#D8E3EA", "#BBC9D3", "#17212B", "#61717E", "#1473A2", "#B9DCEC", "#2563EB", "#A05A00", "#16805A", "#C23E5A", "#4F6BED", "#9917212B"),
     ];
 
     public static ThemeOption Default => All[0];
