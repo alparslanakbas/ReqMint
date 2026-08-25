@@ -104,6 +104,72 @@ public sealed class WorkspaceJsonStoreTests
     }
 
     [Fact]
+    public async Task LoadAsync_RejectsCollectionFileSymbolicLinks()
+    {
+        using var directory = new TemporaryDirectory();
+        using var outsideDirectory = new TemporaryDirectory();
+        var store = new WorkspaceJsonStore();
+        var snapshot = CreateSnapshot();
+        await store.SaveAsync(directory.Path, snapshot, CancellationToken.None);
+
+        var outsideCollection = System.IO.Path.Combine(outsideDirectory.Path, "outside.json");
+        await File.WriteAllTextAsync(outsideCollection, "{}");
+        var collectionPath = System.IO.Path.Combine(directory.Path, "collections", "sample.json");
+        File.Delete(collectionPath);
+        if (!TryCreateFileSymbolicLink(collectionPath, outsideCollection))
+        {
+            return;
+        }
+
+        var exception = await Assert.ThrowsAsync<WorkspaceFormatException>(
+            () => store.LoadAsync(directory.Path, CancellationToken.None));
+
+        Assert.Contains("symbolic link", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task SaveAsync_RejectsCollectionDirectorySymbolicLinks()
+    {
+        using var directory = new TemporaryDirectory();
+        using var outsideDirectory = new TemporaryDirectory();
+        var collectionsPath = System.IO.Path.Combine(directory.Path, "collections");
+        if (!TryCreateDirectorySymbolicLink(collectionsPath, outsideDirectory.Path))
+        {
+            return;
+        }
+
+        var store = new WorkspaceJsonStore();
+        var exception = await Assert.ThrowsAsync<WorkspaceFormatException>(
+            () => store.SaveAsync(directory.Path, CreateSnapshot(), CancellationToken.None));
+
+        Assert.Contains("symbolic link", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.False(File.Exists(System.IO.Path.Combine(outsideDirectory.Path, "sample.json")));
+    }
+
+    [Fact]
+    public async Task LoadAsync_RejectsOversizedWorkspaceDocuments()
+    {
+        using var directory = new TemporaryDirectory();
+        var workspacePath = System.IO.Path.Combine(
+            directory.Path,
+            WorkspaceJsonStore.WorkspaceFileName);
+        await using (var stream = new FileStream(
+            workspacePath,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None))
+        {
+            stream.SetLength(WorkspaceJsonStore.MaximumDocumentBytes + 1L);
+        }
+
+        var store = new WorkspaceJsonStore();
+        var exception = await Assert.ThrowsAsync<WorkspaceFormatException>(
+            () => store.LoadAsync(directory.Path, CancellationToken.None));
+
+        Assert.Contains("exceeds", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task SaveAsync_RejectsUnsupportedSchemaVersion()
     {
         using var directory = new TemporaryDirectory();
@@ -265,6 +331,40 @@ public sealed class WorkspaceJsonStoreTests
         };
 
         return new WorkspaceSnapshot(workspace, [collection], [environment]);
+    }
+
+    private static bool TryCreateFileSymbolicLink(string path, string target)
+    {
+        try
+        {
+            File.CreateSymbolicLink(path, target);
+            return true;
+        }
+        catch (Exception exception) when (
+            exception is IOException
+                or UnauthorizedAccessException
+                or PlatformNotSupportedException
+                or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryCreateDirectorySymbolicLink(string path, string target)
+    {
+        try
+        {
+            Directory.CreateSymbolicLink(path, target);
+            return true;
+        }
+        catch (Exception exception) when (
+            exception is IOException
+                or UnauthorizedAccessException
+                or PlatformNotSupportedException
+                or NotSupportedException)
+        {
+            return false;
+        }
     }
 
     private sealed class TemporaryDirectory : IDisposable

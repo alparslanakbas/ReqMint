@@ -58,6 +58,8 @@ JSON-field checks use JSON Pointer, not executable scripts. Assertion counts, st
 
 - Workspace and document schema versions are validated when loading and saving.
 - Collection and environment references cannot escape their designated folders.
+- Workspace documents cannot traverse symbolic links or filesystem reparse points.
+- Each JSON document is limited to 16 MiB before parsing or replacing an existing file.
 - Duplicate IDs, duplicate file targets, and mismatched references are rejected.
 - Documents are replaced atomically to avoid partially written JSON files.
 - The root manifest is written last so it never points to a document that was not saved.

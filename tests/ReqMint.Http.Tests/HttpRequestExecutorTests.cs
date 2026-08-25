@@ -131,6 +131,32 @@ public class HttpRequestExecutorTests
         await Assert.ThrowsAsync<TimeoutException>(() => executor.ExecuteAsync(request));
     }
 
+    [Fact]
+    public async Task ExecuteAsync_RejectsHeaderValuesContainingNewLines()
+    {
+        using var executor = new HttpRequestExecutor(new StubHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK)));
+        var request = ApiRequest.Create("GET", "https://example.com") with
+        {
+            Headers = [new RequestField("X-Client", "ReqMint\r\nX-Injected: true")],
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => executor.ExecuteAsync(request));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_RejectsInvalidHeaderNames()
+    {
+        using var executor = new HttpRequestExecutor(new StubHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK)));
+        var request = ApiRequest.Create("GET", "https://example.com") with
+        {
+            Headers = [new RequestField("Invalid Header", "value")],
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => executor.ExecuteAsync(request));
+    }
+
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> responder)
         : HttpMessageHandler
     {

@@ -55,7 +55,7 @@ public sealed class WindowsPackagingContractTests
         Assert.Contains("REQMINT_STORE_PUBLISHER", workflow, StringComparison.Ordinal);
         Assert.Contains("REQMINT_STORE_PUBLISHER_DISPLAY_NAME", workflow, StringComparison.Ordinal);
         Assert.Contains("./eng/package-windows.ps1", workflow, StringComparison.Ordinal);
-        Assert.Contains("actions/upload-artifact@v7", workflow, StringComparison.Ordinal);
+        Assert.Matches("actions/upload-artifact@[0-9a-f]{40} # v7", workflow);
     }
 
     [Fact]

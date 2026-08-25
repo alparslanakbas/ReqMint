@@ -28,6 +28,7 @@ public static class RequestHistoryPrivacy
 
     private static string RedactUrl(string url)
     {
+        url = RedactUserInfo(url);
         var queryStart = url.IndexOf('?');
         if (queryStart < 0)
         {
@@ -42,6 +43,36 @@ public static class RequestHistoryPrivacy
             url.AsSpan(0, queryStart + 1),
             redactedQuery,
             url.AsSpan(queryEnd));
+    }
+
+    private static string RedactUserInfo(string url)
+    {
+        var schemeSeparator = url.IndexOf("://", StringComparison.Ordinal);
+        if (schemeSeparator < 0)
+        {
+            return url;
+        }
+
+        var authorityStart = schemeSeparator + 3;
+        var authorityEnd = url.IndexOfAny(['/', '?', '#'], authorityStart);
+        if (authorityEnd < 0)
+        {
+            authorityEnd = url.Length;
+        }
+
+        if (authorityEnd <= authorityStart)
+        {
+            return url;
+        }
+
+        var userInfoEnd = url.LastIndexOf('@', authorityEnd - 1, authorityEnd - authorityStart);
+        return userInfoEnd < authorityStart
+            ? url
+            : string.Concat(
+                url.AsSpan(0, authorityStart),
+                RedactedValue,
+                "@",
+                url.AsSpan(userInfoEnd + 1));
     }
 
     private static string RedactUrlParameter(string parameter)

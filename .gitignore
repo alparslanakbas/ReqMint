@@ -26,3 +26,15 @@ Thumbs.db
 *.local.json
 *.local.db
 .reqmint/
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p8
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.snk
+*.mobileprovision

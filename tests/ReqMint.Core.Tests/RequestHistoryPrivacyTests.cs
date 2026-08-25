@@ -39,4 +39,22 @@ public sealed class RequestHistoryPrivacyTests
         Assert.Equal(RequestHistoryPrivacy.RedactedValue, snapshot.Headers[1].Value);
         Assert.Null(snapshot.Body);
     }
+
+    [Fact]
+    public void CreateSafeSnapshot_RedactsCredentialsEmbeddedInUrlAuthority()
+    {
+        var request = new RequestDocument
+        {
+            Id = Guid.NewGuid(),
+            Name = "Basic authentication request",
+            Method = "GET",
+            Url = "https://developer:top-secret@api.example.com/private",
+        };
+
+        var snapshot = RequestHistoryPrivacy.CreateSafeSnapshot(request);
+
+        Assert.Equal("https://[redacted]@api.example.com/private", snapshot.Url);
+        Assert.DoesNotContain("developer", snapshot.Url, StringComparison.Ordinal);
+        Assert.DoesNotContain("top-secret", snapshot.Url, StringComparison.Ordinal);
+    }
 }

@@ -7,6 +7,7 @@ namespace ReqMint.Storage;
 public sealed class WorkspaceJsonStore : IWorkspaceStore
 {
     public const string WorkspaceFileName = "reqmint.workspace.json";
+    public const int MaximumDocumentBytes = 16 * 1024 * 1024;
 
     private const string CollectionsDirectory = "collections";
     private const string EnvironmentsDirectory = "environments";
@@ -22,6 +23,7 @@ public sealed class WorkspaceJsonStore : IWorkspaceStore
     {
         var root = NormalizeWorkspaceDirectory(workspaceDirectory);
         var workspacePath = Path.Combine(root, WorkspaceFileName);
+        EnsurePathDoesNotTraverseLink(root, workspacePath);
         var workspace = await ReadAsync<WorkspaceDocument>(workspacePath, cancellationToken);
 
         ValidateWorkspace(workspace, root);
@@ -63,18 +65,18 @@ public sealed class WorkspaceJsonStore : IWorkspaceStore
         foreach (var reference in snapshot.Workspace.Collections)
         {
             var path = ResolveReferencedPath(root, reference.File, CollectionsDirectory);
-            await WriteAtomicallyAsync(path, collectionsById[reference.Id], cancellationToken);
+            await WriteAtomicallyAsync(root, path, collectionsById[reference.Id], cancellationToken);
         }
 
         var environmentsById = snapshot.Environments.ToDictionary(environment => environment.Id);
         foreach (var reference in snapshot.Workspace.Environments)
         {
             var path = ResolveReferencedPath(root, reference.File, EnvironmentsDirectory);
-            await WriteAtomicallyAsync(path, environmentsById[reference.Id], cancellationToken);
+            await WriteAtomicallyAsync(root, path, environmentsById[reference.Id], cancellationToken);
         }
 
         var workspacePath = Path.Combine(root, WorkspaceFileName);
-        await WriteAtomicallyAsync(workspacePath, snapshot.Workspace, cancellationToken);
+        await WriteAtomicallyAsync(root, workspacePath, snapshot.Workspace, cancellationToken);
     }
 
     private static void ValidateSnapshot(WorkspaceSnapshot snapshot, string root)
@@ -389,7 +391,47 @@ public sealed class WorkspaceJsonStore : IWorkspaceStore
                 $"Workspace reference '{relativePath}' must stay inside '{requiredDirectory}'.");
         }
 
+        EnsurePathDoesNotTraverseLink(root, resolvedPath);
         return resolvedPath;
+    }
+
+    private static void EnsurePathDoesNotTraverseLink(string root, string path)
+    {
+        var relativePath = Path.GetRelativePath(root, path);
+        var currentPath = root;
+        foreach (var segment in relativePath.Split(
+            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+            StringSplitOptions.RemoveEmptyEntries))
+        {
+            currentPath = Path.Combine(currentPath, segment);
+            if (!Path.Exists(currentPath))
+            {
+                continue;
+            }
+
+            try
+            {
+                if (File.GetAttributes(currentPath).HasFlag(FileAttributes.ReparsePoint))
+                {
+                    throw new WorkspaceFormatException(
+                        $"Workspace path '{relativePath}' cannot traverse a symbolic link or reparse point.");
+                }
+            }
+            catch (WorkspaceFormatException)
+            {
+                throw;
+            }
+            catch (Exception exception) when (
+                exception is IOException
+                    or UnauthorizedAccessException
+                    or NotSupportedException
+                    or System.Security.SecurityException)
+            {
+                throw new WorkspaceFormatException(
+                    $"Could not validate workspace path '{relativePath}'.",
+                    exception);
+            }
+        }
     }
 
     private static async Task<T> ReadAsync<T>(
@@ -405,6 +447,12 @@ public sealed class WorkspaceJsonStore : IWorkspaceStore
                 FileShare.Read,
                 bufferSize: 4096,
                 FileOptions.Asynchronous | FileOptions.SequentialScan);
+            if (stream.Length > MaximumDocumentBytes)
+            {
+                throw new WorkspaceFormatException(
+                    $"Workspace document '{path}' exceeds the {MaximumDocumentBytes} byte limit.");
+            }
+
             var document = await JsonSerializer.DeserializeAsync<T>(
                 stream,
                 JsonOptions,
@@ -427,13 +475,16 @@ public sealed class WorkspaceJsonStore : IWorkspaceStore
     }
 
     private static async Task WriteAtomicallyAsync<T>(
+        string root,
         string path,
         T document,
         CancellationToken cancellationToken)
     {
+        EnsurePathDoesNotTraverseLink(root, path);
         var directory = Path.GetDirectoryName(path)
             ?? throw new WorkspaceFormatException($"Invalid workspace path '{path}'.");
         Directory.CreateDirectory(directory);
+        EnsurePathDoesNotTraverseLink(root, path);
 
         var temporaryPath = $"{path}.tmp-{Guid.NewGuid():N}";
         try
@@ -452,6 +503,11 @@ public sealed class WorkspaceJsonStore : IWorkspaceStore
                     JsonOptions,
                     cancellationToken);
                 await stream.FlushAsync(cancellationToken);
+                if (stream.Length > MaximumDocumentBytes)
+                {
+                    throw new WorkspaceFormatException(
+                        $"Workspace document '{path}' exceeds the {MaximumDocumentBytes} byte limit.");
+                }
             }
 
             File.Move(temporaryPath, path, overwrite: true);

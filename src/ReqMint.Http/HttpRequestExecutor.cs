@@ -110,10 +110,27 @@ public sealed class HttpRequestExecutor : IRequestExecutor, IDisposable
                 continue;
             }
 
-            if (!message.Headers.TryAddWithoutValidation(header.Name, header.Value))
+            if (header.Value.IndexOfAny(['\r', '\n']) >= 0)
             {
-                message.Content ??= new ByteArrayContent([]);
-                message.Content.Headers.TryAddWithoutValidation(header.Name, header.Value);
+                throw new ArgumentException(
+                    "HTTP header values cannot contain carriage-return or line-feed characters.",
+                    nameof(request));
+            }
+
+            try
+            {
+                if (!message.Headers.TryAddWithoutValidation(header.Name, header.Value))
+                {
+                    message.Content ??= new ByteArrayContent([]);
+                    if (!message.Content.Headers.TryAddWithoutValidation(header.Name, header.Value))
+                    {
+                        throw new ArgumentException("An HTTP header name is invalid.", nameof(request));
+                    }
+                }
+            }
+            catch (FormatException exception)
+            {
+                throw new ArgumentException("An HTTP header name is invalid.", nameof(request), exception);
             }
         }
 

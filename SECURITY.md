@@ -13,3 +13,7 @@ Include the affected commit or version, operating system, reproducible steps, im
 High-priority reports include credential disclosure, unsafe workspace or collection parsing, command or code execution, certificate-verification bypass, unauthorized network activity, insecure temporary files, Git operations outside the confirmed scope, and persistence of values that ReqMint promises to redact.
 
 Package-signing certificates, store accounts, GitHub Actions secrets, and third-party services are managed outside the application repository. Never attach their real values to a report.
+
+The current automated and manual review baseline is documented in
+[`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md). A clean review reduces risk but does not
+guarantee that the software is free of vulnerabilities.

@@ -22,10 +22,10 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Install .NET 10 SDK
-        uses: actions/setup-dotnet@v6
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
           dotnet-version: 10.0.x
 
@@ -50,7 +50,7 @@ jobs:
             -PublisherDisplayName $env:REQMINT_PUBLISHER_DISPLAY_NAME
 
       - name: Upload MSIXBundle
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: ReqMint-${{ inputs.version }}-store-msixbundle
           path: artifacts/packages/windows-store/*.msixbundle

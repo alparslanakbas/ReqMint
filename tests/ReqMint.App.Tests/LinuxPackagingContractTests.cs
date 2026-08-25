@@ -28,7 +28,7 @@ public sealed class LinuxPackagingContractTests
         Assert.Contains("- arm64", workflow, StringComparison.Ordinal);
         Assert.Contains("./eng/package-linux.sh", workflow, StringComparison.Ordinal);
         Assert.Contains("sha256sum --check", workflow, StringComparison.Ordinal);
-        Assert.Contains("actions/upload-artifact@v7", workflow, StringComparison.Ordinal);
+        Assert.Matches("actions/upload-artifact@[0-9a-f]{40} # v7", workflow);
     }
 
     private static string RepositoryPath(params string[] segments)
