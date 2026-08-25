@@ -44,9 +44,10 @@ The website, privacy, and support URLs must first work in a signed-out browser. 
   -IdentityName '<Package/Identity/Name>' `
   -Publisher '<Package/Identity/Publisher>' `
   -PublisherDisplayName '<Publisher display name>' `
+  -ExpectedVersion '<four-part Store version>' `
   -WebsiteAnonymousAccessVerified
 ```
 
-The preflight validates the real identity, x64/ARM64 bundle shape, SHA-256 evidence, and approved English/Turkish screenshots. It deliberately cannot attest to Partner Center questionnaires, selected private-audience accounts, Windows App Certification Kit results, or installation from Microsoft Store; record those manually for the release candidate.
+The preflight validates the bundle and inner-package versions, real identity, publisher display name, exact x64/ARM64 bundle shape, Windows Desktop target, required `runFullTrust` declaration, SHA-256 evidence, and approved English/Turkish screenshots. It deliberately cannot attest to Partner Center questionnaires, restricted-capability approval, selected private-audience accounts, Windows App Certification Kit results, or installation from Microsoft Store; record those manually for the release candidate.
 
 Arabic remains outside the first private submission until its separate native-review and screenshot evidence passes.

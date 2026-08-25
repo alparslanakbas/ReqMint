@@ -99,6 +99,7 @@ public sealed class WindowsPackagingContractTests
         Assert.Contains("-Publisher $Publisher", script, StringComparison.Ordinal);
         Assert.Contains("Get-ReqMintMakeAppxPath", script, StringComparison.Ordinal);
         Assert.Contains("bundle /d $packageDirectory", script, StringComparison.Ordinal);
+        Assert.Contains("/bv $Version", script, StringComparison.Ordinal);
         Assert.Contains(".msixbundle", script, StringComparison.Ordinal);
         Assert.Contains("ReqMint.Development", script, StringComparison.Ordinal);
         Assert.Contains("CN=ReqMint Development", script, StringComparison.Ordinal);
@@ -140,7 +141,11 @@ public sealed class WindowsPackagingContractTests
         var guide = File.ReadAllText(RepositoryPath("docs", "PARTNER_CENTER_SETUP.md"));
 
         Assert.Contains("WebsiteAnonymousAccessVerified", preflight, StringComparison.Ordinal);
+        Assert.Contains("ExpectedVersion", preflight, StringComparison.Ordinal);
         Assert.Contains(".msixbundle", preflight, StringComparison.Ordinal);
+        Assert.Contains("AppxBundleManifest.xml", preflight, StringComparison.Ordinal);
+        Assert.Contains("arm64,x64", preflight, StringComparison.Ordinal);
+        Assert.Contains("runFullTrust", preflight, StringComparison.Ordinal);
         Assert.Contains("Test-WindowsStoreScreenshots.ps1", preflight, StringComparison.Ordinal);
         Assert.Contains("SHA256", preflight, StringComparison.Ordinal);
         Assert.Contains("private-audience preview", guide, StringComparison.Ordinal);

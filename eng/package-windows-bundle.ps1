@@ -78,7 +78,7 @@ foreach ($architecture in @('x64', 'arm64')) {
 
 $makeAppxPath = Get-ReqMintMakeAppxPath
 $bundlePath = Join-Path $resolvedOutputDirectory "ReqMint_$Version.msixbundle"
-& $makeAppxPath bundle /d $packageDirectory /p $bundlePath /o
+& $makeAppxPath bundle /d $packageDirectory /p $bundlePath /bv $Version /o
 if ($LASTEXITCODE -ne 0) {
     throw "MakeAppx bundle failed with exit code $LASTEXITCODE."
 }

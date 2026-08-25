@@ -49,7 +49,7 @@ After reserving the app name and configuring all three repository variables, ope
 1. refuses to continue when a Store identity value is missing or still uses the development placeholder;
 2. runs the release test suite;
 3. creates self-contained x64 and ARM64 packages with the same identity, publisher, and version;
-4. combines them into `ReqMint_<version>.msixbundle` and uploads that Store submission artifact.
+4. combines them into `ReqMint_<version>.msixbundle`, explicitly pins the outer bundle version with MakeAppx `/bv`, and uploads that Store submission artifact.
 
 Follow [Partner Center and private preview setup](PARTNER_CENTER_SETUP.md) to validate the exact identity values, configure only the expected GitHub variables, build the real bundle, and run the local private-preview preflight.
 
