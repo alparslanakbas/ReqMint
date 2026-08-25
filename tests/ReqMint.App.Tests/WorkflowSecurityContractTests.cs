@@ -26,7 +26,7 @@ public sealed partial class WorkflowSecurityContractTests
             RepositoryPath(".github", "workflows"),
             "*.yml"))
         {
-            var workflow = File.ReadAllText(workflowPath);
+            var workflow = File.ReadAllText(workflowPath).ReplaceLineEndings("\n");
             Assert.Contains("permissions:\n  contents: read", workflow, StringComparison.Ordinal);
             Assert.DoesNotContain(": write", workflow, StringComparison.Ordinal);
         }
