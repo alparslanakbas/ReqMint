@@ -42,6 +42,31 @@ public sealed class RequestTemplateResolverTests
     }
 
     [Fact]
+    public async Task ResolveAsync_SkipsDisabledFieldsAndTheirTemplates()
+    {
+        var request = CreateRequest() with
+        {
+            Url = "https://api.example.com/orders",
+            QueryParameters =
+            [
+                new RequestField("include", "items"),
+                new RequestField("locale", "{{MISSING}}", IsEnabled: false),
+            ],
+            Headers =
+            [
+                new RequestField("Accept", "application/json"),
+                new RequestField("X-Debug", "true", IsEnabled: false),
+            ],
+        };
+        var resolver = new RequestTemplateResolver(new StubSecretVault(null));
+
+        var resolved = await resolver.ResolveAsync(Guid.NewGuid(), environment: null, request);
+
+        Assert.Equal("include", Assert.Single(resolved.QueryParameters).Name);
+        Assert.Equal("Accept", Assert.Single(resolved.Headers).Name);
+    }
+
+    [Fact]
     public async Task ResolveAsync_ReportsAllMissingVariablesWithoutReadingUnknownSecrets()
     {
         var request = CreateRequest() with

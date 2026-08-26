@@ -438,7 +438,13 @@
                                  Background="Transparent"
                                  FontWeight="SemiBold"
                                  PlaceholderText="{DynamicResource TextRequestName}" />
-                        <TextBlock Text="×" Classes="secondary" />
+                        <Button Content="×"
+                                Width="28"
+                                Height="28"
+                                Padding="0"
+                                Command="{Binding CloseRequestCommand}"
+                                AutomationProperties.Name="{DynamicResource TooltipCloseRequest}"
+                                ToolTip.Tip="{DynamicResource TooltipCloseRequest}" />
                     </StackPanel>
                 </Border>
 
@@ -508,10 +514,20 @@
                                     <ItemsControl ItemsSource="{Binding QueryParameters}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:RequestFieldViewModel">
-                                                <Grid ColumnDefinitions="32,220,12,*" Margin="0,0,0,8">
+                                                <Grid ColumnDefinitions="32,220,12,*,8,Auto" Margin="0,0,0,8">
                                                     <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" />
                                                     <TextBox Grid.Column="1" Text="{Binding Name}" Classes="technical" PlaceholderText="{DynamicResource PlaceholderParameterName}" />
                                                     <TextBox Grid.Column="3" Text="{Binding Value}" Classes="technical" PlaceholderText="{DynamicResource TextValue}" />
+                                                    <Button Grid.Column="5"
+                                                            Content="×"
+                                                            Width="30"
+                                                            Height="30"
+                                                            Padding="0"
+                                                            VerticalAlignment="Center"
+                                                            Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).RemoveQueryParameterCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            AutomationProperties.Name="{DynamicResource TooltipRemoveRow}"
+                                                            ToolTip.Tip="{DynamicResource TooltipRemoveRow}" />
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -530,10 +546,20 @@
                                     <ItemsControl ItemsSource="{Binding Headers}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:RequestFieldViewModel">
-                                                <Grid ColumnDefinitions="32,220,12,*" Margin="0,0,0,8">
+                                                <Grid ColumnDefinitions="32,220,12,*,8,Auto" Margin="0,0,0,8">
                                                     <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" />
                                                     <TextBox Grid.Column="1" Text="{Binding Name}" Classes="technical" PlaceholderText="{DynamicResource PlaceholderHeaderName}" />
                                                     <TextBox Grid.Column="3" Text="{Binding Value}" Classes="technical" PlaceholderText="{DynamicResource TextValue}" />
+                                                    <Button Grid.Column="5"
+                                                            Content="×"
+                                                            Width="30"
+                                                            Height="30"
+                                                            Padding="0"
+                                                            VerticalAlignment="Center"
+                                                            Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).RemoveHeaderCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            AutomationProperties.Name="{DynamicResource TooltipRemoveRow}"
+                                                            ToolTip.Tip="{DynamicResource TooltipRemoveRow}" />
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -582,7 +608,7 @@
                                     <ItemsControl ItemsSource="{Binding EnvironmentVariables}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:EnvironmentVariableViewModel">
-                                                <Grid ColumnDefinitions="220,12,*,12,90" Margin="0,0,0,8">
+                                                <Grid ColumnDefinitions="220,12,*,12,90,8,Auto" Margin="0,0,0,8">
                                                     <TextBox Text="{Binding Name}"
                                                              Classes="technical"
                                                              PlaceholderText="{DynamicResource TextVariableName}" />
@@ -601,6 +627,16 @@
                                                               IsChecked="{Binding IsSecret}"
                                                               Content="{DynamicResource TextSecret}"
                                                               VerticalAlignment="Center" />
+                                                    <Button Grid.Column="6"
+                                                            Content="×"
+                                                            Width="30"
+                                                            Height="30"
+                                                            Padding="0"
+                                                            VerticalAlignment="Center"
+                                                            Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).RemoveEnvironmentVariableCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            AutomationProperties.Name="{DynamicResource TooltipRemoveRow}"
+                                                            ToolTip.Tip="{DynamicResource TooltipRemoveRow}" />
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -855,7 +891,8 @@
                             <Button Grid.Column="6"
                                     Content="{DynamicResource TextCopy}"
                                     Padding="10,4"
-                                    VerticalAlignment="Center" />
+                                    VerticalAlignment="Center"
+                                    Command="{Binding CopyResponseCommand}" />
                         </Grid>
                     </Border>
 

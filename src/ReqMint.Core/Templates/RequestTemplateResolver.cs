@@ -37,11 +37,13 @@ public sealed class RequestTemplateResolver(ISecretVault secretVault)
             RequestTemplate.Resolve(request.Url, values)) with
         {
             QueryParameters = request.QueryParameters
+                .Where(field => field.IsEnabled)
                 .Select(field => new RequestField(
                     RequestTemplate.Resolve(field.Name, values),
                     RequestTemplate.Resolve(field.Value, values)))
                 .ToArray(),
             Headers = request.Headers
+                .Where(field => field.IsEnabled)
                 .Select(field => new RequestField(
                     RequestTemplate.Resolve(field.Name, values),
                     RequestTemplate.Resolve(field.Value, values)))
@@ -117,7 +119,9 @@ public sealed class RequestTemplateResolver(ISecretVault secretVault)
     {
         yield return request.Url;
 
-        foreach (var field in request.QueryParameters.Concat(request.Headers))
+        foreach (var field in request.QueryParameters
+            .Concat(request.Headers)
+            .Where(field => field.IsEnabled))
         {
             yield return field.Name;
             yield return field.Value;

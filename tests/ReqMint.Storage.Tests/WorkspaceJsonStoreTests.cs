@@ -43,6 +43,58 @@ public sealed class WorkspaceJsonStoreTests
     }
 
     [Fact]
+    public async Task LoadAsync_TreatsFieldsWrittenBeforeTheEnabledFlagAsEnabled()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new WorkspaceJsonStore();
+        var workspaceId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var collectionId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        var requestId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+        Directory.CreateDirectory(System.IO.Path.Combine(directory.Path, "collections"));
+        await File.WriteAllTextAsync(
+            System.IO.Path.Combine(directory.Path, WorkspaceJsonStore.WorkspaceFileName),
+            $$"""
+            {
+              "schemaVersion": 1,
+              "id": "{{workspaceId}}",
+              "name": "Legacy",
+              "collections": [
+                { "id": "{{collectionId}}", "name": "Requests", "file": "collections/requests.json" }
+              ],
+              "environments": []
+            }
+            """);
+        await File.WriteAllTextAsync(
+            System.IO.Path.Combine(directory.Path, "collections", "requests.json"),
+            $$"""
+            {
+              "schemaVersion": 1,
+              "id": "{{collectionId}}",
+              "name": "Requests",
+              "requests": [
+                {
+                  "id": "{{requestId}}",
+                  "name": "Legacy request",
+                  "method": "GET",
+                  "url": "https://api.example.com/orders",
+                  "queryParameters": [ { "name": "include", "value": "items" } ],
+                  "headers": [ { "name": "Accept", "value": "application/json" } ],
+                  "body": null,
+                  "timeoutSeconds": 30,
+                  "assertions": []
+                }
+              ]
+            }
+            """);
+
+        var loaded = await store.LoadAsync(directory.Path, CancellationToken.None);
+
+        var request = loaded.Collections[0].Requests[0];
+        Assert.True(request.QueryParameters[0].IsEnabled);
+        Assert.True(request.Headers[0].IsEnabled);
+    }
+
+    [Fact]
     public async Task SaveAsync_RejectsSecretValuesBeforeWritingFiles()
     {
         using var directory = new TemporaryDirectory();

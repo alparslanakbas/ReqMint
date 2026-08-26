@@ -24,6 +24,18 @@ public sealed record AppSettings
     public int OnboardingStep { get; init; }
 
     public WindowCloseBehavior WindowCloseBehavior { get; init; }
+
+    /// <summary>
+    /// Folder of the workspace that was open when the application last closed.
+    /// Restored on startup so environments and collections are available again
+    /// without picking the folder every launch.
+    /// </summary>
+    public string? LastWorkspaceDirectory { get; init; }
+
+    /// <summary>
+    /// Environment that was active in <see cref="LastWorkspaceDirectory"/>.
+    /// </summary>
+    public Guid? LastEnvironmentId { get; init; }
 }
 
 public enum OnboardingStatus

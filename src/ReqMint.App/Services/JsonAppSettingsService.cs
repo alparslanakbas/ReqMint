@@ -97,6 +97,12 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             settings.OnboardingStep,
             0,
             MaximumOnboardingStep),
+        LastWorkspaceDirectory = string.IsNullOrWhiteSpace(settings.LastWorkspaceDirectory)
+            ? null
+            : settings.LastWorkspaceDirectory.Trim(),
+        LastEnvironmentId = settings.LastEnvironmentId == Guid.Empty
+            ? null
+            : settings.LastEnvironmentId,
     };
 
     private static void TryDeleteTemporaryFile(string path)

@@ -384,5 +384,11 @@
   "ExternalLinkOpened": "Opened in your browser",
   "ExternalLinkFailed": "The link could not be opened",
   "SupportInformationCopied": "Support information copied",
-  "SupportInformationCopyFailed": "Support information could not be copied"
+  "SupportInformationCopyFailed": "Support information could not be copied",
+  "TooltipRemoveRow": "Remove row",
+  "TooltipCloseRequest": "Close the open request",
+  "StatusRequestClosed": "Request closed",
+  "ResponseCopied": "Response copied to the clipboard",
+  "ResponseCopyFailed": "The response could not be copied",
+  "StatusLastWorkspaceUnavailable": "The last workspace could not be reopened"
 }

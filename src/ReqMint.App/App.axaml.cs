@@ -84,6 +84,11 @@ public partial class App : Application
                 new SupportInformationService(),
                 new AvaloniaClipboardService(mainWindow));
             mainWindow.DataContext = mainViewModel;
+
+            // Reopen the workspace from the previous session. Failures are handled
+            // inside the view model, so startup can never be blocked by it.
+            _ = mainViewModel.RestoreLastWorkspaceAsync();
+
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             desktop.MainWindow = mainWindow;
             _desktopApplicationController = new DesktopApplicationController(

@@ -1669,6 +1669,264 @@ public sealed class MainViewModelWorkspaceTests
         Assert.Equal("Support information copied", viewModel.WorkspaceStatus);
     }
 
+    [Fact]
+    public async Task SaveRequestCommand_KeepsTheEnvironmentTheUserSelected()
+    {
+        var snapshot = CreateSnapshotWithEnvironments();
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+
+        viewModel.EnvironmentName = "Staging";
+        await viewModel.SaveRequestCommand.ExecuteAsync(null);
+
+        Assert.Equal("Staging", viewModel.EnvironmentName);
+    }
+
+    [Fact]
+    public async Task CreateCollectionCommand_KeepsTheEnvironmentTheUserSelected()
+    {
+        var snapshot = CreateSnapshotWithEnvironments();
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        viewModel.EnvironmentName = "Staging";
+        await viewModel.CreateCollectionCommand.ExecuteAsync(null);
+
+        Assert.Equal("Staging", viewModel.EnvironmentName);
+    }
+
+    [Fact]
+    public async Task SaveRequestCommand_KeepsDisabledFieldsInsteadOfDroppingThem()
+    {
+        var snapshot = CreateSnapshot();
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        viewModel.QueryParameters.Add(new RequestFieldViewModel("locale", "en-US")
+        {
+            IsEnabled = false,
+        });
+
+        await viewModel.SaveRequestCommand.ExecuteAsync(null);
+
+        var saved = Assert.Single(store.SavedSnapshot!.Collections[0].Requests);
+        var parameter = Assert.Single(saved.QueryParameters);
+        Assert.Equal("locale", parameter.Name);
+        Assert.False(parameter.IsEnabled);
+    }
+
+    [Fact]
+    public async Task OpeningSavedRequest_RestoresTheDisabledState()
+    {
+        var snapshot = CreateSnapshot();
+        var request = snapshot.Collections[0].Requests[0] with
+        {
+            QueryParameters = [new RequestField("locale", "en-US", IsEnabled: false)],
+        };
+        var collection = snapshot.Collections[0] with { Requests = [request] };
+        var store = new RecordingWorkspaceStore
+        {
+            SnapshotToLoad = snapshot with { Collections = [collection] },
+        };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+
+        var parameter = Assert.Single(viewModel.QueryParameters);
+        Assert.Equal("locale", parameter.Name);
+        Assert.False(parameter.IsEnabled);
+    }
+
+    [Fact]
+    public async Task OpenWorkspaceCommand_RemembersTheWorkspaceForTheNextLaunch()
+    {
+        var snapshot = CreateSnapshotWithEnvironments();
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
+        var settings = new StubAppSettingsService();
+        var directory = CreateWorkspacePath();
+        var viewModel = CreateViewModel(store, directory, appSettings: settings);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        viewModel.EnvironmentName = "Staging";
+
+        Assert.Equal(directory, settings.Current.LastWorkspaceDirectory);
+        Assert.Equal(snapshot.Environments[1].Id, settings.Current.LastEnvironmentId);
+    }
+
+    [Fact]
+    public async Task RestoreLastWorkspaceAsync_ReopensTheWorkspaceAndItsActiveEnvironment()
+    {
+        var snapshot = CreateSnapshotWithEnvironments();
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
+        var directory = CreateWorkspacePath();
+        Directory.CreateDirectory(directory);
+        await File.WriteAllTextAsync(
+            Path.Combine(directory, "reqmint.workspace.json"),
+            "{}");
+        var settings = new StubAppSettingsService(new AppSettings
+        {
+            LastWorkspaceDirectory = directory,
+            LastEnvironmentId = snapshot.Environments[1].Id,
+        });
+        var viewModel = CreateViewModel(store, CreateWorkspacePath(), appSettings: settings);
+
+        try
+        {
+            await viewModel.RestoreLastWorkspaceAsync();
+
+            Assert.Equal(snapshot.Workspace.Name, viewModel.WorkspaceName);
+            Assert.Equal("Staging", viewModel.EnvironmentName);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task RestoreLastWorkspaceAsync_IgnoresAWorkspaceThatIsNoLongerOnDisk()
+    {
+        var store = new RecordingWorkspaceStore();
+        var settings = new StubAppSettingsService(new AppSettings
+        {
+            LastWorkspaceDirectory = CreateWorkspacePath(),
+        });
+        var viewModel = CreateViewModel(store, CreateWorkspacePath(), appSettings: settings);
+
+        await viewModel.RestoreLastWorkspaceAsync();
+
+        Assert.False(viewModel.SaveRequestCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task ASuccessfulOperation_ClearsThePreviousWorkspaceError()
+    {
+        var snapshot = CreateSnapshot();
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        viewModel.CollectionDraftName = "   ";
+        await viewModel.RenameCollectionCommand.ExecuteAsync(null);
+        Assert.True(viewModel.HasResponse);
+        Assert.Equal("Could not rename collection", viewModel.ResponseStatus);
+
+        await viewModel.CreateCollectionCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.HasResponse);
+        Assert.Equal("Ready", viewModel.ResponseStatus);
+        Assert.Equal("Collection created", viewModel.WorkspaceStatus);
+    }
+
+    [Fact]
+    public void RemoveFieldCommands_RemoveOnlyTheSelectedRow()
+    {
+        var viewModel = CreateViewModel(new RecordingWorkspaceStore(), CreateWorkspacePath());
+        var header = viewModel.Headers[0];
+        var parameter = viewModel.QueryParameters[0];
+        var headerCount = viewModel.Headers.Count;
+        var parameterCount = viewModel.QueryParameters.Count;
+
+        viewModel.RemoveHeaderCommand.Execute(header);
+        viewModel.RemoveQueryParameterCommand.Execute(parameter);
+
+        Assert.Equal(headerCount - 1, viewModel.Headers.Count);
+        Assert.Equal(parameterCount - 1, viewModel.QueryParameters.Count);
+        Assert.DoesNotContain(header, viewModel.Headers);
+        Assert.DoesNotContain(parameter, viewModel.QueryParameters);
+    }
+
+    [Fact]
+    public async Task RemoveEnvironmentVariableCommand_RemovesOnlyTheSelectedVariable()
+    {
+        var snapshot = CreateSnapshotWithEnvironments();
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        viewModel.AddEnvironmentVariableCommand.Execute(null);
+        var variable = viewModel.EnvironmentVariables[^1];
+        var count = viewModel.EnvironmentVariables.Count;
+
+        viewModel.RemoveEnvironmentVariableCommand.Execute(variable);
+
+        Assert.Equal(count - 1, viewModel.EnvironmentVariables.Count);
+        Assert.DoesNotContain(variable, viewModel.EnvironmentVariables);
+    }
+
+    [Fact]
+    public async Task CloseRequestCommand_ResetsTheComposer()
+    {
+        var snapshot = CreateSnapshot();
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+
+        await viewModel.CloseRequestCommand.ExecuteAsync(null);
+
+        Assert.Equal("New request", viewModel.RequestName);
+        Assert.Equal("GET", viewModel.SelectedMethod);
+        Assert.Equal(string.Empty, viewModel.Url);
+        Assert.Equal("Request closed", viewModel.WorkspaceStatus);
+    }
+
+    [Fact]
+    public async Task CopyResponseCommand_PutsTheResponseBodyOnTheClipboard()
+    {
+        var clipboard = new RecordingClipboardService();
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore(),
+            CreateWorkspacePath(),
+            clipboardService: clipboard);
+        viewModel.ResponseBody = "{\"status\":\"ok\"}";
+
+        await viewModel.CopyResponseCommand.ExecuteAsync(null);
+
+        Assert.Equal("{\"status\":\"ok\"}", clipboard.Text);
+        Assert.Equal("Response copied to the clipboard", viewModel.WorkspaceStatus);
+    }
+
+    private static WorkspaceSnapshot CreateSnapshotWithEnvironments()
+    {
+        var snapshot = CreateSnapshot();
+        var production = new EnvironmentDocument
+        {
+            Id = Guid.Parse("44444444-4444-4444-4444-444444444444"),
+            Name = "Production",
+            Variables = [new EnvironmentVariable("BASE_URL", "https://api.example.com")],
+        };
+        var staging = new EnvironmentDocument
+        {
+            Id = Guid.Parse("55555555-5555-5555-5555-555555555555"),
+            Name = "Staging",
+            Variables = [new EnvironmentVariable("BASE_URL", "https://staging.example.com")],
+        };
+
+        return snapshot with
+        {
+            Workspace = snapshot.Workspace with
+            {
+                Environments =
+                [
+                    new WorkspaceFileReference(
+                        production.Id,
+                        production.Name,
+                        "environments/production.json"),
+                    new WorkspaceFileReference(
+                        staging.Id,
+                        staging.Name,
+                        "environments/staging.json"),
+                ],
+            },
+            Environments = [production, staging],
+        };
+    }
+
     private static MainViewModel CreateViewModel(
         IWorkspaceStore store,
         string directory,

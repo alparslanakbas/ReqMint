@@ -384,5 +384,11 @@
   "ExternalLinkOpened": "Tarayıcınızda açıldı",
   "ExternalLinkFailed": "Bağlantı açılamadı",
   "SupportInformationCopied": "Destek bilgisi kopyalandı",
-  "SupportInformationCopyFailed": "Destek bilgisi kopyalanamadı"
+  "SupportInformationCopyFailed": "Destek bilgisi kopyalanamadı",
+  "TooltipRemoveRow": "Satırı kaldır",
+  "TooltipCloseRequest": "Açık isteği kapat",
+  "StatusRequestClosed": "İstek kapatıldı",
+  "ResponseCopied": "Yanıt panoya kopyalandı",
+  "ResponseCopyFailed": "Yanıt kopyalanamadı",
+  "StatusLastWorkspaceUnavailable": "Son çalışma alanı yeniden açılamadı"
 }

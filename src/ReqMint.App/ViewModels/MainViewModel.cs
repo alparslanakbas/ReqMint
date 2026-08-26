@@ -17,6 +17,8 @@ namespace ReqMint.App.ViewModels;
 
 public partial class MainViewModel : ViewModelBase
 {
+    private const string WorkspaceFileName = "reqmint.workspace.json";
+
     private static readonly Uri DocumentationUri = new("https://reqmintapp.github.io/docs");
     private static readonly Uri PrivacyUri = new("https://reqmintapp.github.io/privacy");
     private static readonly Uri SecurityUri = new("https://reqmintapp.github.io/security");
@@ -476,6 +478,7 @@ public partial class MainViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(NewRequestCommand))]
     [NotifyCanExecuteChangedFor(nameof(NewEnvironmentCommand))]
     [NotifyCanExecuteChangedFor(nameof(AddEnvironmentVariableCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveEnvironmentVariableCommand))]
     [NotifyCanExecuteChangedFor(nameof(SaveEnvironmentCommand))]
     [NotifyCanExecuteChangedFor(nameof(CreateCollectionCommand))]
     [NotifyCanExecuteChangedFor(nameof(RenameCollectionCommand))]
@@ -489,6 +492,7 @@ public partial class MainViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(NewRequestCommand))]
     [NotifyCanExecuteChangedFor(nameof(NewEnvironmentCommand))]
     [NotifyCanExecuteChangedFor(nameof(AddEnvironmentVariableCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveEnvironmentVariableCommand))]
     [NotifyCanExecuteChangedFor(nameof(SaveEnvironmentCommand))]
     [NotifyCanExecuteChangedFor(nameof(CreateCollectionCommand))]
     [NotifyCanExecuteChangedFor(nameof(RenameCollectionCommand))]
@@ -521,6 +525,7 @@ public partial class MainViewModel : ViewModelBase
     private EnvironmentDocument? _activeEnvironment;
     private Guid? _editingEnvironmentId;
     private string _cleanRequestDraft;
+    private bool _hasWorkspaceError;
 
     public bool IsBodyEnabled => SelectedBodyType != "None";
 
@@ -640,9 +645,22 @@ public partial class MainViewModel : ViewModelBase
 
     partial void OnEnvironmentNameChanged(string value)
     {
-        _activeEnvironment = _workspaceSnapshot?.Environments.FirstOrDefault(
+        var selected = _workspaceSnapshot?.Environments.FirstOrDefault(
             environment => string.Equals(environment.Name, value, StringComparison.Ordinal));
+
+        // Clearing the dropdown source (ApplyWorkspace) momentarily pushes a null
+        // selection; that must not drop the environment the user picked.
+        if (selected is null && _workspaceSnapshot is not null && _activeEnvironment is not null)
+        {
+            return;
+        }
+
+        _activeEnvironment = selected;
         LoadEnvironmentEditor(_activeEnvironment);
+        if (_workspaceDirectory is not null)
+        {
+            RememberWorkspace(_workspaceDirectory, IsActiveTutorialWorkspace(_workspaceDirectory));
+        }
     }
 
     private bool CanSend() => !IsSending && !IsWorkspaceBusy;
@@ -800,6 +818,49 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void AddHeader() => Headers.Add(new RequestFieldViewModel());
 
+    [RelayCommand]
+    private void RemoveQueryParameter(RequestFieldViewModel? field)
+    {
+        if (field is not null)
+        {
+            QueryParameters.Remove(field);
+        }
+    }
+
+    [RelayCommand]
+    private void RemoveHeader(RequestFieldViewModel? field)
+    {
+        if (field is not null)
+        {
+            Headers.Remove(field);
+        }
+    }
+
+    /// <summary>
+    /// Closes the request that is currently open in the editor, honouring the
+    /// unsaved-changes prompt first.
+    /// </summary>
+    [RelayCommand]
+    private async Task CloseRequestAsync(CancellationToken cancellationToken)
+    {
+        if (!await ConfirmNavigationAsync(cancellationToken))
+        {
+            return;
+        }
+
+        ResetRequestDraft();
+        WorkspaceStatus = Localize("StatusRequestClosed", "Request closed");
+    }
+
+    [RelayCommand]
+    private async Task CopyResponseAsync()
+    {
+        var copied = await _clipboardService.SetTextAsync(ResponseBody);
+        WorkspaceStatus = copied
+            ? Localize("ResponseCopied", "Response copied to the clipboard")
+            : Localize("ResponseCopyFailed", "The response could not be copied");
+    }
+
     [RelayCommand(CanExecute = nameof(CanSaveRequest))]
     private async Task NewRequestAsync(CancellationToken cancellationToken)
     {
@@ -850,6 +911,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         IsWorkspaceBusy = true;
+        ClearWorkspaceError();
         WorkspaceStatus = "Choose a workspace folder";
 
         try
@@ -863,7 +925,7 @@ public partial class MainViewModel : ViewModelBase
             }
 
             WorkspaceStatus = "Creating workspace...";
-            var existingWorkspace = Path.Combine(directory, "reqmint.workspace.json");
+            var existingWorkspace = Path.Combine(directory, WorkspaceFileName);
             if (File.Exists(existingWorkspace))
             {
                 var existingSnapshot = await _workspaceStore.LoadAsync(directory, cancellationToken);
@@ -926,6 +988,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         IsWorkspaceBusy = true;
+        ClearWorkspaceError();
         WorkspaceStatus = "Choose a workspace folder";
 
         try
@@ -968,6 +1031,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         IsWorkspaceBusy = true;
+        ClearWorkspaceError();
         WorkspaceStatus = Localize("StatusSavingRequest", "Saving request...");
 
         try
@@ -1041,6 +1105,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanSend), IncludeCancelCommand = true)]
     private async Task SendAsync(CancellationToken cancellationToken)
     {
+        ClearWorkspaceError();
         RequestDocument requestDocument;
         ApiRequest request;
 
@@ -1183,12 +1248,18 @@ public partial class MainViewModel : ViewModelBase
             Method = SelectedMethod.Trim().ToUpperInvariant(),
             Url = Url.Trim(),
             QueryParameters = QueryParameters
-                .Where(field => field.IsEnabled && !string.IsNullOrWhiteSpace(field.Name))
-                .Select(field => new RequestField(field.Name.Trim(), field.Value))
+                .Where(field => !string.IsNullOrWhiteSpace(field.Name))
+                .Select(field => new RequestField(
+                    field.Name.Trim(),
+                    field.Value,
+                    field.IsEnabled))
                 .ToArray(),
             Headers = Headers
-                .Where(field => field.IsEnabled && !string.IsNullOrWhiteSpace(field.Name))
-                .Select(field => new RequestField(field.Name.Trim(), field.Value))
+                .Where(field => !string.IsNullOrWhiteSpace(field.Name))
+                .Select(field => new RequestField(
+                    field.Name.Trim(),
+                    field.Value,
+                    field.IsEnabled))
                 .ToArray(),
             Body = CreateBody(),
             TimeoutSeconds = (int)TimeoutSeconds,
@@ -1245,10 +1316,15 @@ public partial class MainViewModel : ViewModelBase
             }
         }
 
-        _activeEnvironment = selectedEnvironmentId is null
+        // The active environment is tracked by ID, not by name: rebuilding the
+        // workspace (saving a request, renaming a collection, reopening the folder)
+        // must not silently switch the user onto the first environment in the file.
+        var desiredEnvironmentId = selectedEnvironmentId ?? _activeEnvironment?.Id;
+        _activeEnvironment = desiredEnvironmentId is null
             ? snapshot.Environments.FirstOrDefault()
             : snapshot.Environments.FirstOrDefault(
-                environment => environment.Id == selectedEnvironmentId);
+                environment => environment.Id == desiredEnvironmentId)
+                ?? snapshot.Environments.FirstOrDefault();
         EnvironmentName = _activeEnvironment?.Name ?? EnvironmentNames[0];
         LoadEnvironmentEditor(_activeEnvironment);
 
@@ -1265,14 +1341,79 @@ public partial class MainViewModel : ViewModelBase
                 SelectCollection));
         }
 
+        RememberWorkspace(directory, isActiveTutorialWorkspace);
+
         SaveRequestCommand.NotifyCanExecuteChanged();
         NewRequestCommand.NotifyCanExecuteChanged();
         NewEnvironmentCommand.NotifyCanExecuteChanged();
         AddEnvironmentVariableCommand.NotifyCanExecuteChanged();
+        RemoveEnvironmentVariableCommand.NotifyCanExecuteChanged();
         SaveEnvironmentCommand.NotifyCanExecuteChanged();
         CreateCollectionCommand.NotifyCanExecuteChanged();
         RenameCollectionCommand.NotifyCanExecuteChanged();
         UpdateCollectionRunAvailability();
+    }
+
+    private void RememberWorkspace(string directory, bool isTutorialWorkspace)
+    {
+        // Tutorial workspaces live in a temporary folder and must never be restored.
+        if (isTutorialWorkspace)
+        {
+            return;
+        }
+
+        var current = _appSettings.Current;
+        if (string.Equals(current.LastWorkspaceDirectory, directory, StringComparison.Ordinal)
+            && current.LastEnvironmentId == _activeEnvironment?.Id)
+        {
+            return;
+        }
+
+        _appSettings.Update(current with
+        {
+            LastWorkspaceDirectory = directory,
+            LastEnvironmentId = _activeEnvironment?.Id,
+        });
+    }
+
+    /// <summary>
+    /// Reopens the workspace that was active when the application last closed.
+    /// Failures are silent by design: a missing or moved folder must never block startup.
+    /// </summary>
+    public async Task RestoreLastWorkspaceAsync(CancellationToken cancellationToken = default)
+    {
+        var directory = _appSettings.Current.LastWorkspaceDirectory;
+        if (string.IsNullOrWhiteSpace(directory) ||
+            !File.Exists(Path.Combine(directory, WorkspaceFileName)))
+        {
+            return;
+        }
+
+        IsWorkspaceBusy = true;
+        ClearWorkspaceError();
+        try
+        {
+            var snapshot = await _workspaceStore.LoadAsync(directory, cancellationToken);
+            ApplyWorkspace(
+                snapshot,
+                directory,
+                selectedEnvironmentId: _appSettings.Current.LastEnvironmentId);
+            await LoadHistoryAsync(snapshot.Workspace.Id, cancellationToken);
+            await RefreshGitStatusAsync(directory, cancellationToken);
+            ResetRequestDraft();
+            WorkspaceStatus = Localize("StatusWorkspaceOpened", "Workspace opened");
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            WorkspaceStatus = Localize(
+                "StatusLastWorkspaceUnavailable",
+                "The last workspace could not be reopened");
+            System.Diagnostics.Debug.WriteLine(exception);
+        }
+        finally
+        {
+            IsWorkspaceBusy = false;
+        }
     }
 
     private bool IsActiveTutorialWorkspace(string directory) =>
@@ -1334,13 +1475,19 @@ public partial class MainViewModel : ViewModelBase
         QueryParameters.Clear();
         foreach (var field in request.QueryParameters)
         {
-            QueryParameters.Add(new RequestFieldViewModel(field.Name, field.Value));
+            QueryParameters.Add(new RequestFieldViewModel(field.Name, field.Value)
+            {
+                IsEnabled = field.IsEnabled,
+            });
         }
 
         Headers.Clear();
         foreach (var field in request.Headers)
         {
-            Headers.Add(new RequestFieldViewModel(field.Name, field.Value));
+            Headers.Add(new RequestFieldViewModel(field.Name, field.Value)
+            {
+                IsEnabled = field.IsEnabled,
+            });
         }
 
         SelectedBodyType = GetBodyType(request.Body?.ContentType);
@@ -1503,10 +1650,31 @@ public partial class MainViewModel : ViewModelBase
 
     private void ShowWorkspaceError(string title, Exception exception)
     {
+        _hasWorkspaceError = true;
         WorkspaceStatus = title;
         ResponseStatus = title;
         ResponseBody = exception.Message;
         HasResponse = true;
+    }
+
+    /// <summary>
+    /// Drops a previously shown workspace failure so a later success does not leave
+    /// the old error text sitting in the response panel and the status bar.
+    /// </summary>
+    private void ClearWorkspaceError()
+    {
+        if (!_hasWorkspaceError)
+        {
+            return;
+        }
+
+        _hasWorkspaceError = false;
+        HasResponse = false;
+        ResponseStatus = Localize("StatusReady", "Ready");
+        ResponseTime = "—";
+        ResponseBody = Localize(
+            "ResponseInspectRequest",
+            "Send a request to inspect its response.");
     }
 
     private static string GetWorkspaceName(string directory)

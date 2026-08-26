@@ -36,6 +36,6 @@ public sealed record ApiRequest
     }
 }
 
-public sealed record RequestField(string Name, string Value);
+public sealed record RequestField(string Name, string Value, bool IsEnabled = true);
 
 public sealed record ApiRequestBody(string Content, string ContentType);

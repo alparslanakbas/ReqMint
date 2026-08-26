@@ -21,6 +21,15 @@ public partial class MainViewModel
         EnvironmentVariables.Add(new EnvironmentVariableViewModel());
 
     [RelayCommand(CanExecute = nameof(CanEditEnvironment))]
+    private void RemoveEnvironmentVariable(EnvironmentVariableViewModel? variable)
+    {
+        if (variable is not null)
+        {
+            EnvironmentVariables.Remove(variable);
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanEditEnvironment))]
     private async Task SaveEnvironmentAsync(CancellationToken cancellationToken)
     {
         if (_workspaceSnapshot is null || _workspaceDirectory is null)
@@ -29,6 +38,7 @@ public partial class MainViewModel
         }
 
         IsWorkspaceBusy = true;
+        ClearWorkspaceError();
         WorkspaceStatus = "Saving environment...";
 
         try

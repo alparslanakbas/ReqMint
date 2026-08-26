@@ -14,6 +14,7 @@ public partial class MainViewModel
         }
 
         IsWorkspaceBusy = true;
+        ClearWorkspaceError();
         try
         {
             var name = CreateUniqueCollectionName(_workspaceSnapshot.Collections);
@@ -68,6 +69,7 @@ public partial class MainViewModel
         }
 
         IsWorkspaceBusy = true;
+        ClearWorkspaceError();
         try
         {
             var collections = _workspaceSnapshot.Collections

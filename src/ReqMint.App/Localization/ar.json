@@ -384,5 +384,11 @@
   "ExternalLinkOpened": "تم الفتح في متصفحك",
   "ExternalLinkFailed": "تعذّر فتح الرابط",
   "SupportInformationCopied": "تم نسخ معلومات الدعم",
-  "SupportInformationCopyFailed": "تعذّر نسخ معلومات الدعم"
+  "SupportInformationCopyFailed": "تعذّر نسخ معلومات الدعم",
+  "TooltipRemoveRow": "إزالة الصف",
+  "TooltipCloseRequest": "إغلاق الطلب المفتوح",
+  "StatusRequestClosed": "تم إغلاق الطلب",
+  "ResponseCopied": "تم نسخ الاستجابة إلى الحافظة",
+  "ResponseCopyFailed": "تعذّر نسخ الاستجابة",
+  "StatusLastWorkspaceUnavailable": "تعذّر إعادة فتح مساحة العمل الأخيرة"
 }
