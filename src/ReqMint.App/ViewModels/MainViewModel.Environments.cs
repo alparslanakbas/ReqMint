@@ -39,21 +39,26 @@ public partial class MainViewModel
 
         IsWorkspaceBusy = true;
         ClearWorkspaceError();
-        WorkspaceStatus = "Saving environment...";
+        WorkspaceStatus = Localize("StatusSavingEnvironment", "Saving environment...");
 
         try
         {
             var environmentName = EnvironmentDraftName.Trim();
             if (string.IsNullOrWhiteSpace(environmentName))
             {
-                throw new ArgumentException("An environment name is required.");
+                throw new ArgumentException(Localize(
+                    "ValidationEnvironmentNameRequired",
+                    "An environment name is required."));
             }
 
             if (_workspaceSnapshot.Environments.Any(environment =>
                 environment.Id != _editingEnvironmentId &&
                 string.Equals(environment.Name, environmentName, StringComparison.OrdinalIgnoreCase)))
             {
-                throw new ArgumentException($"Environment '{environmentName}' already exists.");
+                throw new ArgumentException(Localize(
+                    "ValidationEnvironmentExists",
+                    "Environment '{0}' already exists.",
+                    environmentName));
             }
 
             var variables = EnvironmentVariables
@@ -124,11 +129,15 @@ public partial class MainViewModel
         }
         catch (OperationCanceledException)
         {
-            WorkspaceStatus = "Environment save cancelled";
+            WorkspaceStatus = Localize(
+                "StatusEnvironmentSaveCancelled",
+                "Environment save cancelled");
         }
         catch (Exception exception)
         {
-            ShowWorkspaceError("Could not save environment", exception);
+            ShowWorkspaceError(
+                Localize("ErrorSaveEnvironment", "Could not save environment"),
+                exception);
         }
         finally
         {

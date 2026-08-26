@@ -912,19 +912,21 @@ public partial class MainViewModel : ViewModelBase
 
         IsWorkspaceBusy = true;
         ClearWorkspaceError();
-        WorkspaceStatus = "Choose a workspace folder";
+        WorkspaceStatus = Localize("StatusChooseWorkspaceFolder", "Choose a workspace folder");
 
         try
         {
             var directory = await _folderPicker.PickFolderAsync(
-                "Choose a folder for the ReqMint workspace");
+                Localize(
+                    "DialogChooseWorkspaceFolder",
+                    "Choose a folder for the ReqMint workspace"));
             if (directory is null)
             {
-                WorkspaceStatus = "Ready";
+                WorkspaceStatus = Localize("StatusReady", "Ready");
                 return;
             }
 
-            WorkspaceStatus = "Creating workspace...";
+            WorkspaceStatus = Localize("StatusCreatingWorkspace", "Creating workspace...");
             var existingWorkspace = Path.Combine(directory, WorkspaceFileName);
             if (File.Exists(existingWorkspace))
             {
@@ -933,7 +935,9 @@ public partial class MainViewModel : ViewModelBase
                 await LoadHistoryAsync(existingSnapshot.Workspace.Id, cancellationToken);
                 await RefreshGitStatusAsync(directory, cancellationToken);
                 ResetRequestDraft();
-                WorkspaceStatus = "Existing workspace opened";
+                WorkspaceStatus = Localize(
+                    "StatusExistingWorkspaceOpened",
+                    "Existing workspace opened");
                 return;
             }
 
@@ -967,11 +971,15 @@ public partial class MainViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            WorkspaceStatus = "Workspace creation cancelled";
+            WorkspaceStatus = Localize(
+                "StatusWorkspaceCreationCancelled",
+                "Workspace creation cancelled");
         }
         catch (Exception exception)
         {
-            ShowWorkspaceError("Could not create workspace", exception);
+            ShowWorkspaceError(
+                Localize("ErrorCreateWorkspace", "Could not create workspace"),
+                exception);
         }
         finally
         {
@@ -989,18 +997,19 @@ public partial class MainViewModel : ViewModelBase
 
         IsWorkspaceBusy = true;
         ClearWorkspaceError();
-        WorkspaceStatus = "Choose a workspace folder";
+        WorkspaceStatus = Localize("StatusChooseWorkspaceFolder", "Choose a workspace folder");
 
         try
         {
-            var directory = await _folderPicker.PickFolderAsync("Open a ReqMint workspace");
+            var directory = await _folderPicker.PickFolderAsync(
+                Localize("DialogOpenWorkspace", "Open a ReqMint workspace"));
             if (directory is null)
             {
-                WorkspaceStatus = "Ready";
+                WorkspaceStatus = Localize("StatusReady", "Ready");
                 return;
             }
 
-            WorkspaceStatus = "Opening workspace...";
+            WorkspaceStatus = Localize("StatusOpeningWorkspace", "Opening workspace...");
             var snapshot = await _workspaceStore.LoadAsync(directory, cancellationToken);
             ApplyWorkspace(snapshot, directory);
             await LoadHistoryAsync(snapshot.Workspace.Id, cancellationToken);
@@ -1010,11 +1019,15 @@ public partial class MainViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            WorkspaceStatus = "Opening workspace cancelled";
+            WorkspaceStatus = Localize(
+                "StatusWorkspaceOpenCancelled",
+                "Opening workspace cancelled");
         }
         catch (Exception exception)
         {
-            ShowWorkspaceError("Could not open workspace", exception);
+            ShowWorkspaceError(
+                Localize("ErrorOpenWorkspace", "Could not open workspace"),
+                exception);
         }
         finally
         {
@@ -1094,7 +1107,9 @@ public partial class MainViewModel : ViewModelBase
         }
         catch (Exception exception)
         {
-            ShowWorkspaceError("Could not save request", exception);
+            ShowWorkspaceError(
+                Localize("ErrorSaveRequest", "Could not save request"),
+                exception);
         }
         finally
         {
@@ -1127,21 +1142,21 @@ public partial class MainViewModel : ViewModelBase
         catch (ArgumentException exception)
         {
             ResponseStatus = Localize("StatusInvalidRequest", "Invalid request");
-            ResponseBody = exception.Message;
+            ResponseBody = DescribeException(exception);
             HasResponse = true;
             return;
         }
         catch (RequestTemplateResolutionException exception)
         {
             ResponseStatus = Localize("StatusMissingVariables", "Missing variables");
-            ResponseBody = exception.Message;
+            ResponseBody = DescribeException(exception);
             HasResponse = true;
             return;
         }
         catch (SecretVaultUnavailableException exception)
         {
             ResponseStatus = Localize("StatusSecretVaultUnavailable", "Secret vault unavailable");
-            ResponseBody = exception.Message;
+            ResponseBody = DescribeException(exception);
             HasResponse = true;
             return;
         }
@@ -1185,10 +1200,13 @@ public partial class MainViewModel : ViewModelBase
                 response: null,
                 "cancelled");
         }
-        catch (TimeoutException exception)
+        catch (TimeoutException)
         {
             ResponseStatus = Localize("StatusTimedOut", "Timed out");
-            ResponseBody = exception.Message;
+            ResponseBody = Localize(
+                "ErrorRequestTimedOut",
+                "The request exceeded the {0} second timeout.",
+                request.Timeout.TotalSeconds.ToString("N0"));
             HasResponse = true;
             await RecordHistoryUnlessTutorialAsync(
                 requestDocument,
@@ -1199,7 +1217,14 @@ public partial class MainViewModel : ViewModelBase
         catch (HttpRequestException exception)
         {
             ResponseStatus = Localize("StatusConnectionFailed", "Connection failed");
-            ResponseBody = exception.Message;
+            // Keep the transport detail: it is diagnostic text from the network
+            // stack, not something ReqMint can translate faithfully.
+            ResponseBody = Localize(
+                "ErrorConnectionFailed",
+                "The request could not be sent. Check the address and your connection.")
+                + Environment.NewLine
+                + Environment.NewLine
+                + exception.Message;
             HasResponse = true;
             await RecordHistoryUnlessTutorialAsync(
                 requestDocument,
@@ -1217,24 +1242,32 @@ public partial class MainViewModel : ViewModelBase
     {
         if (TimeoutSeconds is < 1 or > 600)
         {
-            throw new ArgumentException("Request timeout must be between 1 and 600 seconds.");
+            throw new ArgumentException(Localize(
+                "ValidationTimeoutRange",
+                "Request timeout must be between 1 and 600 seconds."));
         }
 
         if (string.IsNullOrWhiteSpace(SelectedMethod))
         {
-            throw new ArgumentException("An HTTP method is required.");
+            throw new ArgumentException(Localize(
+                "ValidationMethodRequired",
+                "An HTTP method is required."));
         }
 
         if (string.IsNullOrWhiteSpace(Url))
         {
-            throw new ArgumentException("A request URL is required.");
+            throw new ArgumentException(Localize(
+                "ValidationUrlRequired",
+                "A request URL is required."));
         }
 
         var isHttpUrl = Uri.TryCreate(Url, UriKind.Absolute, out var parsedUrl) &&
             (parsedUrl.Scheme == Uri.UriSchemeHttp || parsedUrl.Scheme == Uri.UriSchemeHttps);
         if (!isHttpUrl && !RequestTemplate.ContainsVariables(Url))
         {
-            throw new ArgumentException("A valid HTTP URL or URL template is required.");
+            throw new ArgumentException(Localize(
+                "ValidationUrlInvalid",
+                "A valid HTTP URL or URL template is required."));
         }
 
         var name = string.IsNullOrWhiteSpace(RequestName)
@@ -1653,9 +1686,27 @@ public partial class MainViewModel : ViewModelBase
         _hasWorkspaceError = true;
         WorkspaceStatus = title;
         ResponseStatus = title;
-        ResponseBody = exception.Message;
+        ResponseBody = DescribeException(exception);
         HasResponse = true;
     }
+
+    /// <summary>
+    /// Turns an exception raised by a lower layer into text the user can read in
+    /// their own language. Anything ReqMint cannot describe keeps its original
+    /// technical message so the detail is never lost.
+    /// </summary>
+    private string DescribeException(Exception exception) => exception switch
+    {
+        RequestTemplateResolutionException missing => Localize(
+            "ErrorMissingEnvironmentValues",
+            "Missing environment values: {0}.",
+            string.Join(", ", missing.MissingVariables)),
+        SecretVaultUnavailableException => Localize(
+            "ErrorSecretVaultUnavailable",
+            "Secure secret storage is not available on this platform yet. "
+                + "ReqMint will not use a plaintext fallback."),
+        _ => exception.Message,
+    };
 
     /// <summary>
     /// Drops a previously shown workspace failure so a later success does not leave

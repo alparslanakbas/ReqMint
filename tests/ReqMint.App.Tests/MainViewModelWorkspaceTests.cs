@@ -1927,6 +1927,86 @@ public sealed class MainViewModelWorkspaceTests
         };
     }
 
+    [Fact]
+    public async Task SendCommand_DescribesMissingEnvironmentValuesInsteadOfLeakingTheCoreMessage()
+    {
+        var viewModel = CreateViewModel(new RecordingWorkspaceStore(), CreateWorkspacePath());
+        viewModel.Url = "{{BASE_URL}}/orders/{{ORDER_ID}}";
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.Equal("Missing variables", viewModel.ResponseStatus);
+        Assert.Equal(
+            "Missing environment values: BASE_URL, ORDER_ID.",
+            viewModel.ResponseBody);
+    }
+
+    [Fact]
+    public async Task SendCommand_DescribesATimeoutWithTheConfiguredNumberOfSeconds()
+    {
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore(),
+            CreateWorkspacePath(),
+            new TimingOutRequestExecutor());
+        viewModel.Url = "https://api.example.com/orders";
+        viewModel.TimeoutSeconds = 5;
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.Equal("Timed out", viewModel.ResponseStatus);
+        Assert.Equal("The request exceeded the 5 second timeout.", viewModel.ResponseBody);
+    }
+
+    [Fact]
+    public async Task SendCommand_KeepsTheTransportDetailUnderALocalizableConnectionMessage()
+    {
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore(),
+            CreateWorkspacePath(),
+            new FailingRequestExecutor());
+        viewModel.Url = "https://api.example.com/orders";
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.Equal("Connection failed", viewModel.ResponseStatus);
+        Assert.StartsWith(
+            "The request could not be sent. Check the address and your connection.",
+            viewModel.ResponseBody,
+            StringComparison.Ordinal);
+        Assert.Contains("No such host is known.", viewModel.ResponseBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SaveEnvironmentCommand_ReportsADuplicateNameWithALocalizableMessage()
+    {
+        var snapshot = CreateSnapshotWithEnvironments();
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        viewModel.EnvironmentDraftName = "Staging";
+        await viewModel.SaveEnvironmentCommand.ExecuteAsync(null);
+
+        Assert.Equal("Could not save environment", viewModel.ResponseStatus);
+        Assert.Equal("Environment 'Staging' already exists.", viewModel.ResponseBody);
+    }
+
+    private sealed class TimingOutRequestExecutor : IRequestExecutor
+    {
+        public Task<ApiResponse> ExecuteAsync(
+            ApiRequest request,
+            CancellationToken cancellationToken = default) =>
+            throw new TimeoutException("The request exceeded the 5 second timeout.");
+    }
+
+    private sealed class FailingRequestExecutor : IRequestExecutor
+    {
+        public Task<ApiResponse> ExecuteAsync(
+            ApiRequest request,
+            CancellationToken cancellationToken = default) =>
+            throw new HttpRequestException("No such host is known.");
+    }
+
     private static MainViewModel CreateViewModel(
         IWorkspaceStore store,
         string directory,

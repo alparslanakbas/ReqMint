@@ -51,6 +51,29 @@ public sealed class LocalizationResourceContractTests
     }
 
     [Fact]
+    public void WorkspaceStatusesAndErrors_NeverUseHardCodedEnglish()
+    {
+        foreach (var file in new[]
+                 {
+                     "MainViewModel.cs",
+                     "MainViewModel.Environments.cs",
+                     "MainViewModel.Collections.cs",
+                 })
+        {
+            var viewModel = File.ReadAllText(
+                RepositoryPath("src", "ReqMint.App", "ViewModels", file));
+
+            Assert.DoesNotContain("WorkspaceStatus = \"", viewModel, StringComparison.Ordinal);
+            Assert.DoesNotContain("ShowWorkspaceError(\"", viewModel, StringComparison.Ordinal);
+            Assert.DoesNotContain("PickFolderAsync(\"", viewModel, StringComparison.Ordinal);
+            Assert.DoesNotContain(
+                "throw new ArgumentException(\"",
+                viewModel,
+                StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void ResponseHeader_UsesLocalizedResources()
     {
         var view = File.ReadAllText(

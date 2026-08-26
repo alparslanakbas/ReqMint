@@ -37,7 +37,9 @@ public partial class MainViewModel
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            ShowWorkspaceError("Could not create collection", exception);
+            ShowWorkspaceError(
+                Localize("ErrorCreateCollection", "Could not create collection"),
+                exception);
         }
         finally
         {
@@ -56,7 +58,11 @@ public partial class MainViewModel
         var name = CollectionDraftName.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            ShowWorkspaceError("Could not rename collection", new ArgumentException("A collection name is required."));
+            ShowWorkspaceError(
+                Localize("ErrorRenameCollection", "Could not rename collection"),
+                new ArgumentException(Localize(
+                    "ValidationCollectionNameRequired",
+                    "A collection name is required.")));
             return;
         }
 
@@ -64,7 +70,12 @@ public partial class MainViewModel
             collection.Id != _selectedCollectionId &&
             string.Equals(collection.Name, name, StringComparison.OrdinalIgnoreCase)))
         {
-            ShowWorkspaceError("Could not rename collection", new ArgumentException($"Collection '{name}' already exists."));
+            ShowWorkspaceError(
+                Localize("ErrorRenameCollection", "Could not rename collection"),
+                new ArgumentException(Localize(
+                    "ValidationCollectionExists",
+                    "Collection '{0}' already exists.",
+                    name)));
             return;
         }
 
@@ -94,7 +105,9 @@ public partial class MainViewModel
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            ShowWorkspaceError("Could not rename collection", exception);
+            ShowWorkspaceError(
+                Localize("ErrorRenameCollection", "Could not rename collection"),
+                exception);
         }
         finally
         {
