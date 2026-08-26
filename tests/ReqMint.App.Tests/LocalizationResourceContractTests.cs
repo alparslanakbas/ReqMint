@@ -74,6 +74,61 @@ public sealed class LocalizationResourceContractTests
     }
 
     [Fact]
+    public void EveryLocalizationKeyUsedByTheApplication_Exists()
+    {
+        // A misspelled key never throws: the lookup misses and the English
+        // fallback is shown instead, so only a scan like this can catch it.
+        var english = ReadResources("en");
+        var sourceDirectory = RepositoryPath("src", "ReqMint.App");
+        var themeKeys = new HashSet<string>(
+            Regex.Matches(
+                    File.ReadAllText(Path.Combine(sourceDirectory, "App.axaml")),
+                    "x:Key=\"(?<key>[A-Za-z0-9_]+)\"")
+                .Select(match => match.Groups["key"].Value),
+            StringComparer.Ordinal);
+
+        var missing = new List<string>();
+
+        foreach (var file in EnumerateSources(sourceDirectory, "*.cs"))
+        {
+            var text = File.ReadAllText(file);
+            foreach (var pattern in new[]
+                     {
+                         "Localize\\(\\s*\"(?<key>[A-Za-z0-9_]+)\"",
+                         "GetString\\(\"(?<key>[A-Za-z0-9_]+)\"\\)",
+                     })
+            {
+                missing.AddRange(Regex.Matches(text, pattern)
+                    .Select(match => match.Groups["key"].Value)
+                    .Where(key => !english.ContainsKey(key))
+                    .Select(key => $"{Path.GetFileName(file)}: {key}"));
+            }
+        }
+
+        foreach (var file in EnumerateSources(sourceDirectory, "*.axaml"))
+        {
+            missing.AddRange(
+                Regex.Matches(
+                        File.ReadAllText(file),
+                        "\\{DynamicResource (?<key>[A-Za-z0-9_]+)\\}")
+                    .Select(match => match.Groups["key"].Value)
+                    .Where(key => !english.ContainsKey(key) && !themeKeys.Contains(key))
+                    .Select(key => $"{Path.GetFileName(file)}: {key}"));
+        }
+
+        Assert.Empty(missing.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal));
+    }
+
+    private static IEnumerable<string> EnumerateSources(string directory, string pattern) =>
+        Directory.EnumerateFiles(directory, pattern, SearchOption.AllDirectories)
+            .Where(file =>
+            {
+                var relative = Path.GetRelativePath(directory, file);
+                return !relative.StartsWith("obj" + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+                    && !relative.StartsWith("bin" + Path.DirectorySeparatorChar, StringComparison.Ordinal);
+            });
+
+    [Fact]
     public void ResponseHeader_UsesLocalizedResources()
     {
         var view = File.ReadAllText(
