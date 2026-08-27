@@ -31,6 +31,11 @@
             <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource Mint500}" />
             <SolidColorBrush x:Key="AccentMutedBrush" Color="{StaticResource Mint700}" />
             <SolidColorBrush x:Key="MethodGetBrush" Color="{StaticResource Blue500}" />
+            <!-- Startup defaults; ThemeService replaces these per theme. -->
+            <SolidColorBrush x:Key="MethodPutBrush" Color="#C084FC" />
+            <SolidColorBrush x:Key="MethodPatchBrush" Color="{StaticResource Mint500}" />
+            <SolidColorBrush x:Key="MethodPostBrush" Color="{StaticResource Warning500}" />
+            <SolidColorBrush x:Key="MethodDeleteBrush" Color="{StaticResource DiffRemoved500}" />
             <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource Warning500}" />
             <SolidColorBrush x:Key="DiffAddedBrush" Color="{StaticResource DiffAdded500}" />
             <SolidColorBrush x:Key="DiffRemovedBrush" Color="{StaticResource DiffRemoved500}" />
@@ -174,19 +179,19 @@
         </Style>
 
         <Style Selector="TextBlock.method.post">
-            <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource MethodPostBrush}" />
         </Style>
 
         <Style Selector="TextBlock.method.put">
-            <Setter Property="Foreground" Value="{DynamicResource DiffHunkBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource MethodPutBrush}" />
         </Style>
 
         <Style Selector="TextBlock.method.patch">
-            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource MethodPatchBrush}" />
         </Style>
 
         <Style Selector="TextBlock.method.delete">
-            <Setter Property="Foreground" Value="{DynamicResource DiffRemovedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource MethodDeleteBrush}" />
         </Style>
 
         <!-- Response status colours reuse the theme's existing semantic palette so
