@@ -638,6 +638,7 @@ public partial class MainViewModel : ViewModelBase
         ResponsePreviewLimitMegabytes = appSettings.Current.ResponsePreviewLimitMegabytes;
         InitializeOnboarding(appSettings.Current);
         _cleanRequestDraft = CaptureRequestDraft();
+        EnsureActiveTab();
     }
 
     [RelayCommand]
@@ -885,14 +886,14 @@ public partial class MainViewModel : ViewModelBase
     /// unsaved-changes prompt first.
     /// </summary>
     [RelayCommand]
-    private async Task CloseRequestAsync(CancellationToken cancellationToken)
+    private async Task CloseRequestAsync()
     {
-        if (!await ConfirmNavigationAsync(cancellationToken))
+        if (ActiveTab is not { } tab)
         {
             return;
         }
 
-        ResetRequestDraft();
+        await CloseTabAsync(tab);
         WorkspaceStatus = Localize("StatusRequestClosed", "Request closed");
     }
 
@@ -906,15 +907,7 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand(CanExecute = nameof(CanSaveRequest))]
-    private async Task NewRequestAsync(CancellationToken cancellationToken)
-    {
-        if (!await ConfirmNavigationAsync(cancellationToken))
-        {
-            return;
-        }
-
-        ResetRequestDraft();
-    }
+    private Task NewRequestAsync(CancellationToken cancellationToken) => NewTabAsync();
 
     private void ResetRequestDraft()
     {
@@ -1370,6 +1363,7 @@ public partial class MainViewModel : ViewModelBase
     {
         CloseCollectionRunner();
         IsApplicationSettingsVisible = false;
+        var workspaceChanged = _workspaceSnapshot?.Workspace.Id != snapshot.Workspace.Id;
         var isActiveTutorialWorkspace = IsActiveTutorialWorkspace(directory);
         if (_activeTutorialSession is not null && !isActiveTutorialWorkspace)
         {
@@ -1415,6 +1409,15 @@ public partial class MainViewModel : ViewModelBase
 
         RefreshCollections();
 
+        SyncTabsWithWorkspace(snapshot, workspaceChanged);
+        EnsureActiveTab();
+        if (ActiveTab is { } activeTab)
+        {
+            activeTab.RequestId = _selectedRequestId;
+            activeTab.CollectionId = _selectedCollectionId;
+        }
+
+        RefreshActiveTabHeader();
         RememberWorkspace(directory, isActiveTutorialWorkspace);
 
         SaveRequestCommand.NotifyCanExecuteChanged();
@@ -1563,38 +1566,17 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        if (!await ConfirmNavigationAsync(CancellationToken.None))
-        {
-            return;
-        }
-
         _selectedCollectionId = collection.Id;
         CollectionDraftName = collection.Name;
         UpdateCollectionRunAvailability();
         WorkspaceStatus = collection.Name;
-        ResetRequestDraft();
+        await Task.CompletedTask;
     }
 
-    private async Task OpenRequest(RequestDocument request, Guid collectionId)
-    {
-        if (!await ConfirmNavigationAsync(CancellationToken.None))
-        {
-            return;
-        }
-
-        _selectedRequestId = request.Id;
-        _selectedCollectionId = collectionId;
-
-        LoadRequestDraft(request);
-        ResponseStatus = Localize("StatusReady", "Ready");
-        ResponseStatusKind = ResponseStatusKind.Neutral;
-        ResponseTime = "—";
-        ResponseBody = Localize(
-            "ResponseInspectSavedRequest",
-            "Send the saved request to inspect its response.");
-        WorkspaceStatus = Localize("StatusOpenedItem", "Opened {0}", request.Name);
-        MarkRequestClean();
-    }
+    // Opening a request no longer threatens unsaved work: it lands in its own
+    // tab, so the unsaved prompt belongs to closing a tab instead.
+    private Task OpenRequest(RequestDocument request, Guid collectionId) =>
+        OpenRequestInTabAsync(request, collectionId);
 
     private void LoadRequestDraft(RequestDocument request)
     {
@@ -1700,7 +1682,15 @@ public partial class MainViewModel : ViewModelBase
         return choice == UnsavedChangesChoice.Discard;
     }
 
-    private void MarkRequestClean() => _cleanRequestDraft = CaptureRequestDraft();
+    private void MarkRequestClean()
+    {
+        _cleanRequestDraft = CaptureRequestDraft();
+
+        // The dirty marker is derived from this baseline, so the tab strip has to
+        // be told: otherwise a freshly reset tab keeps looking unsaved and is no
+        // longer reused as a scratch pad.
+        RefreshActiveTabHeader();
+    }
 
     private bool HasUnsavedRequestChanges() => !string.Equals(
         _cleanRequestDraft,

@@ -1589,28 +1589,54 @@ public sealed class MainViewModelWorkspaceTests
         Assert.Equal("Run history cleared", viewModel.CollectionRunHistoryStatus);
     }
 
+    [Fact]
+    public async Task NewRequestCommand_KeepsUnsavedWorkInItsOwnTabInsteadOfPrompting()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var prompt = new StubUnsavedChangesPrompt { Choice = UnsavedChangesChoice.Cancel };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath(), prompt: prompt);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        viewModel.Url = "https://api.example.com/changed";
+        var edited = viewModel.ActiveTab!;
+
+        await viewModel.NewRequestCommand.ExecuteAsync(null);
+
+        // The new tab is empty, nothing was discarded and nothing was asked.
+        Assert.Equal(string.Empty, viewModel.Url);
+        Assert.Equal(0, prompt.CallCount);
+        Assert.Equal(2, viewModel.Tabs.Count);
+        Assert.NotSame(edited, viewModel.ActiveTab);
+
+        await edited.SelectCommand.ExecuteAsync(null);
+
+        Assert.Equal("https://api.example.com/changed", viewModel.Url);
+    }
+
     [Theory]
-    [InlineData(UnsavedChangesChoice.Cancel, "https://api.example.com/changed")]
-    [InlineData(UnsavedChangesChoice.Discard, "")]
-    public async Task NewRequestCommand_ProtectsUnsavedChanges(
+    [InlineData(UnsavedChangesChoice.Cancel, 2)]
+    [InlineData(UnsavedChangesChoice.Discard, 1)]
+    public async Task ClosingADirtyTab_AsksBeforeLosingTheChanges(
         UnsavedChangesChoice choice,
-        string expectedUrl)
+        int expectedTabCount)
     {
         var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
         var prompt = new StubUnsavedChangesPrompt { Choice = choice };
         var viewModel = CreateViewModel(store, CreateWorkspacePath(), prompt: prompt);
         await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
         await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
-        viewModel.Url = "https://api.example.com/changed";
+        await viewModel.NewTabCommand.ExecuteAsync(null);
+        viewModel.Url = "https://api.example.com/scratch";
+        var scratch = viewModel.ActiveTab!;
 
-        await viewModel.NewRequestCommand.ExecuteAsync(null);
+        await scratch.CloseCommand.ExecuteAsync(null);
 
-        Assert.Equal(expectedUrl, viewModel.Url);
         Assert.Equal(1, prompt.CallCount);
+        Assert.Equal(expectedTabCount, viewModel.Tabs.Count);
     }
 
     [Fact]
-    public async Task NewRequestCommand_SavesDirtyRequestBeforeNavigating()
+    public async Task ClosingADirtyTab_CanSaveItFirst()
     {
         var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
         var prompt = new StubUnsavedChangesPrompt { Choice = UnsavedChangesChoice.Save };
@@ -1619,10 +1645,11 @@ public sealed class MainViewModelWorkspaceTests
         await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
         viewModel.Url = "https://api.example.com/changed";
 
-        await viewModel.NewRequestCommand.ExecuteAsync(null);
+        await viewModel.ActiveTab!.CloseCommand.ExecuteAsync(null);
 
-        Assert.Equal("https://api.example.com/changed", store.SavedSnapshot!.Collections[0].Requests[0].Url);
-        Assert.Equal(string.Empty, viewModel.Url);
+        Assert.Equal(
+            "https://api.example.com/changed",
+            store.SavedSnapshot!.Collections[0].Requests[0].Url);
     }
 
     [Fact]
@@ -2318,6 +2345,220 @@ public sealed class MainViewModelWorkspaceTests
         {
             Collections = [collection with { Requests = [.. collection.Requests, remove] }],
         };
+    }
+
+    [Fact]
+    public void Tabs_StartWithASingleEmptyTab()
+    {
+        var viewModel = CreateViewModel(new RecordingWorkspaceStore(), CreateWorkspacePath());
+
+        var tab = Assert.Single(viewModel.Tabs);
+        Assert.Same(tab, viewModel.ActiveTab);
+        Assert.True(tab.IsSelected);
+        Assert.False(viewModel.HasMultipleTabs);
+    }
+
+    [Fact]
+    public async Task Tabs_KeepEachRequestsEditorStateSeparate()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshotWithTwoRequests() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        var first = viewModel.ActiveTab!;
+        viewModel.Url = "https://api.example.com/first";
+        viewModel.Headers.Add(new RequestFieldViewModel("X-First", "1"));
+
+        await viewModel.Collections[0].Requests[1].OpenCommand.ExecuteAsync(null);
+        var second = viewModel.ActiveTab!;
+
+        Assert.NotSame(first, second);
+        Assert.Equal(2, viewModel.Tabs.Count);
+        Assert.Equal("https://api.example.com/orders/42", viewModel.Url);
+        Assert.DoesNotContain(viewModel.Headers, header => header.Name == "X-First");
+
+        await first.SelectCommand.ExecuteAsync(null);
+
+        Assert.Equal("https://api.example.com/first", viewModel.Url);
+        Assert.Contains(viewModel.Headers, header => header.Name == "X-First");
+    }
+
+    [Fact]
+    public async Task Tabs_ReuseTheTabThatAlreadyHoldsARequest()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshotWithTwoRequests() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[1].OpenCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, viewModel.Tabs.Count);
+        Assert.Equal("Create order", viewModel.ActiveTab!.Title);
+    }
+
+    [Fact]
+    public async Task Tabs_ReuseAnUntouchedScratchTabInsteadOfPilingUp()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+
+        Assert.Single(viewModel.Tabs);
+        Assert.Equal("Create order", viewModel.ActiveTab!.Title);
+    }
+
+    [Fact]
+    public async Task Tabs_ShowTheTitleMethodAndUnsavedMarkerOfTheirRequest()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        var tab = viewModel.ActiveTab!;
+
+        Assert.Equal("Create order", tab.Title);
+        Assert.Equal("POST", tab.Method);
+        Assert.True(tab.IsPostMethod);
+        Assert.False(tab.HasUnsavedChanges);
+
+        viewModel.Url = "https://api.example.com/changed";
+        Assert.True(tab.HasUnsavedChanges);
+
+        await viewModel.SaveRequestCommand.ExecuteAsync(null);
+        Assert.False(tab.HasUnsavedChanges);
+
+        viewModel.RequestName = "Renamed";
+        Assert.Equal("Renamed", tab.Title);
+    }
+
+    [Fact]
+    public async Task Tabs_TellApartTwoRequestsThatShareAName()
+    {
+        var snapshot = CreateSnapshot();
+        var twin = snapshot.Collections[0].Requests[0] with
+        {
+            Id = Guid.Parse("77777777-7777-7777-7777-777777777777"),
+        };
+        var collection = snapshot.Collections[0] with
+        {
+            Requests = [.. snapshot.Collections[0].Requests, twin],
+        };
+        var store = new RecordingWorkspaceStore
+        {
+            SnapshotToLoad = snapshot with { Collections = [collection] },
+        };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[1].OpenCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, viewModel.Tabs.Count);
+        Assert.All(viewModel.Tabs, tab => Assert.True(tab.HasSubtitle));
+        Assert.NotEqual(viewModel.Tabs[0].Subtitle, viewModel.Tabs[1].Subtitle);
+    }
+
+    [Fact]
+    public async Task Tabs_ClosingTheLastOneLeavesAFreshEmptyTab()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+
+        await viewModel.ActiveTab!.CloseCommand.ExecuteAsync(null);
+
+        var tab = Assert.Single(viewModel.Tabs);
+        Assert.Null(tab.RequestId);
+        Assert.Equal("New request", viewModel.RequestName);
+        Assert.Equal(string.Empty, viewModel.Url);
+    }
+
+    [Fact]
+    public async Task Tabs_ActivateANeighbourWhenTheSelectedTabIsClosed()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshotWithTwoRequests() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[1].OpenCommand.ExecuteAsync(null);
+        var closing = viewModel.ActiveTab!;
+
+        await closing.CloseCommand.ExecuteAsync(null);
+
+        var remaining = Assert.Single(viewModel.Tabs);
+        Assert.Same(remaining, viewModel.ActiveTab);
+        Assert.True(remaining.IsSelected);
+        Assert.Equal("Create order", viewModel.RequestName);
+    }
+
+    [Fact]
+    public async Task Tabs_CanBeReordered()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshotWithTwoRequests() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[1].OpenCommand.ExecuteAsync(null);
+        var second = viewModel.Tabs[1];
+
+        second.MoveLeftCommand.Execute(null);
+        Assert.Same(second, viewModel.Tabs[0]);
+
+        second.MoveLeftCommand.Execute(null);
+        Assert.Same(second, viewModel.Tabs[0]);
+
+        viewModel.MoveTabTo(second, 1);
+        Assert.Same(second, viewModel.Tabs[1]);
+    }
+
+    [Fact]
+    public async Task Tabs_DropTheTabOfADeletedRequest()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshotWithTwoRequests() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[1].OpenCommand.ExecuteAsync(null);
+        Assert.Equal(2, viewModel.Tabs.Count);
+
+        await viewModel.Collections[0].Requests[0].DeleteCommand.ExecuteAsync(null);
+
+        Assert.Single(viewModel.Tabs);
+        Assert.Equal("Remove order", viewModel.ActiveTab!.Title);
+    }
+
+    [Fact]
+    public async Task Tabs_AreClearedWhenAnotherWorkspaceIsOpened()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshotWithTwoRequests() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[1].OpenCommand.ExecuteAsync(null);
+        Assert.Equal(2, viewModel.Tabs.Count);
+
+        var other = CreateSnapshot() with
+        {
+            Workspace = CreateSnapshot().Workspace with
+            {
+                Id = Guid.Parse("88888888-8888-8888-8888-888888888888"),
+            },
+        };
+        var otherStore = new RecordingWorkspaceStore { SnapshotToLoad = other };
+        typeof(MainViewModel)
+            .GetField("_workspaceStore", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .SetValue(viewModel, otherStore);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        Assert.Single(viewModel.Tabs);
+        Assert.Null(viewModel.Tabs[0].RequestId);
     }
 
     private static MainViewModel CreateViewModel(

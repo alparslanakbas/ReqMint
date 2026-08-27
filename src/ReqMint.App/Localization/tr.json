@@ -438,5 +438,10 @@
   "StatusRequestDuplicated": "{0} çoğaltıldı",
   "StatusRequestDeleted": "{0} silindi",
   "ErrorDuplicateRequest": "İstek çoğaltılamadı",
-  "ErrorDeleteRequest": "İstek silinemedi"
+  "ErrorDeleteRequest": "İstek silinemedi",
+  "TabNew": "Yeni sekme aç",
+  "TabMoveLeft": "Sola taşı",
+  "TabMoveRight": "Sağa taşı",
+  "TabUnsavedTip": "Bu sekmede kaydedilmemiş değişiklik var",
+  "TabUnsavedOrigin": "Henüz kaydedilmedi"
 }

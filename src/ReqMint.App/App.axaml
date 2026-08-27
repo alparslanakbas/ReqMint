@@ -149,6 +149,22 @@
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         </Style>
 
+        <Style Selector="Border.requestTab">
+            <Setter Property="CornerRadius" Value="7" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <Style Selector="Border.requestTab.selected">
+            <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+        </Style>
+
+        <Style Selector="Button.requestTabBody">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
         <Style Selector="TextBlock.method">
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
         </Style>

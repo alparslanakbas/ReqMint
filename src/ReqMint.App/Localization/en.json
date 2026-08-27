@@ -438,5 +438,10 @@
   "StatusRequestDuplicated": "Duplicated {0}",
   "StatusRequestDeleted": "Deleted {0}",
   "ErrorDuplicateRequest": "Could not duplicate request",
-  "ErrorDeleteRequest": "Could not delete request"
+  "ErrorDeleteRequest": "Could not delete request",
+  "TabNew": "Open a new tab",
+  "TabMoveLeft": "Move left",
+  "TabMoveRight": "Move right",
+  "TabUnsavedTip": "This tab has unsaved changes",
+  "TabUnsavedOrigin": "Not saved yet"
 }

@@ -166,8 +166,11 @@ public sealed class LocalizationResourceContractTests
     [Fact]
     public void ReadyResponseState_UsesLocalizedResources()
     {
-        var viewModel = File.ReadAllText(
-            RepositoryPath("src", "ReqMint.App", "ViewModels", "MainViewModel.cs"));
+        var viewModel = string.Join(
+            Environment.NewLine,
+            Directory.EnumerateFiles(
+                RepositoryPath("src", "ReqMint.App", "ViewModels"),
+                "MainViewModel*.cs").Select(File.ReadAllText));
 
         Assert.Contains(
             "ResponseStatus = Localize(\"StatusReady\", \"Ready\")",

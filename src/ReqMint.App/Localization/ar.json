@@ -438,5 +438,10 @@
   "StatusRequestDuplicated": "تم تكرار {0}",
   "StatusRequestDeleted": "تم حذف {0}",
   "ErrorDuplicateRequest": "تعذّر تكرار الطلب",
-  "ErrorDeleteRequest": "تعذّر حذف الطلب"
+  "ErrorDeleteRequest": "تعذّر حذف الطلب",
+  "TabNew": "فتح علامة تبويب جديدة",
+  "TabMoveLeft": "نقل لليسار",
+  "TabMoveRight": "نقل لليمين",
+  "TabUnsavedTip": "تحتوي علامة التبويب هذه على تغييرات غير محفوظة",
+  "TabUnsavedOrigin": "لم يتم الحفظ بعد"
 }

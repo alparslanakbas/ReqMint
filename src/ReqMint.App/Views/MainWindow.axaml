@@ -523,31 +523,109 @@
             <!-- Request workspace and Git diff preview -->
             <Grid Grid.Column="2">
             <Grid RowDefinitions="44,72,Auto,*,38" IsVisible="{Binding IsRequestWorkspaceVisible}">
-                <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-                    <StackPanel Orientation="Horizontal" Margin="14,0" VerticalAlignment="Center" Spacing="10">
-                        <TextBlock Text="{Binding SelectedMethod}"
-                                   Classes="method"
-                                   Classes.get="{Binding IsGetMethod}"
-                                   Classes.post="{Binding IsPostMethod}"
-                                   Classes.put="{Binding IsPutMethod}"
-                                   Classes.patch="{Binding IsPatchMethod}"
-                                   Classes.delete="{Binding IsDeleteMethod}"
-                                   FontSize="11"
-                                   FontWeight="Bold" />
-                        <TextBox Text="{Binding RequestName}"
-                                 Width="240"
+                <Border Grid.Row="0"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="0,0,0,1">
+                    <Grid ColumnDefinitions="*,Auto,10,220">
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Disabled">
+                            <ItemsControl x:Name="RequestTabStrip"
+                                          Margin="8,0"
+                                          ItemsSource="{Binding Tabs}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="4" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:RequestTabViewModel">
+                                        <Border Classes="requestTab"
+                                                Classes.selected="{Binding IsSelected}"
+                                                VerticalAlignment="Center">
+                                            <Grid ColumnDefinitions="Auto,Auto">
+                                                <Button Classes="requestTabBody"
+                                                        BorderThickness="0"
+                                                        Padding="10,4"
+                                                        MaxWidth="230"
+                                                        Command="{Binding SelectCommand}">
+                                                    <Button.ContextMenu>
+                                                        <ContextMenu>
+                                                            <MenuItem Header="{DynamicResource TabMoveLeft}"
+                                                                      Command="{Binding MoveLeftCommand}" />
+                                                            <MenuItem Header="{DynamicResource TabMoveRight}"
+                                                                      Command="{Binding MoveRightCommand}" />
+                                                            <Separator />
+                                                            <MenuItem Header="{DynamicResource TooltipCloseRequest}"
+                                                                      Command="{Binding CloseCommand}" />
+                                                        </ContextMenu>
+                                                    </Button.ContextMenu>
+                                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                                        <TextBlock Text="{Binding Method}"
+                                                                   Classes="method"
+                                                                   Classes.get="{Binding IsGetMethod}"
+                                                                   Classes.post="{Binding IsPostMethod}"
+                                                                   Classes.put="{Binding IsPutMethod}"
+                                                                   Classes.patch="{Binding IsPatchMethod}"
+                                                                   Classes.delete="{Binding IsDeleteMethod}"
+                                                                   FontSize="11"
+                                                                   FontWeight="Bold"
+                                                                   VerticalAlignment="Center" />
+                                                        <StackPanel VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Title}"
+                                                                       FontWeight="SemiBold"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                            <TextBlock Text="{Binding Subtitle}"
+                                                                       IsVisible="{Binding HasSubtitle}"
+                                                                       Classes="secondary"
+                                                                       FontSize="10"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                        </StackPanel>
+                                                        <TextBlock Text="●"
+                                                                   FontSize="11"
+                                                                   VerticalAlignment="Center"
+                                                                   IsVisible="{Binding HasUnsavedChanges}"
+                                                                   ToolTip.Tip="{DynamicResource TabUnsavedTip}"
+                                                                   Foreground="{DynamicResource WarningBrush}" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button Grid.Column="1"
+                                                        Content="×"
+                                                        Width="26"
+                                                        Height="26"
+                                                        Padding="0"
+                                                        Margin="0,0,4,0"
+                                                        VerticalAlignment="Center"
+                                                        BorderThickness="0"
+                                                        Background="Transparent"
+                                                        Command="{Binding CloseCommand}"
+                                                        AutomationProperties.Name="{DynamicResource TooltipCloseRequest}"
+                                                        ToolTip.Tip="{DynamicResource TooltipCloseRequest}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <Button Grid.Column="1"
+                                Content="＋"
+                                Width="30"
+                                Height="30"
+                                Padding="0"
+                                VerticalAlignment="Center"
+                                Command="{Binding NewTabCommand}"
+                                AutomationProperties.Name="{DynamicResource TabNew}"
+                                ToolTip.Tip="{DynamicResource TabNew}" />
+
+                        <TextBox Grid.Column="3"
+                                 Text="{Binding RequestName}"
                                  BorderThickness="0"
                                  Background="Transparent"
                                  FontWeight="SemiBold"
+                                 VerticalAlignment="Center"
                                  PlaceholderText="{DynamicResource TextRequestName}" />
-                        <Button Content="×"
-                                Width="28"
-                                Height="28"
-                                Padding="0"
-                                Command="{Binding CloseRequestCommand}"
-                                AutomationProperties.Name="{DynamicResource TooltipCloseRequest}"
-                                ToolTip.Tip="{DynamicResource TooltipCloseRequest}" />
-                    </StackPanel>
+                    </Grid>
                 </Border>
 
                 <Grid Grid.Row="1" Margin="16,14" ColumnDefinitions="108,12,*,12,86,8,104">
