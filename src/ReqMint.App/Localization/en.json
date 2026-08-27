@@ -425,5 +425,18 @@
   "CommandPaletteRequests": "Request",
   "CommandPaletteTheme": "Theme: {0}",
   "CommandPaletteLanguage": "Language: {0}",
-  "CommandPaletteNoResults": "No matching command"
+  "CommandPaletteNoResults": "No matching command",
+  "TextClearFilter": "Clear the filter",
+  "TextNoMatchingRequests": "No request matches the filter.",
+  "TextResizeResponse": "Drag to resize the response area",
+  "RequestMenuOpen": "Open",
+  "RequestMenuDuplicate": "Duplicate",
+  "RequestMenuDelete": "Delete",
+  "DeleteRequestTitle": "Delete request",
+  "DeleteRequestConfirm": "Delete request",
+  "DeleteRequestMessage": "Permanently remove '{0}' from this workspace?",
+  "StatusRequestDuplicated": "Duplicated {0}",
+  "StatusRequestDeleted": "Deleted {0}",
+  "ErrorDuplicateRequest": "Could not duplicate request",
+  "ErrorDeleteRequest": "Could not delete request"
 }

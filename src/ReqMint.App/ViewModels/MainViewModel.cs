@@ -119,7 +119,22 @@ public partial class MainViewModel : ViewModelBase
     public partial string CollectionDraftName { get; set; } = "Requests";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsGetMethod))]
+    [NotifyPropertyChangedFor(nameof(IsPostMethod))]
+    [NotifyPropertyChangedFor(nameof(IsPutMethod))]
+    [NotifyPropertyChangedFor(nameof(IsPatchMethod))]
+    [NotifyPropertyChangedFor(nameof(IsDeleteMethod))]
     public partial string SelectedMethod { get; set; } = "GET";
+
+    public bool IsGetMethod => HttpMethodStyle.IsGet(SelectedMethod);
+
+    public bool IsPostMethod => HttpMethodStyle.IsPost(SelectedMethod);
+
+    public bool IsPutMethod => HttpMethodStyle.IsPut(SelectedMethod);
+
+    public bool IsPatchMethod => HttpMethodStyle.IsPatch(SelectedMethod);
+
+    public bool IsDeleteMethod => HttpMethodStyle.IsDelete(SelectedMethod);
 
     [ObservableProperty]
     public partial string Url { get; set; } = "https://api.example.com/v1/orders/42";
@@ -160,6 +175,32 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial string ResponseStatus { get; set; } = "Ready";
+
+    /// <summary>
+    /// Drives the colour of the response status. The text itself always carries
+    /// the same information, so colour only reinforces it.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsResponseSuccess))]
+    [NotifyPropertyChangedFor(nameof(IsResponseRedirect))]
+    [NotifyPropertyChangedFor(nameof(IsResponseClientError))]
+    [NotifyPropertyChangedFor(nameof(IsResponseFailure))]
+    public partial ResponseStatusKind ResponseStatusKind { get; set; }
+
+    public bool IsResponseSuccess => ResponseStatusKind == ResponseStatusKind.Success;
+
+    public bool IsResponseRedirect => ResponseStatusKind == ResponseStatusKind.Redirect;
+
+    public bool IsResponseClientError => ResponseStatusKind == ResponseStatusKind.ClientError;
+
+    public bool IsResponseFailure => ResponseStatusKind == ResponseStatusKind.Failure;
+
+    [ObservableProperty]
+    public partial string RequestFilterText { get; set; } = string.Empty;
+
+    public bool IsCollectionListEmpty => Collections.Count == 0;
+
+    public bool IsRequestFilterActive => !string.IsNullOrWhiteSpace(RequestFilterText);
 
     [ObservableProperty]
     public partial string ResponseTime { get; set; } = "—";
@@ -517,6 +558,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly ITutorialSessionService _tutorialSessionService;
     private readonly IExternalLinkService _externalLinkService;
     private readonly IClipboardService _clipboardService;
+    private readonly IRequestDeletePrompt _requestDeletePrompt;
     private TutorialSession? _activeTutorialSession;
     private WorkspaceSnapshot? _workspaceSnapshot;
     private string? _workspaceDirectory;
@@ -552,7 +594,8 @@ public partial class MainViewModel : ViewModelBase
         IApplicationInfoService applicationInfoService,
         IExternalLinkService externalLinkService,
         ISupportInformationService supportInformationService,
-        IClipboardService clipboardService)
+        IClipboardService clipboardService,
+        IRequestDeletePrompt requestDeletePrompt)
     {
         _requestExecutor = requestExecutor;
         _collectionRunner = collectionRunner;
@@ -587,6 +630,7 @@ public partial class MainViewModel : ViewModelBase
         _tutorialSessionService = tutorialSessionService;
         _externalLinkService = externalLinkService;
         _clipboardService = clipboardService;
+        _requestDeletePrompt = requestDeletePrompt;
         ApplicationInfo = applicationInfoService.Current;
         SupportInformation = supportInformationService.Create(ApplicationInfo);
         HistoryRetentionLimit = appSettings.Current.HistoryRetentionLimit;
@@ -894,6 +938,7 @@ public partial class MainViewModel : ViewModelBase
         SelectedBodyType = "None";
         RequestBody = string.Empty;
         ResponseStatus = Localize("StatusReady", "Ready");
+        ResponseStatusKind = ResponseStatusKind.Neutral;
         ResponseTime = "—";
         ResponseBody = Localize(
             "ResponseComposeNewRequest",
@@ -1142,6 +1187,7 @@ public partial class MainViewModel : ViewModelBase
         catch (ArgumentException exception)
         {
             ResponseStatus = Localize("StatusInvalidRequest", "Invalid request");
+            ResponseStatusKind = ResponseStatusKind.Failure;
             ResponseBody = DescribeException(exception);
             HasResponse = true;
             return;
@@ -1149,6 +1195,7 @@ public partial class MainViewModel : ViewModelBase
         catch (RequestTemplateResolutionException exception)
         {
             ResponseStatus = Localize("StatusMissingVariables", "Missing variables");
+            ResponseStatusKind = ResponseStatusKind.Failure;
             ResponseBody = DescribeException(exception);
             HasResponse = true;
             return;
@@ -1156,6 +1203,7 @@ public partial class MainViewModel : ViewModelBase
         catch (SecretVaultUnavailableException exception)
         {
             ResponseStatus = Localize("StatusSecretVaultUnavailable", "Secret vault unavailable");
+            ResponseStatusKind = ResponseStatusKind.Failure;
             ResponseBody = DescribeException(exception);
             HasResponse = true;
             return;
@@ -1163,6 +1211,7 @@ public partial class MainViewModel : ViewModelBase
 
         IsSending = true;
         ResponseStatus = Localize("StatusSending", "Sending...");
+        ResponseStatusKind = ResponseStatusKind.Neutral;
         ResponseTime = "—";
 
         try
@@ -1170,6 +1219,7 @@ public partial class MainViewModel : ViewModelBase
             var response = await _requestExecutor.ExecuteAsync(request, cancellationToken);
 
             ResponseStatus = $"{response.StatusCode} {response.ReasonPhrase}".TrimEnd();
+            ResponseStatusKind = ResponseStatusKinds.FromStatusCode(response.StatusCode);
             ResponseTime = $"{response.Duration.TotalMilliseconds:N0} ms";
             ResponseBody = FormatBody(response.Body, response.ContentType);
 
@@ -1203,6 +1253,7 @@ public partial class MainViewModel : ViewModelBase
         catch (TimeoutException)
         {
             ResponseStatus = Localize("StatusTimedOut", "Timed out");
+            ResponseStatusKind = ResponseStatusKind.Failure;
             ResponseBody = Localize(
                 "ErrorRequestTimedOut",
                 "The request exceeded the {0} second timeout.",
@@ -1217,6 +1268,7 @@ public partial class MainViewModel : ViewModelBase
         catch (HttpRequestException exception)
         {
             ResponseStatus = Localize("StatusConnectionFailed", "Connection failed");
+            ResponseStatusKind = ResponseStatusKind.Failure;
             // Keep the transport detail: it is diagnostic text from the network
             // stack, not something ReqMint can translate faithfully.
             ResponseBody = Localize(
@@ -1361,18 +1413,7 @@ public partial class MainViewModel : ViewModelBase
         EnvironmentName = _activeEnvironment?.Name ?? EnvironmentNames[0];
         LoadEnvironmentEditor(_activeEnvironment);
 
-        Collections.Clear();
-        foreach (var collection in snapshot.Collections)
-        {
-            Collections.Add(new CollectionItemViewModel(
-                collection.Id,
-                collection.Name,
-                collection.Requests.Select(request =>
-                    new SavedRequestItemViewModel(
-                        request,
-                        selected => OpenRequest(selected, collection.Id))),
-                SelectCollection));
-        }
+        RefreshCollections();
 
         RememberWorkspace(directory, isActiveTutorialWorkspace);
 
@@ -1449,6 +1490,62 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    partial void OnRequestFilterTextChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsRequestFilterActive));
+        RefreshCollections();
+    }
+
+    [RelayCommand]
+    private void ClearRequestFilter() => RequestFilterText = string.Empty;
+
+    /// <summary>
+    /// Rebuilds the collection tree, honouring the request filter. A collection
+    /// whose own name matches keeps all of its requests; otherwise only the
+    /// matching requests are listed and empty collections are hidden.
+    /// </summary>
+    private void RefreshCollections()
+    {
+        Collections.Clear();
+        if (_workspaceSnapshot is null)
+        {
+            OnPropertyChanged(nameof(IsCollectionListEmpty));
+            return;
+        }
+
+        var parts = CommandPaletteSearch.Fold(RequestFilterText.Trim())
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (var collection in _workspaceSnapshot.Collections)
+        {
+            var collectionMatches = parts.Length == 0
+                || CommandPaletteSearch.Matches(CommandPaletteSearch.Fold(collection.Name), parts);
+            var requests = collection.Requests
+                .Where(request => collectionMatches
+                    || CommandPaletteSearch.Matches(
+                        CommandPaletteSearch.Fold($"{request.Name} {request.Method} {request.Url}"),
+                        parts))
+                .ToArray();
+
+            if (parts.Length > 0 && requests.Length == 0 && !collectionMatches)
+            {
+                continue;
+            }
+
+            Collections.Add(new CollectionItemViewModel(
+                collection.Id,
+                collection.Name,
+                requests.Select(request => new SavedRequestItemViewModel(
+                    request,
+                    selected => OpenRequest(selected, collection.Id),
+                    selected => DuplicateRequestAsync(selected, collection.Id),
+                    selected => DeleteRequestAsync(selected, collection.Id))),
+                SelectCollection));
+        }
+
+        OnPropertyChanged(nameof(IsCollectionListEmpty));
+    }
+
     private bool IsActiveTutorialWorkspace(string directory) =>
         _activeTutorialSession is { } tutorialSession
         && string.Equals(
@@ -1490,6 +1587,7 @@ public partial class MainViewModel : ViewModelBase
 
         LoadRequestDraft(request);
         ResponseStatus = Localize("StatusReady", "Ready");
+        ResponseStatusKind = ResponseStatusKind.Neutral;
         ResponseTime = "—";
         ResponseBody = Localize(
             "ResponseInspectSavedRequest",
@@ -1686,6 +1784,7 @@ public partial class MainViewModel : ViewModelBase
         _hasWorkspaceError = true;
         WorkspaceStatus = title;
         ResponseStatus = title;
+        ResponseStatusKind = ResponseStatusKind.Failure;
         ResponseBody = DescribeException(exception);
         HasResponse = true;
     }
@@ -1722,6 +1821,7 @@ public partial class MainViewModel : ViewModelBase
         _hasWorkspaceError = false;
         HasResponse = false;
         ResponseStatus = Localize("StatusReady", "Ready");
+        ResponseStatusKind = ResponseStatusKind.Neutral;
         ResponseTime = "—";
         ResponseBody = Localize(
             "ResponseInspectRequest",

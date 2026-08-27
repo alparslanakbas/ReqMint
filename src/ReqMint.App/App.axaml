@@ -149,6 +149,53 @@
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         </Style>
 
+        <Style Selector="TextBlock.method">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.method.get">
+            <Setter Property="Foreground" Value="{DynamicResource MethodGetBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.method.post">
+            <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.method.put">
+            <Setter Property="Foreground" Value="{DynamicResource DiffHunkBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.method.patch">
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.method.delete">
+            <Setter Property="Foreground" Value="{DynamicResource DiffRemovedBrush}" />
+        </Style>
+
+        <!-- Response status colours reuse the theme's existing semantic palette so
+             all themes stay correct without adding colours to every one of them.
+             Colour only reinforces the status text, which always spells it out. -->
+        <Style Selector="TextBlock.responseStatus">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.responseStatus.success">
+            <Setter Property="Foreground" Value="{DynamicResource DiffAddedBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.responseStatus.redirect">
+            <Setter Property="Foreground" Value="{DynamicResource DiffHunkBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.responseStatus.clientError">
+            <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.responseStatus.failure">
+            <Setter Property="Foreground" Value="{DynamicResource DiffRemovedBrush}" />
+        </Style>
+
         <Style Selector="Button.paletteItem">
             <Setter Property="Background" Value="Transparent" />
         </Style>

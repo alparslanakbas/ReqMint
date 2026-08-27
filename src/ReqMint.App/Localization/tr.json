@@ -425,5 +425,18 @@
   "CommandPaletteRequests": "İstek",
   "CommandPaletteTheme": "Tema: {0}",
   "CommandPaletteLanguage": "Dil: {0}",
-  "CommandPaletteNoResults": "Eşleşen komut yok"
+  "CommandPaletteNoResults": "Eşleşen komut yok",
+  "TextClearFilter": "Filtreyi temizle",
+  "TextNoMatchingRequests": "Filtreyle eşleşen istek yok.",
+  "TextResizeResponse": "Yanıt alanını yeniden boyutlandırmak için sürükle",
+  "RequestMenuOpen": "Aç",
+  "RequestMenuDuplicate": "Çoğalt",
+  "RequestMenuDelete": "Sil",
+  "DeleteRequestTitle": "İsteği sil",
+  "DeleteRequestConfirm": "İsteği sil",
+  "DeleteRequestMessage": "'{0}' bu çalışma alanından kalıcı olarak kaldırılsın mı?",
+  "StatusRequestDuplicated": "{0} çoğaltıldı",
+  "StatusRequestDeleted": "{0} silindi",
+  "ErrorDuplicateRequest": "İstek çoğaltılamadı",
+  "ErrorDeleteRequest": "İstek silinemedi"
 }

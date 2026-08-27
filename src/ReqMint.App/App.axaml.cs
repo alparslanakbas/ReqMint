@@ -82,7 +82,8 @@ public partial class App : Application
                 new RuntimeApplicationInfoService(),
                 new DesktopExternalLinkService(),
                 new SupportInformationService(),
-                new AvaloniaClipboardService(mainWindow));
+                new AvaloniaClipboardService(mainWindow),
+                new AvaloniaRequestDeletePrompt(mainWindow, localization));
             mainWindow.DataContext = mainViewModel;
 
             // Reopen the workspace from the previous session. Failures are handled

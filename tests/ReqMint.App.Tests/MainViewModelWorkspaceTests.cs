@@ -2157,6 +2157,169 @@ public sealed class MainViewModelWorkspaceTests
         Assert.Equal(expected, CommandPaletteSearch.Fold(value));
     }
 
+    [Fact]
+    public async Task RequestFilter_NarrowsTheTreeAndRestoresItWhenCleared()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshotWithTwoRequests() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        Assert.Equal(2, viewModel.Collections[0].Requests.Count);
+
+        viewModel.RequestFilterText = "create";
+
+        var request = Assert.Single(Assert.Single(viewModel.Collections).Requests);
+        Assert.Equal("Create order", request.Name);
+        Assert.True(viewModel.IsRequestFilterActive);
+
+        viewModel.ClearRequestFilterCommand.Execute(null);
+
+        Assert.Equal(2, viewModel.Collections[0].Requests.Count);
+        Assert.False(viewModel.IsRequestFilterActive);
+    }
+
+    [Fact]
+    public async Task RequestFilter_MatchesTheMethodAndTheUrlToo()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshotWithTwoRequests() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        viewModel.RequestFilterText = "delete";
+        Assert.Equal("Remove order", Assert.Single(viewModel.Collections[0].Requests).Name);
+
+        viewModel.RequestFilterText = "orders/42";
+        Assert.Equal("Remove order", Assert.Single(viewModel.Collections[0].Requests).Name);
+    }
+
+    [Fact]
+    public async Task RequestFilter_HidesEverythingWhenNothingMatches()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshotWithTwoRequests() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        viewModel.RequestFilterText = "zzzzzz";
+
+        Assert.Empty(viewModel.Collections);
+        Assert.True(viewModel.IsCollectionListEmpty);
+    }
+
+    [Fact]
+    public async Task DuplicateRequest_AddsACopyUnderAFreeNameWithoutTouchingTheOriginal()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        await viewModel.Collections[0].Requests[0].DuplicateCommand.ExecuteAsync(null);
+
+        var saved = store.SavedSnapshot!.Collections[0].Requests;
+        Assert.Equal(2, saved.Count);
+        Assert.Equal("Create order", saved[0].Name);
+        Assert.Equal("Create order (2)", saved[1].Name);
+        Assert.NotEqual(saved[0].Id, saved[1].Id);
+        Assert.Equal(saved[0].Body?.Content, saved[1].Body?.Content);
+        Assert.Equal("Duplicated Create order (2)", viewModel.WorkspaceStatus);
+    }
+
+    [Fact]
+    public async Task DeleteRequest_AsksFirstAndKeepsTheRequestWhenTheUserCancels()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var prompt = new StubRequestDeletePrompt(confirm: false);
+        var viewModel = CreateViewModel(
+            store,
+            CreateWorkspacePath(),
+            requestDeletePrompt: prompt);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        store.ForgetLastSave();
+
+        await viewModel.Collections[0].Requests[0].DeleteCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, prompt.CallCount);
+        Assert.Equal("Create order", prompt.LastRequestName);
+        Assert.Null(store.SavedSnapshot);
+        Assert.Single(viewModel.Collections[0].Requests);
+    }
+
+    [Fact]
+    public async Task DeleteRequest_RemovesItAndResetsTheComposerWhenItWasOpen()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        Assert.Equal("Create order", viewModel.RequestName);
+
+        await viewModel.Collections[0].Requests[0].DeleteCommand.ExecuteAsync(null);
+
+        Assert.Empty(store.SavedSnapshot!.Collections[0].Requests);
+        Assert.Empty(viewModel.Collections[0].Requests);
+        Assert.Equal("New request", viewModel.RequestName);
+        Assert.Equal("Deleted Create order", viewModel.WorkspaceStatus);
+    }
+
+    [Theory]
+    [InlineData(204, ResponseStatusKind.Success)]
+    [InlineData(302, ResponseStatusKind.Redirect)]
+    [InlineData(404, ResponseStatusKind.ClientError)]
+    [InlineData(503, ResponseStatusKind.Failure)]
+    public void ResponseStatusKind_FollowsTheStatusCodeFamily(int statusCode, ResponseStatusKind expected)
+    {
+        Assert.Equal(expected, ResponseStatusKinds.FromStatusCode(statusCode));
+    }
+
+    [Fact]
+    public async Task ResponseStatus_IsMarkedAsAFailureWhenTheRequestTimesOut()
+    {
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore(),
+            CreateWorkspacePath(),
+            new TimingOutRequestExecutor());
+        viewModel.Url = "https://api.example.com/orders";
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.Equal(ResponseStatusKind.Failure, viewModel.ResponseStatusKind);
+        Assert.True(viewModel.IsResponseFailure);
+        Assert.False(viewModel.IsResponseSuccess);
+    }
+
+    [Fact]
+    public void MethodStyle_FlagsOnlyTheMatchingMethod()
+    {
+        var viewModel = CreateViewModel(new RecordingWorkspaceStore(), CreateWorkspacePath());
+
+        viewModel.SelectedMethod = "DELETE";
+
+        Assert.True(viewModel.IsDeleteMethod);
+        Assert.False(viewModel.IsGetMethod);
+        Assert.False(viewModel.IsPostMethod);
+
+        viewModel.SelectedMethod = "post";
+
+        Assert.True(viewModel.IsPostMethod);
+        Assert.False(viewModel.IsDeleteMethod);
+    }
+
+    private static WorkspaceSnapshot CreateSnapshotWithTwoRequests()
+    {
+        var snapshot = CreateSnapshot();
+        var collection = snapshot.Collections[0];
+        var remove = new RequestDocument
+        {
+            Id = Guid.Parse("66666666-6666-6666-6666-666666666666"),
+            Name = "Remove order",
+            Method = "DELETE",
+            Url = "https://api.example.com/orders/42",
+        };
+
+        return snapshot with
+        {
+            Collections = [collection with { Requests = [.. collection.Requests, remove] }],
+        };
+    }
+
     private static MainViewModel CreateViewModel(
         IWorkspaceStore store,
         string directory,
@@ -2177,7 +2340,8 @@ public sealed class MainViewModelWorkspaceTests
         IApplicationInfoService? applicationInfoService = null,
         IExternalLinkService? externalLinkService = null,
         ISupportInformationService? supportInformationService = null,
-        IClipboardService? clipboardService = null)
+        IClipboardService? clipboardService = null,
+        StubRequestDeletePrompt? requestDeletePrompt = null)
     {
         vault ??= new RecordingSecretVault();
         executor ??= new NoOpRequestExecutor();
@@ -2206,7 +2370,8 @@ public sealed class MainViewModelWorkspaceTests
             applicationInfoService ?? new RuntimeApplicationInfoService(),
             externalLinkService ?? new RecordingExternalLinkService(),
             supportInformationService ?? new SupportInformationService(),
-            clipboardService ?? new RecordingClipboardService());
+            clipboardService ?? new RecordingClipboardService(),
+            requestDeletePrompt ?? new StubRequestDeletePrompt());
     }
 
     private static string CreateWorkspacePath() => Path.Combine(
@@ -2409,6 +2574,20 @@ public sealed class MainViewModelWorkspaceTests
         {
             OpenedUris.Add(uri);
             return Task.FromResult(true);
+        }
+    }
+
+    private sealed class StubRequestDeletePrompt(bool confirm = true) : IRequestDeletePrompt
+    {
+        public int CallCount { get; private set; }
+
+        public string? LastRequestName { get; private set; }
+
+        public Task<bool> ShowAsync(string requestName)
+        {
+            CallCount++;
+            LastRequestName = requestName;
+            return Task.FromResult(confirm);
         }
     }
 
@@ -2721,6 +2900,12 @@ public sealed class MainViewModelWorkspaceTests
         public WorkspaceSnapshot? SavedSnapshot { get; private set; }
 
         public string? SavedDirectory { get; private set; }
+
+        public void ForgetLastSave()
+        {
+            SavedSnapshot = null;
+            SavedDirectory = null;
+        }
 
         public Task<WorkspaceSnapshot> LoadAsync(
             string workspaceDirectory,

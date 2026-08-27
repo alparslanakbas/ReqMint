@@ -425,5 +425,18 @@
   "CommandPaletteRequests": "طلب",
   "CommandPaletteTheme": "السمة: {0}",
   "CommandPaletteLanguage": "اللغة: {0}",
-  "CommandPaletteNoResults": "لا يوجد أمر مطابق"
+  "CommandPaletteNoResults": "لا يوجد أمر مطابق",
+  "TextClearFilter": "مسح عامل التصفية",
+  "TextNoMatchingRequests": "لا يوجد طلب مطابق لعامل التصفية.",
+  "TextResizeResponse": "اسحب لتغيير حجم منطقة الاستجابة",
+  "RequestMenuOpen": "فتح",
+  "RequestMenuDuplicate": "تكرار",
+  "RequestMenuDelete": "حذف",
+  "DeleteRequestTitle": "حذف الطلب",
+  "DeleteRequestConfirm": "حذف الطلب",
+  "DeleteRequestMessage": "هل تريد إزالة '{0}' نهائيًا من مساحة العمل هذه؟",
+  "StatusRequestDuplicated": "تم تكرار {0}",
+  "StatusRequestDeleted": "تم حذف {0}",
+  "ErrorDuplicateRequest": "تعذّر تكرار الطلب",
+  "ErrorDeleteRequest": "تعذّر حذف الطلب"
 }
