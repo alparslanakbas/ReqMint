@@ -49,10 +49,67 @@
                 </Button>
 
                 <TextBox Grid.Column="4"
+                         x:Name="CommandPaletteBox"
                          Height="34"
                          VerticalAlignment="Center"
+                         Text="{Binding CommandPaletteQuery}"
                          AutomationProperties.Name="{DynamicResource TextSearch}"
-                         PlaceholderText="{DynamicResource TextSearch}" />
+                         PlaceholderText="{DynamicResource TextSearch}">
+                    <TextBox.KeyBindings>
+                        <KeyBinding Gesture="Enter"
+                                    Command="{Binding RunSelectedCommandPaletteItemCommand}" />
+                        <KeyBinding Gesture="Escape"
+                                    Command="{Binding CloseCommandPaletteCommand}" />
+                        <KeyBinding Gesture="Down"
+                                    Command="{Binding MoveCommandPaletteSelectionDownCommand}" />
+                        <KeyBinding Gesture="Up"
+                                    Command="{Binding MoveCommandPaletteSelectionUpCommand}" />
+                    </TextBox.KeyBindings>
+                </TextBox>
+
+                <Popup Grid.Column="4"
+                       PlacementTarget="{Binding #CommandPaletteBox}"
+                       Placement="BottomEdgeAlignedLeft"
+                       IsOpen="{Binding IsCommandPaletteOpen}"
+                       IsLightDismissEnabled="True"
+                       Width="360">
+                    <Border Margin="0,4,0,0"
+                            Padding="6"
+                            CornerRadius="8"
+                            Background="{DynamicResource SurfaceRaisedBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1">
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding CommandPaletteResults}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:CommandPaletteItemViewModel">
+                                        <Button Classes="paletteItem"
+                                                Classes.selected="{Binding IsSelected}"
+                                                HorizontalContentAlignment="Stretch"
+                                                BorderThickness="0"
+                                                Padding="10,7"
+                                                Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).RunCommandPaletteItemCommand}"
+                                                CommandParameter="{Binding}">
+                                            <Grid ColumnDefinitions="*,10,Auto">
+                                                <TextBlock Text="{Binding Title}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{Binding Category}"
+                                                           Classes="secondary"
+                                                           FontSize="11"
+                                                           VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Margin="10,7"
+                                       Text="{Binding CommandPaletteEmptyMessage}"
+                                       Classes="secondary"
+                                       IsVisible="{Binding !HasCommandPaletteResults}" />
+                        </StackPanel>
+                    </Border>
+                </Popup>
 
                 <ComboBox Grid.Column="6"
                           ItemsSource="{Binding EnvironmentNames}"

@@ -2007,6 +2007,156 @@ public sealed class MainViewModelWorkspaceTests
             throw new HttpRequestException("No such host is known.");
     }
 
+    [Fact]
+    public void CommandPalette_StaysClosedUntilThereIsAQuery()
+    {
+        var viewModel = CreateViewModel(new RecordingWorkspaceStore(), CreateWorkspacePath());
+
+        Assert.False(viewModel.IsCommandPaletteOpen);
+        Assert.Empty(viewModel.CommandPaletteResults);
+
+        viewModel.CommandPaletteQuery = "the";
+
+        Assert.True(viewModel.IsCommandPaletteOpen);
+        Assert.NotEmpty(viewModel.CommandPaletteResults);
+    }
+
+    [Fact]
+    public void CommandPalette_FindsThemesWithoutTurkishDiacritics()
+    {
+        var viewModel = CreateViewModel(new RecordingWorkspaceStore(), CreateWorkspacePath());
+
+        viewModel.CommandPaletteQuery = "theme";
+
+        Assert.NotEmpty(viewModel.CommandPaletteResults);
+        Assert.All(
+            viewModel.CommandPaletteResults,
+            item => Assert.StartsWith("Theme:", item.Title, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void CommandPalette_MatchesEveryQueryPartInAnyOrder()
+    {
+        var viewModel = CreateViewModel(new RecordingWorkspaceStore(), CreateWorkspacePath());
+
+        viewModel.CommandPaletteQuery = "workspace open";
+
+        var titles = viewModel.CommandPaletteResults.Select(item => item.Title).ToArray();
+        Assert.Contains("Open a local ReqMint workspace", titles);
+        Assert.DoesNotContain("Send", titles);
+    }
+
+    [Fact]
+    public void CommandPalette_ReportsWhenNothingMatches()
+    {
+        var viewModel = CreateViewModel(new RecordingWorkspaceStore(), CreateWorkspacePath());
+
+        viewModel.CommandPaletteQuery = "zzzzzz";
+
+        Assert.Empty(viewModel.CommandPaletteResults);
+        Assert.False(viewModel.HasCommandPaletteResults);
+        Assert.Equal("No matching command", viewModel.CommandPaletteEmptyMessage);
+    }
+
+    [Fact]
+    public void CommandPalette_KeepsTheSelectionInsideTheResultsAndWrapsAround()
+    {
+        var viewModel = CreateViewModel(new RecordingWorkspaceStore(), CreateWorkspacePath());
+        viewModel.CommandPaletteQuery = "theme";
+        var count = viewModel.CommandPaletteResults.Count;
+        Assert.True(count > 1);
+
+        Assert.True(viewModel.CommandPaletteResults[0].IsSelected);
+
+        viewModel.MoveCommandPaletteSelectionDownCommand.Execute(null);
+        Assert.True(viewModel.CommandPaletteResults[1].IsSelected);
+        Assert.False(viewModel.CommandPaletteResults[0].IsSelected);
+
+        viewModel.MoveCommandPaletteSelectionUpCommand.Execute(null);
+        viewModel.MoveCommandPaletteSelectionUpCommand.Execute(null);
+        Assert.True(viewModel.CommandPaletteResults[count - 1].IsSelected);
+    }
+
+    [Fact]
+    public async Task CommandPalette_RunsTheSelectedEntryAndCloses()
+    {
+        var appSettings = new StubAppSettingsService();
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore(),
+            CreateWorkspacePath(),
+            appSettings: appSettings);
+        var target = viewModel.Themes.Themes.Last();
+        viewModel.CommandPaletteQuery = target.DisplayName;
+        var entry = viewModel.CommandPaletteResults.First(
+            item => item.Title == $"Theme: {target.DisplayName}");
+        while (!entry.IsSelected)
+        {
+            viewModel.MoveCommandPaletteSelectionDownCommand.Execute(null);
+        }
+
+        await viewModel.RunSelectedCommandPaletteItemCommand.ExecuteAsync(null);
+
+        Assert.Equal(target, viewModel.Themes.SelectedTheme);
+        Assert.False(viewModel.IsCommandPaletteOpen);
+        Assert.Equal(string.Empty, viewModel.CommandPaletteQuery);
+    }
+
+    [Fact]
+    public async Task CommandPalette_OpensSavedRequestsByName()
+    {
+        var snapshot = CreateSnapshot();
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        viewModel.CommandPaletteQuery = "create order";
+        var entry = Assert.Single(
+            viewModel.CommandPaletteResults,
+            item => item.Title == "Create order");
+        await viewModel.RunCommandPaletteItemCommand.ExecuteAsync(entry);
+
+        Assert.Equal("Create order", viewModel.RequestName);
+        Assert.Equal("POST", viewModel.SelectedMethod);
+        Assert.False(viewModel.IsCommandPaletteOpen);
+    }
+
+    [Fact]
+    public void CommandPalette_EscapeClearsTheQueryAndCloses()
+    {
+        var viewModel = CreateViewModel(new RecordingWorkspaceStore(), CreateWorkspacePath());
+        viewModel.CommandPaletteQuery = "theme";
+
+        viewModel.CloseCommandPaletteCommand.Execute(null);
+
+        Assert.False(viewModel.IsCommandPaletteOpen);
+        Assert.Equal(string.Empty, viewModel.CommandPaletteQuery);
+        Assert.Empty(viewModel.CommandPaletteResults);
+    }
+
+    [Fact]
+    public void CommandPalette_OpenCommandListsEntriesWithoutTyping()
+    {
+        var viewModel = CreateViewModel(new RecordingWorkspaceStore(), CreateWorkspacePath());
+
+        viewModel.OpenCommandPaletteCommand.Execute(null);
+
+        Assert.True(viewModel.IsCommandPaletteOpen);
+        Assert.NotEmpty(viewModel.CommandPaletteResults);
+    }
+
+    [Theory]
+    [InlineData("Sıfırla", "sifirla")]
+    [InlineData("Çevir", "cevir")]
+    [InlineData("İstek", "istek")]
+    [InlineData("API", "api")]
+    [InlineData("Gövde", "govde")]
+    public void CommandPaletteSearch_FoldsTurkishCharactersWithoutBreakingAscii(
+        string value,
+        string expected)
+    {
+        Assert.Equal(expected, CommandPaletteSearch.Fold(value));
+    }
+
     private static MainViewModel CreateViewModel(
         IWorkspaceStore store,
         string directory,

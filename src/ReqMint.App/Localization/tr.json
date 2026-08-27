@@ -418,5 +418,12 @@
   "ErrorMissingEnvironmentValues": "Eksik ortam değerleri: {0}.",
   "ErrorRequestTimedOut": "İstek {0} saniyelik zaman aşımını aştı.",
   "ErrorSecretVaultUnavailable": "Güvenli gizli değer deposu bu platformda henüz kullanılamıyor. ReqMint düz metin bir yedek kullanmayacak.",
-  "ErrorConnectionFailed": "İstek gönderilemedi. Adresi ve bağlantını kontrol et."
+  "ErrorConnectionFailed": "İstek gönderilemedi. Adresi ve bağlantını kontrol et.",
+  "CommandPaletteActions": "Eylem",
+  "CommandPaletteNavigation": "Git",
+  "CommandPaletteAppearance": "Görünüm",
+  "CommandPaletteRequests": "İstek",
+  "CommandPaletteTheme": "Tema: {0}",
+  "CommandPaletteLanguage": "Dil: {0}",
+  "CommandPaletteNoResults": "Eşleşen komut yok"
 }

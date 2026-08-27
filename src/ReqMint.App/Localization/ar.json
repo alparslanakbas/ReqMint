@@ -418,5 +418,12 @@
   "ErrorMissingEnvironmentValues": "قيم بيئة مفقودة: {0}.",
   "ErrorRequestTimedOut": "تجاوز الطلب مهلة {0} ثانية.",
   "ErrorSecretVaultUnavailable": "التخزين الآمن للأسرار غير متاح على هذه المنصة بعد. لن يستخدم ReqMint بديلاً بنص عادي.",
-  "ErrorConnectionFailed": "تعذّر إرسال الطلب. تحقّق من العنوان ومن اتصالك."
+  "ErrorConnectionFailed": "تعذّر إرسال الطلب. تحقّق من العنوان ومن اتصالك.",
+  "CommandPaletteActions": "إجراء",
+  "CommandPaletteNavigation": "انتقل إلى",
+  "CommandPaletteAppearance": "المظهر",
+  "CommandPaletteRequests": "طلب",
+  "CommandPaletteTheme": "السمة: {0}",
+  "CommandPaletteLanguage": "اللغة: {0}",
+  "CommandPaletteNoResults": "لا يوجد أمر مطابق"
 }

@@ -418,5 +418,12 @@
   "ErrorMissingEnvironmentValues": "Missing environment values: {0}.",
   "ErrorRequestTimedOut": "The request exceeded the {0} second timeout.",
   "ErrorSecretVaultUnavailable": "Secure secret storage is not available on this platform yet. ReqMint will not use a plaintext fallback.",
-  "ErrorConnectionFailed": "The request could not be sent. Check the address and your connection."
+  "ErrorConnectionFailed": "The request could not be sent. Check the address and your connection.",
+  "CommandPaletteActions": "Action",
+  "CommandPaletteNavigation": "Go to",
+  "CommandPaletteAppearance": "Appearance",
+  "CommandPaletteRequests": "Request",
+  "CommandPaletteTheme": "Theme: {0}",
+  "CommandPaletteLanguage": "Language: {0}",
+  "CommandPaletteNoResults": "No matching command"
 }
