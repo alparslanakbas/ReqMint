@@ -443,5 +443,10 @@
   "TabMoveLeft": "Sola taşı",
   "TabMoveRight": "Sağa taşı",
   "TabUnsavedTip": "Bu sekmede kaydedilmemiş değişiklik var",
-  "TabUnsavedOrigin": "Henüz kaydedilmedi"
+  "TabUnsavedOrigin": "Henüz kaydedilmedi",
+  "WorkspaceCookiesTitle": "Çalışma alanı çerezleri",
+  "WorkspaceCookiesEnable": "Aktif çalışma alanı için çerezleri otomatik kaydet ve gönder",
+  "WorkspaceCookiesClear": "Çalışma alanı çerezlerini temizle",
+  "WorkspaceCookiesHelp": "Çerezler yalnızca bellekte tutulur, çalışma alanlarına göre ayrılır ve dosyalara ya da günlüklere yazılmaz.",
+  "StatusWorkspaceCookiesCleared": "Aktif çalışma alanının çerezleri temizlendi"
 }

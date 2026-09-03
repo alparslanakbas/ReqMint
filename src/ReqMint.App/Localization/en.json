@@ -443,5 +443,10 @@
   "TabMoveLeft": "Move left",
   "TabMoveRight": "Move right",
   "TabUnsavedTip": "This tab has unsaved changes",
-  "TabUnsavedOrigin": "Not saved yet"
+  "TabUnsavedOrigin": "Not saved yet",
+  "WorkspaceCookiesTitle": "Workspace cookies",
+  "WorkspaceCookiesEnable": "Automatically save and send cookies for the active workspace",
+  "WorkspaceCookiesClear": "Clear workspace cookies",
+  "WorkspaceCookiesHelp": "Cookies stay in memory, are isolated per workspace, and are never written to workspace files or logs.",
+  "StatusWorkspaceCookiesCleared": "Cookies cleared for the active workspace"
 }

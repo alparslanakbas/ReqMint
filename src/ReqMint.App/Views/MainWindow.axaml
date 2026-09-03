@@ -1240,6 +1240,19 @@
                                                TextWrapping="Wrap"
                                                VerticalAlignment="Center" />
                                 </Grid>
+                                <TextBlock Text="{DynamicResource WorkspaceCookiesTitle}"
+                                           FontWeight="SemiBold" Margin="0,4,0,0" />
+                                <CheckBox Content="{DynamicResource WorkspaceCookiesEnable}"
+                                          IsChecked="{Binding UseWorkspaceCookies}" />
+                                <Grid ColumnDefinitions="Auto,12,*">
+                                    <Button Content="{DynamicResource WorkspaceCookiesClear}"
+                                            Command="{Binding ClearWorkspaceCookiesCommand}" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{DynamicResource WorkspaceCookiesHelp}"
+                                               Classes="secondary"
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center" />
+                                </Grid>
                                 <Grid ColumnDefinitions="Auto,12,*" Margin="0,4,0,0">
                                     <Button Content="{DynamicResource OnboardingRestart}"
                                             Command="{Binding RestartOnboardingCommand}" />

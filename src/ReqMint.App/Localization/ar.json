@@ -443,5 +443,10 @@
   "TabMoveLeft": "نقل لليسار",
   "TabMoveRight": "نقل لليمين",
   "TabUnsavedTip": "تحتوي علامة التبويب هذه على تغييرات غير محفوظة",
-  "TabUnsavedOrigin": "لم يتم الحفظ بعد"
+  "TabUnsavedOrigin": "لم يتم الحفظ بعد",
+  "WorkspaceCookiesTitle": "ملفات تعريف ارتباط مساحة العمل",
+  "WorkspaceCookiesEnable": "حفظ ملفات تعريف الارتباط وإرسالها تلقائيًا لمساحة العمل النشطة",
+  "WorkspaceCookiesClear": "مسح ملفات تعريف ارتباط مساحة العمل",
+  "WorkspaceCookiesHelp": "تبقى ملفات تعريف الارتباط في الذاكرة، وتُعزل حسب مساحة العمل، ولا تُكتب مطلقًا في ملفات مساحة العمل أو السجلات.",
+  "StatusWorkspaceCookiesCleared": "تم مسح ملفات تعريف الارتباط لمساحة العمل النشطة"
 }

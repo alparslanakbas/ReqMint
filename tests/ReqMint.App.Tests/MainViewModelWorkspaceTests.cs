@@ -419,6 +419,37 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task WorkspaceCookieSettings_PersistSelectTheWorkspaceAndClearOnDemand()
+    {
+        var directory = CreateWorkspacePath();
+        var settings = new StubAppSettingsService();
+        var cookies = new StubRequestCookieManager();
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            directory,
+            appSettings: settings,
+            requestCookieManager: cookies);
+
+        Assert.False(viewModel.UseWorkspaceCookies);
+        Assert.False(cookies.IsEnabled);
+
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        viewModel.UseWorkspaceCookies = true;
+        viewModel.ClearWorkspaceCookiesCommand.Execute(null);
+
+        Assert.True(settings.Current.UseWorkspaceCookies);
+        Assert.True(cookies.IsEnabled);
+        Assert.Equal(Path.GetFullPath(directory), cookies.SelectedWorkspace);
+        Assert.Equal(1, cookies.ClearCount);
+        Assert.Equal("Cookies cleared for the active workspace", viewModel.WorkspaceStatus);
+
+        viewModel.UseWorkspaceCookies = false;
+
+        Assert.False(settings.Current.UseWorkspaceCookies);
+        Assert.False(cookies.IsEnabled);
+    }
+
+    [Fact]
     public async Task ConfirmExitAsync_BlocksWhileAnOperationIsActive()
     {
         var prompt = new StubUnsavedChangesPrompt();
@@ -2582,7 +2613,8 @@ public sealed class MainViewModelWorkspaceTests
         IExternalLinkService? externalLinkService = null,
         ISupportInformationService? supportInformationService = null,
         IClipboardService? clipboardService = null,
-        StubRequestDeletePrompt? requestDeletePrompt = null)
+        StubRequestDeletePrompt? requestDeletePrompt = null,
+        StubRequestCookieManager? requestCookieManager = null)
     {
         vault ??= new RecordingSecretVault();
         executor ??= new NoOpRequestExecutor();
@@ -2612,7 +2644,8 @@ public sealed class MainViewModelWorkspaceTests
             externalLinkService ?? new RecordingExternalLinkService(),
             supportInformationService ?? new SupportInformationService(),
             clipboardService ?? new RecordingClipboardService(),
-            requestDeletePrompt ?? new StubRequestDeletePrompt());
+            requestDeletePrompt ?? new StubRequestDeletePrompt(),
+            requestCookieManager ?? new StubRequestCookieManager());
     }
 
     private static string CreateWorkspacePath() => Path.Combine(
@@ -2788,6 +2821,24 @@ public sealed class MainViewModelWorkspaceTests
         public AppSettings Current { get; private set; }
 
         public void Update(AppSettings settings) => Current = settings;
+    }
+
+    private sealed class StubRequestCookieManager : IRequestCookieManager
+    {
+        public bool IsEnabled { get; private set; }
+
+        public string? SelectedWorkspace { get; private set; }
+
+        public int ClearCount { get; private set; }
+
+        public void SetEnabled(bool enabled) => IsEnabled = enabled;
+
+        public void SelectWorkspace(string? workspaceDirectory) =>
+            SelectedWorkspace = workspaceDirectory is null
+                ? null
+                : Path.GetFullPath(workspaceDirectory);
+
+        public void ClearActiveWorkspace() => ClearCount++;
     }
 
     private sealed class StubTutorialSessionService(TutorialSession session)

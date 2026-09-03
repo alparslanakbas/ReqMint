@@ -21,6 +21,7 @@ public sealed class JsonAppSettingsServiceTests
             OnboardingStatus = OnboardingStatus.InProgress,
             OnboardingStep = 2,
             WindowCloseBehavior = WindowCloseBehavior.KeepRunning,
+            UseWorkspaceCookies = true,
         });
         var reloaded = new JsonAppSettingsService(directory.Path);
 
@@ -32,6 +33,7 @@ public sealed class JsonAppSettingsServiceTests
         Assert.Equal(OnboardingStatus.InProgress, reloaded.Current.OnboardingStatus);
         Assert.Equal(2, reloaded.Current.OnboardingStep);
         Assert.Equal(WindowCloseBehavior.KeepRunning, reloaded.Current.WindowCloseBehavior);
+        Assert.True(reloaded.Current.UseWorkspaceCookies);
     }
 
     [Theory]

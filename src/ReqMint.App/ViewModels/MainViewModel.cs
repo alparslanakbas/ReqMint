@@ -97,6 +97,23 @@ public partial class MainViewModel : ViewModelBase
     public bool IsWindowClosePreferenceUndecided =>
         _appSettings.Current.WindowCloseBehavior == WindowCloseBehavior.Ask;
 
+    public bool UseWorkspaceCookies
+    {
+        get => _appSettings.Current.UseWorkspaceCookies;
+        set
+        {
+            if (_appSettings.Current.UseWorkspaceCookies == value)
+            {
+                return;
+            }
+
+            _appSettings.Update(_appSettings.Current with { UseWorkspaceCookies = value });
+            _requestCookieManager.SetEnabled(value);
+            OnPropertyChanged();
+            ClearWorkspaceCookiesCommand.NotifyCanExecuteChanged();
+        }
+    }
+
     [ObservableProperty]
     public partial string WorkspaceName { get; set; } = "No workspace";
 
@@ -559,6 +576,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly IExternalLinkService _externalLinkService;
     private readonly IClipboardService _clipboardService;
     private readonly IRequestDeletePrompt _requestDeletePrompt;
+    private readonly IRequestCookieManager _requestCookieManager;
     private TutorialSession? _activeTutorialSession;
     private WorkspaceSnapshot? _workspaceSnapshot;
     private string? _workspaceDirectory;
@@ -595,7 +613,8 @@ public partial class MainViewModel : ViewModelBase
         IExternalLinkService externalLinkService,
         ISupportInformationService supportInformationService,
         IClipboardService clipboardService,
-        IRequestDeletePrompt requestDeletePrompt)
+        IRequestDeletePrompt requestDeletePrompt,
+        IRequestCookieManager requestCookieManager)
     {
         _requestExecutor = requestExecutor;
         _collectionRunner = collectionRunner;
@@ -631,6 +650,8 @@ public partial class MainViewModel : ViewModelBase
         _externalLinkService = externalLinkService;
         _clipboardService = clipboardService;
         _requestDeletePrompt = requestDeletePrompt;
+        _requestCookieManager = requestCookieManager;
+        _requestCookieManager.SetEnabled(appSettings.Current.UseWorkspaceCookies);
         ApplicationInfo = applicationInfoService.Current;
         SupportInformation = supportInformationService.Create(ApplicationInfo);
         HistoryRetentionLimit = appSettings.Current.HistoryRetentionLimit;
@@ -735,6 +756,17 @@ public partial class MainViewModel : ViewModelBase
             WindowCloseBehavior = WindowCloseBehavior.Ask,
         });
         RefreshWindowClosePreference();
+    }
+
+    private bool CanClearWorkspaceCookies() => _requestCookieManager.IsEnabled;
+
+    [RelayCommand(CanExecute = nameof(CanClearWorkspaceCookies))]
+    private void ClearWorkspaceCookies()
+    {
+        _requestCookieManager.ClearActiveWorkspace();
+        WorkspaceStatus = Localize(
+            "StatusWorkspaceCookiesCleared",
+            "Cookies cleared for the active workspace");
     }
 
     public async Task<bool> ConfirmExitAsync(CancellationToken cancellationToken = default)
@@ -1361,6 +1393,7 @@ public partial class MainViewModel : ViewModelBase
         Guid? selectedCollectionId = null,
         Guid? selectedEnvironmentId = null)
     {
+        _requestCookieManager.SelectWorkspace(directory);
         CloseCollectionRunner();
         IsApplicationSettingsVisible = false;
         var workspaceChanged = _workspaceSnapshot?.Workspace.Id != snapshot.Workspace.Id;

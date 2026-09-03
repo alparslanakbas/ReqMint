@@ -16,7 +16,7 @@ namespace ReqMint.App;
 
 public partial class App : Application
 {
-    private HttpRequestExecutor? _requestExecutor;
+    private WorkspaceHttpRequestExecutor? _requestExecutor;
     private ITutorialSessionService? _tutorialSessionService;
     private DesktopApplicationController? _desktopApplicationController;
 
@@ -32,7 +32,7 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            _requestExecutor = new HttpRequestExecutor();
+            _requestExecutor = new WorkspaceHttpRequestExecutor();
             var secretVault = PlatformSecretVaultFactory.Create();
             var templateResolver = new RequestTemplateResolver(secretVault);
             var applicationData = Path.Combine(
@@ -83,7 +83,8 @@ public partial class App : Application
                 new DesktopExternalLinkService(),
                 new SupportInformationService(),
                 new AvaloniaClipboardService(mainWindow),
-                new AvaloniaRequestDeletePrompt(mainWindow, localization));
+                new AvaloniaRequestDeletePrompt(mainWindow, localization),
+                _requestExecutor);
             mainWindow.DataContext = mainViewModel;
 
             // Reopen the workspace from the previous session. Failures are handled

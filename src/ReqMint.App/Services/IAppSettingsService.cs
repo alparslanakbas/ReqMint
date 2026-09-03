@@ -25,6 +25,8 @@ public sealed record AppSettings
 
     public WindowCloseBehavior WindowCloseBehavior { get; init; }
 
+    public bool UseWorkspaceCookies { get; init; }
+
     /// <summary>
     /// Folder of the workspace that was open when the application last closed.
     /// Restored on startup so environments and collections are available again

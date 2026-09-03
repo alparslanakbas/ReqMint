@@ -11,7 +11,7 @@ public sealed class HttpRequestExecutor : IRequestExecutor, IDisposable
     private readonly HttpClient _client;
 
     public HttpRequestExecutor()
-        : this(CreateDefaultHandler())
+        : this(CreateDefaultHandler(useCookies: false))
     {
     }
 
@@ -78,12 +78,14 @@ public sealed class HttpRequestExecutor : IRequestExecutor, IDisposable
 
     public void Dispose() => _client.Dispose();
 
-    private static SocketsHttpHandler CreateDefaultHandler() => new()
+    internal static SocketsHttpHandler CreateDefaultHandler(
+        bool useCookies,
+        CookieContainer? cookieContainer = null) => new()
     {
         AutomaticDecompression = DecompressionMethods.All,
         AllowAutoRedirect = true,
-        UseCookies = true,
-        CookieContainer = new CookieContainer(),
+        UseCookies = useCookies,
+        CookieContainer = cookieContainer ?? new CookieContainer(),
         PooledConnectionLifetime = TimeSpan.FromMinutes(10),
     };
 
