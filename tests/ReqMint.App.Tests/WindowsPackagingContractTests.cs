@@ -14,6 +14,36 @@ public sealed class WindowsPackagingContractTests
         "http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities";
 
     [Fact]
+    public void ReleaseVersion_IsConsistentAcrossApplicationPackagingAndAutomation()
+    {
+        const string expectedVersion = "1.0.1.0";
+
+        var buildProperties = XDocument.Load(RepositoryPath("Directory.Build.props"));
+        var applicationManifest = XDocument.Load(RepositoryPath("src", "ReqMint.App", "app.manifest"));
+        var packageScript = File.ReadAllText(RepositoryPath("eng", "package-windows.ps1"));
+        var bundleScript = File.ReadAllText(RepositoryPath("eng", "package-windows-bundle.ps1"));
+        var developmentWorkflow = File.ReadAllText(
+            RepositoryPath(".github", "workflows", "windows-msix.yml"));
+        var storeWorkflow = File.ReadAllText(
+            RepositoryPath(".github", "workflows", "windows-store-bundle.yml"));
+        var qualityWorkflow = File.ReadAllText(
+            RepositoryPath(".github", "workflows", "quality-gates.yml"));
+
+        Assert.Equal(
+            expectedVersion,
+            buildProperties.Root?.Elements("PropertyGroup").Elements("Version").Single().Value);
+        var assemblyIdentity = Assert.Single(
+            applicationManifest.Descendants(),
+            element => element.Name.LocalName == "assemblyIdentity");
+        Assert.Equal(expectedVersion, (string?)assemblyIdentity.Attribute("version"));
+        Assert.Contains($"$Version = '{expectedVersion}'", packageScript, StringComparison.Ordinal);
+        Assert.Contains($"$Version = '{expectedVersion}'", bundleScript, StringComparison.Ordinal);
+        Assert.Contains($"default: {expectedVersion}", developmentWorkflow, StringComparison.Ordinal);
+        Assert.Contains($"default: {expectedVersion}", storeWorkflow, StringComparison.Ordinal);
+        Assert.Contains($"-Version {expectedVersion}", qualityWorkflow, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ManifestTemplate_DefinesStoreReadyFullTrustDesktopPackage()
     {
         var manifest = XDocument.Load(RepositoryPath("packaging", "windows", "AppxManifest.xml.in"));

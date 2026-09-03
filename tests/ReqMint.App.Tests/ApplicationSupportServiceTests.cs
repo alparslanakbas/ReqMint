@@ -9,7 +9,7 @@ public sealed class ApplicationSupportServiceTests
     {
         var information = new RuntimeApplicationInfoService().Current;
 
-        Assert.False(string.IsNullOrWhiteSpace(information.Version));
+        Assert.Equal("1.0.1.0", information.Version);
         Assert.False(string.IsNullOrWhiteSpace(information.OperatingSystem));
         Assert.False(string.IsNullOrWhiteSpace(information.Architecture));
         Assert.False(string.IsNullOrWhiteSpace(information.Runtime));

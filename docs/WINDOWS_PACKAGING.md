@@ -7,7 +7,7 @@ ReqMint uses a self-contained MSIX package for Microsoft Store distribution. The
 Run the packaging script on Windows with the Windows 10 or 11 SDK installed:
 
 ```powershell
-./eng/package-windows.ps1 -Version 1.0.0.0 -Architecture x64
+./eng/package-windows.ps1 -Version 1.0.1.0 -Architecture x64
 ```
 
 The unsigned package is written to `artifacts/packages/windows`. An unsigned MSIX is intended for Store submission, not direct public distribution. Direct downloads and ordinary side-loading require a trusted signature.
@@ -15,7 +15,7 @@ The unsigned package is written to `artifacts/packages/windows`. An unsigned MSI
 Use `-LayoutOnly` to prepare and validate the self-contained package layout on a Windows development machine that does not have `MakeAppx.exe`:
 
 ```powershell
-./eng/package-windows.ps1 -Version 1.0.0.0 -Architecture x64 -LayoutOnly
+./eng/package-windows.ps1 -Version 1.0.1.0 -Architecture x64 -LayoutOnly
 ```
 
 The quality workflow performs this layout validation independently for both `x64` and `arm64`. It also keeps the approved Store screenshot check in a separate Windows job so image validation is not repeated for each architecture.

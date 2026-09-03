@@ -4,7 +4,7 @@ param(
     [string] $Architecture = 'x64',
 
     [ValidatePattern('^[1-9][0-9]{0,4}(\.[0-9]{1,5}){2}\.0$')]
-    [string] $Version = '1.0.0.0',
+    [string] $Version = '1.0.1.0',
 
     [ValidatePattern('^[A-Za-z0-9.-]{3,50}$')]
     [string] $IdentityName = 'ReqMint.Development',

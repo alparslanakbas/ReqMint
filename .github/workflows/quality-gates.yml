@@ -103,7 +103,7 @@ jobs:
 
       - name: Validate self-contained package layout
         shell: pwsh
-        run: ./eng/package-windows.ps1 -Version 1.0.0.0 -Architecture '${{ matrix.architecture }}' -LayoutOnly
+        run: ./eng/package-windows.ps1 -Version 1.0.1.0 -Architecture '${{ matrix.architecture }}' -LayoutOnly
 
   website:
     name: Website build and audit
