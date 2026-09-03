@@ -17,6 +17,7 @@ public static class RequestHistoryPrivacy
             Url = RedactUrl(request.Url),
             QueryParameters = Redact(request.QueryParameters),
             Headers = Redact(request.Headers),
+            Authentication = null,
             Body = null,
         };
     }

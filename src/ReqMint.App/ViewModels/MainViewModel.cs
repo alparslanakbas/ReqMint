@@ -164,6 +164,36 @@ public partial class MainViewModel : ViewModelBase
     public partial string RequestBody { get; set; } = "{\n  \"name\": \"Sample order\"\n}";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBearerAuthentication))]
+    [NotifyPropertyChangedFor(nameof(IsBasicAuthentication))]
+    [NotifyPropertyChangedFor(nameof(IsApiKeyAuthentication))]
+    public partial int SelectedAuthenticationTypeIndex { get; set; }
+
+    public bool IsBearerAuthentication => SelectedAuthenticationTypeIndex == 1;
+
+    public bool IsBasicAuthentication => SelectedAuthenticationTypeIndex == 2;
+
+    public bool IsApiKeyAuthentication => SelectedAuthenticationTypeIndex == 3;
+
+    [ObservableProperty]
+    public partial string AuthenticationBearerToken { get; set; } = "{{TOKEN}}";
+
+    [ObservableProperty]
+    public partial string AuthenticationBasicUsername { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string AuthenticationBasicPassword { get; set; } = "{{PASSWORD}}";
+
+    [ObservableProperty]
+    public partial string AuthenticationApiKeyName { get; set; } = "X-API-Key";
+
+    [ObservableProperty]
+    public partial string AuthenticationApiKeyValue { get; set; } = "{{API_KEY}}";
+
+    [ObservableProperty]
+    public partial int AuthenticationApiKeyLocationIndex { get; set; }
+
+    [ObservableProperty]
     public partial decimal TimeoutSeconds { get; set; } = 30;
 
     [ObservableProperty]
@@ -962,6 +992,7 @@ public partial class MainViewModel : ViewModelBase
 
         SelectedBodyType = "None";
         RequestBody = string.Empty;
+        ResetAuthenticationDraft();
         ResponseStatus = Localize("StatusReady", "Ready");
         ResponseStatusKind = ResponseStatusKind.Neutral;
         ResponseTime = "—";
@@ -1371,6 +1402,7 @@ public partial class MainViewModel : ViewModelBase
                     field.Value,
                     field.IsEnabled))
                 .ToArray(),
+            Authentication = CreateAuthentication(),
             Body = CreateBody(),
             TimeoutSeconds = (int)TimeoutSeconds,
             Assertions = CreateAssertions(),
@@ -1636,6 +1668,8 @@ public partial class MainViewModel : ViewModelBase
             });
         }
 
+        LoadAuthenticationDraft(request.Authentication);
+
         SelectedBodyType = GetBodyType(request.Body?.ContentType);
         RequestBody = request.Body?.Content ?? string.Empty;
         IsStatusAssertionEnabled = request.Assertions.Any(
@@ -1791,6 +1825,13 @@ public partial class MainViewModel : ViewModelBase
         Url,
         SelectedBodyType,
         RequestBody,
+        SelectedAuthenticationTypeIndex,
+        AuthenticationBearerToken,
+        AuthenticationBasicUsername,
+        AuthenticationBasicPassword,
+        AuthenticationApiKeyName,
+        AuthenticationApiKeyValue,
+        AuthenticationApiKeyLocationIndex,
         TimeoutSeconds,
         IsStatusAssertionEnabled,
         AssertionExpectedStatusCode,
@@ -1823,6 +1864,10 @@ public partial class MainViewModel : ViewModelBase
             "ErrorMissingEnvironmentValues",
             "Missing environment values: {0}.",
             string.Join(", ", missing.MissingVariables)),
+        AuthenticationSecretNotProtectedException unprotected => Localize(
+            "ErrorAuthenticationSecretNotProtected",
+            "Authentication variable '{0}' must exist and be marked Secret in the active environment.",
+            unprotected.VariableName),
         SecretVaultUnavailableException => Localize(
             "ErrorSecretVaultUnavailable",
             "Secure secret storage is not available on this platform yet. "
@@ -1886,6 +1931,103 @@ public partial class MainViewModel : ViewModelBase
         "Form URL Encoded" => new ApiRequestBody(RequestBody, "application/x-www-form-urlencoded"),
         _ => null,
     };
+
+    private RequestAuthentication? CreateAuthentication()
+    {
+        return SelectedAuthenticationTypeIndex switch
+        {
+            0 => null,
+            1 => new RequestAuthentication
+            {
+                Type = RequestAuthenticationType.Bearer,
+                BearerToken = ValidateAuthenticationSecretReference(
+                    AuthenticationBearerToken,
+                    "ValidationAuthBearerSecret",
+                    "Bearer token must be a single secret environment variable such as {{TOKEN}}."),
+            },
+            2 => new RequestAuthentication
+            {
+                Type = RequestAuthenticationType.Basic,
+                BasicUsername = string.IsNullOrWhiteSpace(AuthenticationBasicUsername)
+                    ? throw new ArgumentException(Localize(
+                        "ValidationAuthUsernameRequired",
+                        "Basic Auth username is required."))
+                    : AuthenticationBasicUsername.Trim(),
+                BasicPassword = ValidateAuthenticationSecretReference(
+                    AuthenticationBasicPassword,
+                    "ValidationAuthBasicSecret",
+                    "Basic Auth password must be a single secret environment variable such as {{PASSWORD}}."),
+            },
+            3 => new RequestAuthentication
+            {
+                Type = RequestAuthenticationType.ApiKey,
+                ApiKeyName = string.IsNullOrWhiteSpace(AuthenticationApiKeyName)
+                    ? throw new ArgumentException(Localize(
+                        "ValidationAuthApiKeyNameRequired",
+                        "API key name is required."))
+                    : AuthenticationApiKeyName.Trim(),
+                ApiKeyValue = ValidateAuthenticationSecretReference(
+                    AuthenticationApiKeyValue,
+                    "ValidationAuthApiKeySecret",
+                    "API key value must be a single secret environment variable such as {{API_KEY}}."),
+                ApiKeyLocation = AuthenticationApiKeyLocationIndex == 1
+                    ? ApiKeyLocation.Query
+                    : ApiKeyLocation.Header,
+            },
+            _ => throw new ArgumentException(Localize(
+                "ValidationAuthTypeInvalid",
+                "Select a supported authentication type.")),
+        };
+    }
+
+    private string ValidateAuthenticationSecretReference(
+        string value,
+        string localizationKey,
+        string fallback)
+    {
+        if (!RequestTemplate.IsVariableReference(value))
+        {
+            throw new ArgumentException(Localize(localizationKey, fallback));
+        }
+
+        return value.Trim();
+    }
+
+    private void LoadAuthenticationDraft(RequestAuthentication? authentication)
+    {
+        ResetAuthenticationDraft();
+        if (authentication is null)
+        {
+            return;
+        }
+
+        SelectedAuthenticationTypeIndex = authentication.Type switch
+        {
+            RequestAuthenticationType.Bearer => 1,
+            RequestAuthenticationType.Basic => 2,
+            RequestAuthenticationType.ApiKey => 3,
+            _ => 0,
+        };
+        AuthenticationBearerToken = authentication.BearerToken ?? "{{TOKEN}}";
+        AuthenticationBasicUsername = authentication.BasicUsername ?? string.Empty;
+        AuthenticationBasicPassword = authentication.BasicPassword ?? "{{PASSWORD}}";
+        AuthenticationApiKeyName = authentication.ApiKeyName ?? "X-API-Key";
+        AuthenticationApiKeyValue = authentication.ApiKeyValue ?? "{{API_KEY}}";
+        AuthenticationApiKeyLocationIndex = authentication.ApiKeyLocation == ApiKeyLocation.Query
+            ? 1
+            : 0;
+    }
+
+    private void ResetAuthenticationDraft()
+    {
+        SelectedAuthenticationTypeIndex = 0;
+        AuthenticationBearerToken = "{{TOKEN}}";
+        AuthenticationBasicUsername = string.Empty;
+        AuthenticationBasicPassword = "{{PASSWORD}}";
+        AuthenticationApiKeyName = "X-API-Key";
+        AuthenticationApiKeyValue = "{{API_KEY}}";
+        AuthenticationApiKeyLocationIndex = 0;
+    }
 
     private IReadOnlyList<RequestAssertion> CreateAssertions()
     {

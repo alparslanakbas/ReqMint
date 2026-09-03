@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ReqMint.Core.Requests;
 using ReqMint.Core.Templates;
 using ReqMint.Core.Workspaces;
 
@@ -203,6 +204,7 @@ public sealed class WorkspaceJsonStore : IWorkspaceStore
 
             ValidateRequestFields(request.QueryParameters, request.Name, "query parameter");
             ValidateRequestFields(request.Headers, request.Name, "header");
+            ValidateRequestAuthentication(request.Authentication, request.Name);
 
             if (request.Body is not null &&
                 (request.Body.Content is null || string.IsNullOrWhiteSpace(request.Body.ContentType)))
@@ -302,6 +304,93 @@ public sealed class WorkspaceJsonStore : IWorkspaceStore
                 throw new WorkspaceFormatException(
                     $"Request '{requestName}' contains an invalid {fieldType}.");
             }
+        }
+    }
+
+    private static void ValidateRequestAuthentication(
+        RequestAuthentication? authentication,
+        string requestName)
+    {
+        if (authentication is null)
+        {
+            return;
+        }
+
+        if (!Enum.IsDefined(authentication.Type))
+        {
+            throw new WorkspaceFormatException(
+                $"Request '{requestName}' contains an unsupported authentication type.");
+        }
+
+        ValidateOptionalSecretReference(
+            authentication.BearerToken,
+            requestName,
+            "bearer token");
+        ValidateOptionalSecretReference(
+            authentication.BasicPassword,
+            requestName,
+            "Basic Auth password");
+        ValidateOptionalSecretReference(
+            authentication.ApiKeyValue,
+            requestName,
+            "API key value");
+
+        if (authentication.Type == RequestAuthenticationType.None)
+        {
+            return;
+        }
+
+        switch (authentication.Type)
+        {
+            case RequestAuthenticationType.Bearer:
+                ValidateSecretReference(authentication.BearerToken, requestName, "bearer token");
+                break;
+            case RequestAuthenticationType.Basic:
+                if (string.IsNullOrWhiteSpace(authentication.BasicUsername))
+                {
+                    throw new WorkspaceFormatException(
+                        $"Request '{requestName}' must specify a Basic Auth username.");
+                }
+
+                ValidateSecretReference(authentication.BasicPassword, requestName, "Basic Auth password");
+                break;
+            case RequestAuthenticationType.ApiKey:
+                if (string.IsNullOrWhiteSpace(authentication.ApiKeyName))
+                {
+                    throw new WorkspaceFormatException(
+                        $"Request '{requestName}' must specify an API key name.");
+                }
+
+                if (authentication.ApiKeyLocation is null ||
+                    !Enum.IsDefined(authentication.ApiKeyLocation.Value))
+                {
+                    throw new WorkspaceFormatException(
+                        $"Request '{requestName}' contains an unsupported API key location.");
+                }
+
+                ValidateSecretReference(authentication.ApiKeyValue, requestName, "API key value");
+                break;
+        }
+    }
+
+    private static void ValidateSecretReference(string? value, string requestName, string fieldName)
+    {
+        if (!RequestTemplate.IsVariableReference(value))
+        {
+            throw new WorkspaceFormatException(
+                $"Request '{requestName}' {fieldName} must be a single environment variable reference. " +
+                "Authentication secrets cannot be persisted in a workspace file.");
+        }
+    }
+
+    private static void ValidateOptionalSecretReference(
+        string? value,
+        string requestName,
+        string fieldName)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            ValidateSecretReference(value, requestName, fieldName);
         }
     }
 

@@ -87,6 +87,41 @@ public sealed class CollectionRunnerTests
     }
 
     [Fact]
+    public async Task RunAsync_ReportsUnprotectedAuthenticationAsInvalidRequest()
+    {
+        var request = CreateRequest("Protected endpoint", "https://api.example.com/private") with
+        {
+            Authentication = new RequestAuthentication
+            {
+                Type = RequestAuthenticationType.Bearer,
+                BearerToken = "{{TOKEN}}",
+            },
+        };
+        var environment = new EnvironmentDocument
+        {
+            Id = Guid.NewGuid(),
+            Name = "Development",
+            Variables = [new EnvironmentVariable("TOKEN", "plaintext-token")],
+        };
+        var executor = new RecordingExecutor((_, _, _) => Task.FromResult(Response(200)));
+        var runner = new CollectionRunner(
+            executor,
+            new RequestTemplateResolver(new StubSecretVault(null)));
+
+        var result = await runner.RunAsync(new CollectionRunDefinition
+        {
+            WorkspaceId = Guid.NewGuid(),
+            Collection = CreateCollection(request),
+            Environment = environment,
+        });
+
+        var item = Assert.Single(result.Results);
+        Assert.Equal(CollectionRequestRunState.Error, item.State);
+        Assert.Equal(CollectionRunErrorKind.InvalidRequest, item.ErrorKind);
+        Assert.Empty(executor.Requests);
+    }
+
+    [Fact]
     public async Task RunAsync_ReturnsPartialResultWhenCancelledDuringARequest()
     {
         var collection = CreateCollection(

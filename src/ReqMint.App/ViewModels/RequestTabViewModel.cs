@@ -21,6 +21,20 @@ public sealed record RequestTabState
 
     public string Body { get; init; } = string.Empty;
 
+    public int AuthenticationTypeIndex { get; init; }
+
+    public string AuthenticationBearerToken { get; init; } = "{{TOKEN}}";
+
+    public string AuthenticationBasicUsername { get; init; } = string.Empty;
+
+    public string AuthenticationBasicPassword { get; init; } = "{{PASSWORD}}";
+
+    public string AuthenticationApiKeyName { get; init; } = "X-API-Key";
+
+    public string AuthenticationApiKeyValue { get; init; } = "{{API_KEY}}";
+
+    public int AuthenticationApiKeyLocationIndex { get; init; }
+
     public decimal TimeoutSeconds { get; init; } = 30;
 
     public bool IsStatusAssertionEnabled { get; init; }

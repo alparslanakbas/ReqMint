@@ -4,7 +4,7 @@ namespace ReqMint.App.ViewModels;
 
 public partial class MainViewModel
 {
-    private const int EnvironmentEditorTabIndex = 3;
+    private const int EnvironmentEditorTabIndex = 4;
     [RelayCommand]
     private void ShowEnvironmentEditor() => ShowRequestEditorTab(EnvironmentEditorTabIndex);
 

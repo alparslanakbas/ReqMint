@@ -1,6 +1,6 @@
 # Collection Runner data files
 
-ReqMint can execute a saved collection once for each row in a local JSON or CSV file. Use normal `{{variableName}}` placeholders in request URLs, query parameters, headers, bodies, and content types. Values in the current data row override matching public or secret environment variables for that iteration; variables absent from the row continue to resolve from the selected environment.
+ReqMint can execute a saved collection once for each row in a local JSON or CSV file. Use normal `{{variableName}}` placeholders in request URLs, query parameters, headers, bodies, and content types. Values in the current data row override matching public or secret environment variables for that iteration; variables absent from the row continue to resolve from the selected environment. Authentication token, password, and API-key variables are the exception: they always come from a variable marked Secret in the active environment and cannot be overridden by a data row.
 
 ## JSON
 

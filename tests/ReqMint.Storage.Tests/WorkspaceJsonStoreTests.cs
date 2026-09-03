@@ -33,6 +33,7 @@ public sealed class WorkspaceJsonStoreTests
         Assert.Equal(expectedRequest.Url, actualRequest.Url);
         Assert.Equal(expectedRequest.QueryParameters, actualRequest.QueryParameters);
         Assert.Equal(expectedRequest.Headers, actualRequest.Headers);
+        Assert.Equal(expectedRequest.Authentication, actualRequest.Authentication);
         Assert.Equal(expectedRequest.Body, actualRequest.Body);
         Assert.Equal(expectedRequest.TimeoutSeconds, actualRequest.TimeoutSeconds);
         Assert.Equal(expectedRequest.Assertions, actualRequest.Assertions);
@@ -40,6 +41,11 @@ public sealed class WorkspaceJsonStoreTests
         Assert.Equal(snapshot.Environments[0].Name, loaded.Environments[0].Name);
         Assert.Equal(snapshot.Environments[0].Variables, loaded.Environments[0].Variables);
         Assert.Null(loaded.Environments[0].Variables[1].Value);
+        var collectionJson = await File.ReadAllTextAsync(
+            System.IO.Path.Combine(directory.Path, "collections", "sample.json"));
+        Assert.Contains("\"type\": \"Bearer\"", collectionJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("basicPassword", collectionJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("apiKeyValue", collectionJson, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -92,6 +98,7 @@ public sealed class WorkspaceJsonStoreTests
         var request = loaded.Collections[0].Requests[0];
         Assert.True(request.QueryParameters[0].IsEnabled);
         Assert.True(request.Headers[0].IsEnabled);
+        Assert.Null(request.Authentication);
     }
 
     [Fact]
@@ -106,6 +113,60 @@ public sealed class WorkspaceJsonStoreTests
 
         Assert.Contains("cannot be persisted", exception.Message, StringComparison.Ordinal);
         Assert.False(File.Exists(System.IO.Path.Combine(directory.Path, WorkspaceJsonStore.WorkspaceFileName)));
+    }
+
+    [Fact]
+    public async Task SaveAsync_RejectsLiteralAuthenticationSecretsBeforeWritingFiles()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new WorkspaceJsonStore();
+        var snapshot = CreateSnapshot();
+        var collection = snapshot.Collections[0];
+        var request = collection.Requests[0] with
+        {
+            Authentication = new RequestAuthentication
+            {
+                Type = RequestAuthenticationType.Bearer,
+                BearerToken = "literal-secret-must-not-be-written",
+            },
+        };
+        snapshot = snapshot with
+        {
+            Collections = [collection with { Requests = [request] }],
+        };
+
+        var exception = await Assert.ThrowsAsync<WorkspaceFormatException>(
+            () => store.SaveAsync(directory.Path, snapshot, CancellationToken.None));
+
+        Assert.Contains("cannot be persisted", exception.Message, StringComparison.Ordinal);
+        Assert.False(File.Exists(System.IO.Path.Combine(directory.Path, WorkspaceJsonStore.WorkspaceFileName)));
+    }
+
+    [Fact]
+    public async Task SaveAsync_RejectsLiteralSecretsInInactiveAuthenticationFields()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new WorkspaceJsonStore();
+        var snapshot = CreateSnapshot();
+        var collection = snapshot.Collections[0];
+        var request = collection.Requests[0] with
+        {
+            Authentication = new RequestAuthentication
+            {
+                Type = RequestAuthenticationType.Bearer,
+                BearerToken = "{{API_TOKEN}}",
+                BasicPassword = "unused-but-still-sensitive",
+            },
+        };
+        snapshot = snapshot with
+        {
+            Collections = [collection with { Requests = [request] }],
+        };
+
+        var exception = await Assert.ThrowsAsync<WorkspaceFormatException>(
+            () => store.SaveAsync(directory.Path, snapshot, CancellationToken.None));
+
+        Assert.Contains("cannot be persisted", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -352,6 +413,11 @@ public sealed class WorkspaceJsonStoreTests
                     Url = "https://api.example.com/items",
                     QueryParameters = [new RequestField("preview", "true")],
                     Headers = [new RequestField("Accept", "application/json")],
+                    Authentication = new RequestAuthentication
+                    {
+                        Type = RequestAuthenticationType.Bearer,
+                        BearerToken = "{{API_TOKEN}}",
+                    },
                     Body = new ApiRequestBody("{\"name\":\"ReqMint\"}", "application/json"),
                     TimeoutSeconds = 45,
                     Assertions =

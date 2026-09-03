@@ -18,7 +18,7 @@ public sealed class RequestEditorTabStyleContractTests
             StringComparison.Ordinal);
         Assert.Contains("Property=\"IsVisible\" Value=\"False\"", app, StringComparison.Ordinal);
         Assert.Contains("{DynamicResource AccentBrush}", app, StringComparison.Ordinal);
-        Assert.Equal(5, CountOccurrences(view, "Classes=\"requestEditorTab\""));
+        Assert.Equal(6, CountOccurrences(view, "Classes=\"requestEditorTab\""));
     }
 
     private static int CountOccurrences(string value, string search)

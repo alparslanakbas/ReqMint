@@ -25,6 +25,11 @@ public sealed class RequestHistoryPrivacyTests
                 new RequestField("Accept", "application/json"),
                 new RequestField("Authorization", "Bearer top-secret"),
             ],
+            Authentication = new RequestAuthentication
+            {
+                Type = RequestAuthenticationType.Bearer,
+                BearerToken = "{{TOKEN}}",
+            },
             Body = new ApiRequestBody("{\"password\":\"secret\"}", "application/json"),
         };
 
@@ -37,6 +42,7 @@ public sealed class RequestHistoryPrivacyTests
         Assert.Equal(RequestHistoryPrivacy.RedactedValue, snapshot.QueryParameters[1].Value);
         Assert.Equal("application/json", snapshot.Headers[0].Value);
         Assert.Equal(RequestHistoryPrivacy.RedactedValue, snapshot.Headers[1].Value);
+        Assert.Null(snapshot.Authentication);
         Assert.Null(snapshot.Body);
     }
 

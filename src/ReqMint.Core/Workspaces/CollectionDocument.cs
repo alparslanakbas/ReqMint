@@ -29,6 +29,8 @@ public sealed record RequestDocument
 
     public IReadOnlyList<RequestField> Headers { get; init; } = [];
 
+    public RequestAuthentication? Authentication { get; init; }
+
     public ApiRequestBody? Body { get; init; }
 
     public int TimeoutSeconds { get; init; } = 30;

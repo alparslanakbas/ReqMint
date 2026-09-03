@@ -752,6 +752,79 @@
                             </Grid>
                         </TabItem>
 
+                        <TabItem Classes="requestEditorTab" Header="{DynamicResource TextAuthentication}">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="18,12" Spacing="12" MaxWidth="680" HorizontalAlignment="Left">
+                                    <Grid ColumnDefinitions="180,16,320">
+                                        <TextBlock Text="{DynamicResource AuthenticationType}"
+                                                   FontWeight="SemiBold"
+                                                   VerticalAlignment="Center" />
+                                        <ComboBox Grid.Column="2"
+                                                  SelectedIndex="{Binding SelectedAuthenticationTypeIndex}">
+                                            <ComboBoxItem Content="{DynamicResource AuthenticationNone}" />
+                                            <ComboBoxItem Content="{DynamicResource AuthenticationBearer}" />
+                                            <ComboBoxItem Content="{DynamicResource AuthenticationBasic}" />
+                                            <ComboBoxItem Content="{DynamicResource AuthenticationApiKey}" />
+                                        </ComboBox>
+                                    </Grid>
+
+                                    <StackPanel Spacing="8" IsVisible="{Binding IsBearerAuthentication}">
+                                        <TextBlock Text="{DynamicResource AuthenticationBearerToken}"
+                                                   FontWeight="SemiBold" />
+                                        <TextBox Text="{Binding AuthenticationBearerToken}"
+                                                 Classes="technical"
+                                                 PlaceholderText="{DynamicResource AuthenticationBearerPlaceholder}" />
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="8" IsVisible="{Binding IsBasicAuthentication}">
+                                        <TextBlock Text="{DynamicResource AuthenticationUsername}"
+                                                   FontWeight="SemiBold" />
+                                        <TextBox Text="{Binding AuthenticationBasicUsername}"
+                                                 Classes="technical"
+                                                 PlaceholderText="{DynamicResource AuthenticationUsernamePlaceholder}" />
+                                        <TextBlock Text="{DynamicResource AuthenticationPassword}"
+                                                   FontWeight="SemiBold" />
+                                        <TextBox Text="{Binding AuthenticationBasicPassword}"
+                                                 Classes="technical"
+                                                 PlaceholderText="{DynamicResource AuthenticationPasswordPlaceholder}" />
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="8" IsVisible="{Binding IsApiKeyAuthentication}">
+                                        <TextBlock Text="{DynamicResource AuthenticationApiKeyName}"
+                                                   FontWeight="SemiBold" />
+                                        <TextBox Text="{Binding AuthenticationApiKeyName}"
+                                                 Classes="technical"
+                                                 PlaceholderText="X-API-Key" />
+                                        <TextBlock Text="{DynamicResource AuthenticationApiKeyValue}"
+                                                   FontWeight="SemiBold" />
+                                        <TextBox Text="{Binding AuthenticationApiKeyValue}"
+                                                 Classes="technical"
+                                                 PlaceholderText="{DynamicResource AuthenticationApiKeyPlaceholder}" />
+                                        <Grid ColumnDefinitions="180,16,240">
+                                            <TextBlock Text="{DynamicResource AuthenticationApiKeyLocation}"
+                                                       FontWeight="SemiBold"
+                                                       VerticalAlignment="Center" />
+                                            <ComboBox Grid.Column="2"
+                                                      SelectedIndex="{Binding AuthenticationApiKeyLocationIndex}">
+                                                <ComboBoxItem Content="{DynamicResource AuthenticationLocationHeader}" />
+                                                <ComboBoxItem Content="{DynamicResource AuthenticationLocationQuery}" />
+                                            </ComboBox>
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <Border Background="{DynamicResource SurfaceRaisedBrush}"
+                                            BorderBrush="{DynamicResource BorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Padding="12">
+                                        <TextBlock Text="{DynamicResource AuthenticationSecretHelp}"
+                                                   Classes="secondary"
+                                                   TextWrapping="Wrap" />
+                                    </Border>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+
                         <TabItem Classes="requestEditorTab" Header="{DynamicResource TextBody}">
                             <Grid RowDefinitions="Auto,12,*" Margin="18,12">
                                 <Grid Grid.Row="0" ColumnDefinitions="180,16,*">

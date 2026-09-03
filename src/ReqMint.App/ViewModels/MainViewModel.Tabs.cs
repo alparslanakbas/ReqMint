@@ -231,6 +231,13 @@ public partial class MainViewModel
             Url = Url,
             BodyType = SelectedBodyType,
             Body = RequestBody,
+            AuthenticationTypeIndex = SelectedAuthenticationTypeIndex,
+            AuthenticationBearerToken = AuthenticationBearerToken,
+            AuthenticationBasicUsername = AuthenticationBasicUsername,
+            AuthenticationBasicPassword = AuthenticationBasicPassword,
+            AuthenticationApiKeyName = AuthenticationApiKeyName,
+            AuthenticationApiKeyValue = AuthenticationApiKeyValue,
+            AuthenticationApiKeyLocationIndex = AuthenticationApiKeyLocationIndex,
             TimeoutSeconds = TimeoutSeconds,
             IsStatusAssertionEnabled = IsStatusAssertionEnabled,
             AssertionExpectedStatusCode = AssertionExpectedStatusCode,
@@ -289,6 +296,13 @@ public partial class MainViewModel
                 Url = state.Url;
                 SelectedBodyType = state.BodyType;
                 RequestBody = state.Body;
+                SelectedAuthenticationTypeIndex = state.AuthenticationTypeIndex;
+                AuthenticationBearerToken = state.AuthenticationBearerToken;
+                AuthenticationBasicUsername = state.AuthenticationBasicUsername;
+                AuthenticationBasicPassword = state.AuthenticationBasicPassword;
+                AuthenticationApiKeyName = state.AuthenticationApiKeyName;
+                AuthenticationApiKeyValue = state.AuthenticationApiKeyValue;
+                AuthenticationApiKeyLocationIndex = state.AuthenticationApiKeyLocationIndex;
                 TimeoutSeconds = state.TimeoutSeconds;
                 IsStatusAssertionEnabled = state.IsStatusAssertionEnabled;
                 AssertionExpectedStatusCode = state.AssertionExpectedStatusCode;

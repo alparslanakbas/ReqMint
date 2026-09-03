@@ -38,6 +38,21 @@ Authorization: Bearer {{API_TOKEN}}
 
 Templates remain unchanged in collection files. ReqMint resolves them from the active environment immediately before sending and reports all missing values together.
 
+## Request authentication
+
+Requests may optionally configure Bearer Token, Basic Auth, or an API key in a header or query parameter. Authentication secrets must be a single environment-variable reference, never a literal value:
+
+```json
+{
+  "authentication": {
+    "type": "Bearer",
+    "bearerToken": "{{API_TOKEN}}"
+  }
+}
+```
+
+The referenced variable must exist in the active environment and be marked `isSecret: true`. ReqMint rejects literal authentication secrets before a workspace is written and reads the value from the operating-system vault only when sending. Older request documents without `authentication` remain valid and behave as No Auth. Auth configuration is removed from request-history snapshots.
+
 ## Runner assertions
 
 Assertions are optional and older request documents without the field remain valid. They are stored with the request so teams review test expectations through Git:
@@ -61,5 +76,6 @@ JSON-field checks use JSON Pointer, not executable scripts. Assertion counts, st
 - Workspace documents cannot traverse symbolic links or filesystem reparse points.
 - Each JSON document is limited to 16 MiB before parsing or replacing an existing file.
 - Duplicate IDs, duplicate file targets, and mismatched references are rejected.
+- Literal Bearer tokens, Basic Auth passwords, and API key values cannot be persisted.
 - Documents are replaced atomically to avoid partially written JSON files.
 - The root manifest is written last so it never points to a document that was not saved.

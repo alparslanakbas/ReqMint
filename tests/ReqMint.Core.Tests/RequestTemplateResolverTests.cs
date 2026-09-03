@@ -26,7 +26,16 @@ public sealed class RequestTemplateResolverTests
         {
             Url = "{{BASE_URL}}/{{VERSION}}/orders",
             QueryParameters = [new RequestField("tenant", "{{VERSION}}")],
-            Headers = [new RequestField("Authorization", "Bearer {{TOKEN}}")],
+            Headers =
+            [
+                new RequestField("X-Version", "{{VERSION}}"),
+                new RequestField("Authorization", "Bearer stale-value"),
+            ],
+            Authentication = new RequestAuthentication
+            {
+                Type = RequestAuthenticationType.Bearer,
+                BearerToken = "{{TOKEN}}",
+            },
             Body = new ApiRequestBody("{\"source\":\"{{VERSION}}\"}", "application/json"),
         };
         var vault = new StubSecretVault("secret-token");
@@ -36,9 +45,127 @@ public sealed class RequestTemplateResolverTests
 
         Assert.Equal("https://api.example.com/v2/orders", resolved.Url.AbsoluteUri);
         Assert.Equal(new RequestField("tenant", "v2"), resolved.QueryParameters[0]);
-        Assert.Equal(new RequestField("Authorization", "Bearer secret-token"), resolved.Headers[0]);
+        Assert.Contains(new RequestField("X-Version", "v2"), resolved.Headers);
+        Assert.Contains(new RequestField("Authorization", "Bearer secret-token"), resolved.Headers);
+        Assert.Single(resolved.Headers, field => field.Name == "Authorization");
         Assert.Equal("{\"source\":\"v2\"}", resolved.Body?.Content);
         Assert.Equal("TOKEN", Assert.Single(vault.ReadReferences).VariableName);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_CreatesBasicAuthorizationHeader()
+    {
+        var environment = new EnvironmentDocument
+        {
+            Id = Guid.NewGuid(),
+            Name = "Development",
+            Variables = [new EnvironmentVariable("PASSWORD", null, IsSecret: true)],
+        };
+        var request = CreateRequest() with
+        {
+            Authentication = new RequestAuthentication
+            {
+                Type = RequestAuthenticationType.Basic,
+                BasicUsername = "developer",
+                BasicPassword = "{{PASSWORD}}",
+            },
+        };
+        var resolver = new RequestTemplateResolver(new StubSecretVault("s3cret"));
+
+        var resolved = await resolver.ResolveAsync(Guid.NewGuid(), environment, request);
+
+        var authorization = Assert.Single(resolved.Headers);
+        Assert.Equal("Authorization", authorization.Name);
+        Assert.Equal(
+            "Basic " + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("developer:s3cret")),
+            authorization.Value);
+    }
+
+    [Theory]
+    [InlineData(ApiKeyLocation.Header)]
+    [InlineData(ApiKeyLocation.Query)]
+    public async Task ResolveAsync_AddsApiKeyToSelectedLocation(ApiKeyLocation location)
+    {
+        var environment = new EnvironmentDocument
+        {
+            Id = Guid.NewGuid(),
+            Name = "Development",
+            Variables = [new EnvironmentVariable("API_KEY", null, IsSecret: true)],
+        };
+        var request = CreateRequest() with
+        {
+            QueryParameters = [new RequestField("X-API-Key", "stale-query")],
+            Headers = [new RequestField("X-API-Key", "stale-header")],
+            Authentication = new RequestAuthentication
+            {
+                Type = RequestAuthenticationType.ApiKey,
+                ApiKeyName = "X-API-Key",
+                ApiKeyValue = "{{API_KEY}}",
+                ApiKeyLocation = location,
+            },
+        };
+        var resolver = new RequestTemplateResolver(new StubSecretVault("resolved-key"));
+
+        var resolved = await resolver.ResolveAsync(Guid.NewGuid(), environment, request);
+
+        var destination = location == ApiKeyLocation.Header
+            ? resolved.Headers
+            : resolved.QueryParameters;
+        Assert.Contains(new RequestField("X-API-Key", "resolved-key"), destination);
+        Assert.Single(destination, field => field.Name == "X-API-Key");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_RejectsAuthenticationVariablesThatAreNotProtected()
+    {
+        var environment = new EnvironmentDocument
+        {
+            Id = Guid.NewGuid(),
+            Name = "Development",
+            Variables = [new EnvironmentVariable("TOKEN", "plaintext-token")],
+        };
+        var request = CreateRequest() with
+        {
+            Authentication = new RequestAuthentication
+            {
+                Type = RequestAuthenticationType.Bearer,
+                BearerToken = "{{TOKEN}}",
+            },
+        };
+        var resolver = new RequestTemplateResolver(new StubSecretVault(null));
+
+        var exception = await Assert.ThrowsAsync<AuthenticationSecretNotProtectedException>(
+            () => resolver.ResolveAsync(Guid.NewGuid(), environment, request));
+
+        Assert.Equal("TOKEN", exception.VariableName);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_DoesNotLetIterationDataOverrideAuthenticationSecrets()
+    {
+        var environment = new EnvironmentDocument
+        {
+            Id = Guid.NewGuid(),
+            Name = "Development",
+            Variables = [new EnvironmentVariable("TOKEN", null, IsSecret: true)],
+        };
+        var request = CreateRequest() with
+        {
+            Authentication = new RequestAuthentication
+            {
+                Type = RequestAuthenticationType.Bearer,
+                BearerToken = "{{TOKEN}}",
+            },
+        };
+        var resolver = new RequestTemplateResolver(new StubSecretVault("vault-token"));
+
+        var resolved = await resolver.ResolveAsync(
+            Guid.NewGuid(),
+            environment,
+            request,
+            new Dictionary<string, string> { ["TOKEN"] = "csv-token" });
+
+        Assert.Equal("Bearer vault-token", Assert.Single(resolved.Headers).Value);
     }
 
     [Fact]

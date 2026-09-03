@@ -6,6 +6,20 @@ public static partial class RequestTemplate
 {
     public static bool ContainsVariables(string value) => VariablePattern().IsMatch(value);
 
+    public static bool IsVariableReference(string? value) =>
+        GetVariableReferenceName(value) is not null;
+
+    public static string? GetVariableReferenceName(string? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        var match = VariableReferencePattern().Match(value);
+        return match.Success ? match.Groups["name"].Value : null;
+    }
+
     public static IReadOnlySet<string> FindVariables(IEnumerable<string?> values)
     {
         var variables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -37,4 +51,9 @@ public static partial class RequestTemplate
         "\\{\\{\\s*(?<name>[A-Za-z_][A-Za-z0-9_.-]*)\\s*\\}\\}",
         RegexOptions.CultureInvariant)]
     private static partial Regex VariablePattern();
+
+    [GeneratedRegex(
+        "^\\s*\\{\\{\\s*(?<name>[A-Za-z_][A-Za-z0-9_.-]*)\\s*\\}\\}\\s*$",
+        RegexOptions.CultureInvariant)]
+    private static partial Regex VariableReferencePattern();
 }

@@ -19,7 +19,7 @@ public sealed class MainViewModelWorkspaceTests
 
         viewModel.ShowEnvironmentEditorCommand.Execute(null);
 
-        Assert.Equal(3, viewModel.RequestEditorTabIndex);
+        Assert.Equal(4, viewModel.RequestEditorTabIndex);
         Assert.True(viewModel.IsRequestWorkspaceVisible);
         Assert.False(viewModel.IsApplicationSettingsVisible);
         Assert.False(viewModel.IsRequestsNavigationSelected);
@@ -27,7 +27,7 @@ public sealed class MainViewModelWorkspaceTests
 
         viewModel.ShowSettingsEditorCommand.Execute(null);
 
-        Assert.Equal(3, viewModel.RequestEditorTabIndex);
+        Assert.Equal(4, viewModel.RequestEditorTabIndex);
         Assert.False(viewModel.IsRequestWorkspaceVisible);
         Assert.True(viewModel.IsApplicationSettingsVisible);
         Assert.False(viewModel.IsRequestsNavigationSelected);
@@ -198,7 +198,11 @@ public sealed class MainViewModelWorkspaceTests
         var request = snapshot.Collections[0].Requests[0] with
         {
             Url = "{{BASE_URL}}/orders",
-            Headers = [new RequestField("Authorization", "Bearer {{TOKEN}}")],
+            Authentication = new RequestAuthentication
+            {
+                Type = RequestAuthenticationType.Bearer,
+                BearerToken = "{{TOKEN}}",
+            },
         };
         var collection = snapshot.Collections[0] with { Requests = [request] };
         var environment = new EnvironmentDocument
@@ -238,7 +242,9 @@ public sealed class MainViewModelWorkspaceTests
         Assert.Equal("https://api.example.com/orders", executor.Request?.Url.AbsoluteUri);
         Assert.Equal(
             "Bearer secret-token",
-            Assert.Single(executor.Request!.Headers).Value);
+            Assert.Single(
+                executor.Request!.Headers,
+                header => header.Name == "Authorization").Value);
         Assert.Equal("200 OK", viewModel.ResponseStatus);
     }
 
@@ -416,6 +422,42 @@ public sealed class MainViewModelWorkspaceTests
 
         Assert.Equal(WindowCloseBehavior.Ask, settings.Current.WindowCloseBehavior);
         Assert.True(viewModel.IsWindowClosePreferenceUndecided);
+    }
+
+    [Fact]
+    public async Task SaveRequestCommand_PersistsAuthenticationWithoutTheSecretValue()
+    {
+        var snapshot = CreateSnapshot();
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = snapshot };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        viewModel.SelectedAuthenticationTypeIndex = 1;
+        viewModel.AuthenticationBearerToken = "{{TOKEN}}";
+
+        await viewModel.SaveRequestCommand.ExecuteAsync(null);
+
+        var authentication = store.SavedSnapshot!.Collections[0].Requests[0].Authentication;
+        Assert.NotNull(authentication);
+        Assert.Equal(RequestAuthenticationType.Bearer, authentication.Type);
+        Assert.Equal("{{TOKEN}}", authentication.BearerToken);
+    }
+
+    [Fact]
+    public async Task SaveRequestCommand_RejectsLiteralAuthenticationSecrets()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        viewModel.SelectedAuthenticationTypeIndex = 1;
+        viewModel.AuthenticationBearerToken = "literal-secret";
+
+        await viewModel.SaveRequestCommand.ExecuteAsync(null);
+
+        Assert.Equal("Could not save request", viewModel.WorkspaceStatus);
+        Assert.Contains("{{TOKEN}}", viewModel.ResponseBody, StringComparison.Ordinal);
+        Assert.Null(store.SavedSnapshot);
     }
 
     [Fact]
@@ -2400,6 +2442,8 @@ public sealed class MainViewModelWorkspaceTests
         var first = viewModel.ActiveTab!;
         viewModel.Url = "https://api.example.com/first";
         viewModel.Headers.Add(new RequestFieldViewModel("X-First", "1"));
+        viewModel.SelectedAuthenticationTypeIndex = 1;
+        viewModel.AuthenticationBearerToken = "{{FIRST_TOKEN}}";
 
         await viewModel.Collections[0].Requests[1].OpenCommand.ExecuteAsync(null);
         var second = viewModel.ActiveTab!;
@@ -2408,11 +2452,14 @@ public sealed class MainViewModelWorkspaceTests
         Assert.Equal(2, viewModel.Tabs.Count);
         Assert.Equal("https://api.example.com/orders/42", viewModel.Url);
         Assert.DoesNotContain(viewModel.Headers, header => header.Name == "X-First");
+        Assert.Equal(0, viewModel.SelectedAuthenticationTypeIndex);
 
         await first.SelectCommand.ExecuteAsync(null);
 
         Assert.Equal("https://api.example.com/first", viewModel.Url);
         Assert.Contains(viewModel.Headers, header => header.Name == "X-First");
+        Assert.Equal(1, viewModel.SelectedAuthenticationTypeIndex);
+        Assert.Equal("{{FIRST_TOKEN}}", viewModel.AuthenticationBearerToken);
     }
 
     [Fact]

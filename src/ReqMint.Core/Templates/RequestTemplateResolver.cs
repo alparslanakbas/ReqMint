@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using ReqMint.Core.Requests;
 using ReqMint.Core.Security;
 using ReqMint.Core.Workspaces;
@@ -25,29 +27,36 @@ public sealed class RequestTemplateResolver(ISecretVault secretVault)
         CancellationToken cancellationToken = default)
     {
         var variableNames = RequestTemplate.FindVariables(GetTemplateValues(request));
+        var authenticationSecretVariables = GetAuthenticationSecretVariables(request.Authentication);
         var values = await GetVariableValuesAsync(
             workspaceId,
             environment,
             variableNames,
+            authenticationSecretVariables,
             iterationVariables,
             cancellationToken);
+
+        var queryParameters = request.QueryParameters
+            .Where(field => field.IsEnabled)
+            .Select(field => new RequestField(
+                RequestTemplate.Resolve(field.Name, values),
+                RequestTemplate.Resolve(field.Value, values)))
+            .ToList();
+        var headers = request.Headers
+            .Where(field => field.IsEnabled)
+            .Select(field => new RequestField(
+                RequestTemplate.Resolve(field.Name, values),
+                RequestTemplate.Resolve(field.Value, values)))
+            .ToList();
+
+        ApplyAuthentication(request.Authentication, values, queryParameters, headers);
 
         return ApiRequest.Create(
             request.Method,
             RequestTemplate.Resolve(request.Url, values)) with
         {
-            QueryParameters = request.QueryParameters
-                .Where(field => field.IsEnabled)
-                .Select(field => new RequestField(
-                    RequestTemplate.Resolve(field.Name, values),
-                    RequestTemplate.Resolve(field.Value, values)))
-                .ToArray(),
-            Headers = request.Headers
-                .Where(field => field.IsEnabled)
-                .Select(field => new RequestField(
-                    RequestTemplate.Resolve(field.Name, values),
-                    RequestTemplate.Resolve(field.Value, values)))
-                .ToArray(),
+            QueryParameters = queryParameters,
+            Headers = headers,
             Body = request.Body is null
                 ? null
                 : new ApiRequestBody(
@@ -61,6 +70,7 @@ public sealed class RequestTemplateResolver(ISecretVault secretVault)
         Guid workspaceId,
         EnvironmentDocument? environment,
         IReadOnlySet<string> variableNames,
+        IReadOnlySet<string> authenticationSecretVariables,
         IReadOnlyDictionary<string, string>? iterationVariables,
         CancellationToken cancellationToken)
     {
@@ -73,6 +83,29 @@ public sealed class RequestTemplateResolver(ISecretVault secretVault)
 
         foreach (var variableName in variableNames)
         {
+            if (authenticationSecretVariables.Contains(variableName))
+            {
+                if (!definitions.TryGetValue(variableName, out var secretDefinition) ||
+                    !secretDefinition.IsSecret)
+                {
+                    throw new AuthenticationSecretNotProtectedException(variableName);
+                }
+
+                var secretValue = await secretVault.GetAsync(
+                    new SecretReference(workspaceId, environment!.Id, secretDefinition.Name),
+                    cancellationToken);
+                if (secretValue is null)
+                {
+                    missingVariables.Add(variableName);
+                }
+                else
+                {
+                    values[variableName] = secretValue;
+                }
+
+                continue;
+            }
+
             if (iterationVariables?.TryGetValue(variableName, out var iterationValue) == true)
             {
                 values[variableName] = iterationValue;
@@ -132,5 +165,105 @@ public sealed class RequestTemplateResolver(ISecretVault secretVault)
             yield return request.Body.Content;
             yield return request.Body.ContentType;
         }
+
+        if (request.Authentication is not { } authentication)
+        {
+            yield break;
+        }
+
+        switch (authentication.Type)
+        {
+            case RequestAuthenticationType.Bearer:
+                yield return authentication.BearerToken;
+                break;
+            case RequestAuthenticationType.Basic:
+                yield return authentication.BasicUsername;
+                yield return authentication.BasicPassword;
+                break;
+            case RequestAuthenticationType.ApiKey:
+                yield return authentication.ApiKeyName;
+                yield return authentication.ApiKeyValue;
+                break;
+        }
+    }
+
+    private static IReadOnlySet<string> GetAuthenticationSecretVariables(
+        RequestAuthentication? authentication)
+    {
+        var variable = authentication?.Type switch
+        {
+            RequestAuthenticationType.Bearer =>
+                RequestTemplate.GetVariableReferenceName(authentication.BearerToken),
+            RequestAuthenticationType.Basic =>
+                RequestTemplate.GetVariableReferenceName(authentication.BasicPassword),
+            RequestAuthenticationType.ApiKey =>
+                RequestTemplate.GetVariableReferenceName(authentication.ApiKeyValue),
+            _ => null,
+        };
+
+        return variable is null
+            ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>([variable], StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static void ApplyAuthentication(
+        RequestAuthentication? authentication,
+        IReadOnlyDictionary<string, string> values,
+        List<RequestField> queryParameters,
+        List<RequestField> headers)
+    {
+        if (authentication is null || authentication.Type == RequestAuthenticationType.None)
+        {
+            return;
+        }
+
+        switch (authentication.Type)
+        {
+            case RequestAuthenticationType.Bearer:
+                SetHeader(
+                    headers,
+                    "Authorization",
+                    $"Bearer {RequestTemplate.Resolve(authentication.BearerToken ?? string.Empty, values)}");
+                break;
+            case RequestAuthenticationType.Basic:
+                var username = RequestTemplate.Resolve(authentication.BasicUsername ?? string.Empty, values);
+                var password = RequestTemplate.Resolve(authentication.BasicPassword ?? string.Empty, values);
+                var credentialBytes = Encoding.UTF8.GetBytes($"{username}:{password}");
+                try
+                {
+                    SetHeader(
+                        headers,
+                        "Authorization",
+                        $"Basic {Convert.ToBase64String(credentialBytes)}");
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(credentialBytes);
+                }
+
+                break;
+            case RequestAuthenticationType.ApiKey:
+                var name = RequestTemplate.Resolve(authentication.ApiKeyName ?? string.Empty, values);
+                var value = RequestTemplate.Resolve(authentication.ApiKeyValue ?? string.Empty, values);
+                if (authentication.ApiKeyLocation == ApiKeyLocation.Query)
+                {
+                    SetField(queryParameters, name, value);
+                }
+                else
+                {
+                    SetHeader(headers, name, value);
+                }
+
+                break;
+        }
+    }
+
+    private static void SetHeader(List<RequestField> headers, string name, string value) =>
+        SetField(headers, name, value);
+
+    private static void SetField(List<RequestField> fields, string name, string value)
+    {
+        fields.RemoveAll(field => string.Equals(field.Name, name, StringComparison.OrdinalIgnoreCase));
+        fields.Add(new RequestField(name, value));
     }
 }
