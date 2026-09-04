@@ -99,18 +99,19 @@ public sealed class HttpRequestExecutor : IRequestExecutor, IDisposable
 
         if (request.Body is not null)
         {
-            message.Content = string.Equals(
-                request.Body.ContentType,
-                "application/x-www-form-urlencoded",
-                StringComparison.OrdinalIgnoreCase) && request.Body.FormFields.Count > 0
-                ? new FormUrlEncodedContent(request.Body.FormFields
+            message.Content = request.Body.ContentType.ToLowerInvariant() switch
+            {
+                "multipart/form-data" => CreateMultipartContent(request.Body),
+                "application/x-www-form-urlencoded" when request.Body.FormFields.Count > 0 =>
+                    new FormUrlEncodedContent(request.Body.FormFields
                     .Where(field => field.IsEnabled)
                     .Select(field =>
-                    new KeyValuePair<string, string>(field.Name, field.Value)))
-                : new StringContent(
+                        new KeyValuePair<string, string>(field.Name, field.Value))),
+                _ => new StringContent(
                     request.Body.Content,
                     Encoding.UTF8,
-                    request.Body.ContentType);
+                    request.Body.ContentType),
+            };
         }
 
         foreach (var header in request.Headers)
@@ -145,6 +146,47 @@ public sealed class HttpRequestExecutor : IRequestExecutor, IDisposable
         }
 
         return message;
+    }
+
+    private static MultipartFormDataContent CreateMultipartContent(ApiRequestBody body)
+    {
+        var multipart = new MultipartFormDataContent();
+        try
+        {
+            foreach (var field in body.FormFields.Where(field => field.IsEnabled))
+            {
+                multipart.Add(new StringContent(field.Value, Encoding.UTF8), field.Name);
+            }
+
+            foreach (var file in body.FileFields.Where(field => field.IsEnabled))
+            {
+                if (string.IsNullOrWhiteSpace(file.LocalPath))
+                {
+                    throw new HttpRequestException($"Select the local file '{file.FileName}' before sending.");
+                }
+
+                FileStream stream;
+                try
+                {
+                    stream = File.OpenRead(file.LocalPath);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    throw new HttpRequestException($"Could not open the local file '{file.FileName}'.", exception);
+                }
+
+                var content = new StreamContent(stream);
+                content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                multipart.Add(content, file.Name, file.FileName);
+            }
+
+            return multipart;
+        }
+        catch
+        {
+            multipart.Dispose();
+            throw;
+        }
     }
 
     private static Uri BuildUri(ApiRequest request)

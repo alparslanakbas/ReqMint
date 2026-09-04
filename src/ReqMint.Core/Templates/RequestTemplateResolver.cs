@@ -69,6 +69,15 @@ public sealed class RequestTemplateResolver(ISecretVault secretVault)
                             RequestTemplate.Resolve(field.Name, values),
                             RequestTemplate.Resolve(field.Value, values)))
                         .ToArray(),
+                    FileFields = request.Body.FileFields
+                        .Where(field => field.IsEnabled)
+                        .Select(field => new RequestFileField(
+                            RequestTemplate.Resolve(field.Name, values),
+                            field.FileName)
+                        {
+                            LocalPath = field.LocalPath,
+                        })
+                        .ToArray(),
                 },
             Timeout = TimeSpan.FromSeconds(request.TimeoutSeconds),
         };
@@ -176,6 +185,11 @@ public sealed class RequestTemplateResolver(ISecretVault secretVault)
             {
                 yield return field.Name;
                 yield return field.Value;
+            }
+
+            foreach (var file in request.Body.FileFields.Where(field => field.IsEnabled))
+            {
+                yield return file.Name;
             }
         }
 

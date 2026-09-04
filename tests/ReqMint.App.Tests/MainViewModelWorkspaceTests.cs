@@ -133,6 +133,36 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task MultipartFilePickerAndSave_PreserveUploadMetadata()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var picker = new StubRequestFilePicker(
+            new PickedRequestFile("sample.txt", "C:/temp/sample.txt"));
+        var viewModel = CreateViewModel(
+            store,
+            CreateWorkspacePath(),
+            requestFilePicker: picker);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        viewModel.SelectedBodyType = "Multipart Form Data";
+        viewModel.FormBodyFields.Clear();
+        viewModel.FormBodyFields.Add(new RequestFieldViewModel("description", "ReqMint upload"));
+        var fileDraft = new RequestFileFieldViewModel("attachment");
+        viewModel.MultipartFileFields.Add(fileDraft);
+
+        await viewModel.ChooseMultipartFileCommand.ExecuteAsync(fileDraft);
+        await viewModel.SaveRequestCommand.ExecuteAsync(null);
+
+        var body = store.SavedSnapshot!.Collections[0].Requests[0].Body!;
+        Assert.Equal("multipart/form-data", body.ContentType);
+        Assert.Equal(new RequestField("description", "ReqMint upload"), Assert.Single(body.FormFields));
+        var file = Assert.Single(body.FileFields);
+        Assert.Equal("attachment", file.Name);
+        Assert.Equal("sample.txt", file.FileName);
+        Assert.Equal("C:/temp/sample.txt", file.LocalPath);
+    }
+
+    [Fact]
     public async Task SaveRequestCommand_PersistsRunnerAssertions()
     {
         var snapshot = CreateSnapshot();
@@ -2688,7 +2718,8 @@ public sealed class MainViewModelWorkspaceTests
         ISupportInformationService? supportInformationService = null,
         IClipboardService? clipboardService = null,
         StubRequestDeletePrompt? requestDeletePrompt = null,
-        StubRequestCookieManager? requestCookieManager = null)
+        StubRequestCookieManager? requestCookieManager = null,
+        IRequestFilePicker? requestFilePicker = null)
     {
         vault ??= new RecordingSecretVault();
         executor ??= new NoOpRequestExecutor();
@@ -2699,6 +2730,7 @@ public sealed class MainViewModelWorkspaceTests
             collectionRunner ?? new CollectionRunner(executor, templateResolver),
             store,
             new StubFolderPicker(directory),
+            requestFilePicker ?? new StubRequestFilePicker(null),
             templateResolver,
             vault,
             localization: null!,
@@ -2895,6 +2927,11 @@ public sealed class MainViewModelWorkspaceTests
         public AppSettings Current { get; private set; }
 
         public void Update(AppSettings settings) => Current = settings;
+    }
+
+    private sealed class StubRequestFilePicker(PickedRequestFile? selected) : IRequestFilePicker
+    {
+        public Task<PickedRequestFile?> PickAsync() => Task.FromResult(selected);
     }
 
     private sealed class StubRequestCookieManager : IRequestCookieManager

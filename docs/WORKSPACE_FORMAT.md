@@ -40,6 +40,8 @@ Templates remain unchanged in collection files. ReqMint resolves them from the a
 
 For `application/x-www-form-urlencoded` bodies, fields are stored as structured name/value entries. ReqMint resolves templates in both names and values, skips disabled entries, and performs URL encoding only when sending.
 
+Multipart bodies store text fields plus file-field names and display filenames. Local file paths are intentionally excluded from workspace JSON, history, and Git; users reselect files after restarting ReqMint. File content is streamed when the request is sent rather than loaded fully into memory.
+
 ## Request authentication
 
 Requests may optionally configure Bearer Token, Basic Auth, or an API key in a header or query parameter. Authentication secrets must be a single environment-variable reference, never a literal value:

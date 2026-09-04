@@ -216,6 +216,15 @@ public sealed class WorkspaceJsonStore : IWorkspaceStore
             if (request.Body is not null)
             {
                 ValidateRequestFields(request.Body.FormFields, request.Name, "form field");
+                foreach (var file in request.Body.FileFields)
+                {
+                    if (string.IsNullOrWhiteSpace(file.Name) ||
+                        string.IsNullOrWhiteSpace(file.FileName))
+                    {
+                        throw new WorkspaceFormatException(
+                            $"Request '{request.Name}' contains an invalid file field.");
+                    }
+                }
             }
 
             var assertionError = RequestAssertionValidator.GetValidationError(request.Assertions);

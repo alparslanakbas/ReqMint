@@ -28,7 +28,7 @@ public partial class MainViewModel : ViewModelBase
         ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 
     public IReadOnlyList<string> BodyTypes { get; } =
-        ["None", "JSON", "Text", "XML", "Form URL Encoded"];
+        ["None", "JSON", "Text", "XML", "Form URL Encoded", "Multipart Form Data"];
 
     public ObservableCollection<RequestFieldViewModel> QueryParameters { get; } =
     [
@@ -43,6 +43,8 @@ public partial class MainViewModel : ViewModelBase
     ];
 
     public ObservableCollection<RequestFieldViewModel> FormBodyFields { get; } = [];
+
+    public ObservableCollection<RequestFileFieldViewModel> MultipartFileFields { get; } = [];
 
     public ObservableCollection<CollectionItemViewModel> Collections { get; } = [];
 
@@ -162,6 +164,8 @@ public partial class MainViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsBodyEnabled))]
     [NotifyPropertyChangedFor(nameof(IsRawBodyVisible))]
     [NotifyPropertyChangedFor(nameof(IsFormUrlEncodedBody))]
+    [NotifyPropertyChangedFor(nameof(IsMultipartFormDataBody))]
+    [NotifyPropertyChangedFor(nameof(IsStructuredFormBody))]
     public partial string SelectedBodyType { get; set; } = "None";
 
     [ObservableProperty]
@@ -594,6 +598,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly ICollectionRunner _collectionRunner;
     private readonly IWorkspaceStore _workspaceStore;
     private readonly IWorkspaceFolderPicker _folderPicker;
+    private readonly IRequestFilePicker _requestFilePicker;
     private readonly RequestTemplateResolver _templateResolver;
     private readonly ISecretVault _secretVault;
     private readonly IUnsavedChangesPrompt _unsavedChangesPrompt;
@@ -625,13 +630,18 @@ public partial class MainViewModel : ViewModelBase
 
     public bool IsFormUrlEncodedBody => SelectedBodyType == "Form URL Encoded";
 
-    public bool IsRawBodyVisible => IsBodyEnabled && !IsFormUrlEncodedBody;
+    public bool IsMultipartFormDataBody => SelectedBodyType == "Multipart Form Data";
+
+    public bool IsStructuredFormBody => IsFormUrlEncodedBody || IsMultipartFormDataBody;
+
+    public bool IsRawBodyVisible => IsBodyEnabled && !IsStructuredFormBody;
 
     public MainViewModel(
         IRequestExecutor requestExecutor,
         ICollectionRunner collectionRunner,
         IWorkspaceStore workspaceStore,
         IWorkspaceFolderPicker folderPicker,
+        IRequestFilePicker requestFilePicker,
         RequestTemplateResolver templateResolver,
         ISecretVault secretVault,
         LocalizationService localization,
@@ -658,6 +668,7 @@ public partial class MainViewModel : ViewModelBase
         _collectionRunner = collectionRunner;
         _workspaceStore = workspaceStore;
         _folderPicker = folderPicker;
+        _requestFilePicker = requestFilePicker;
         _templateResolver = templateResolver;
         _secretVault = secretVault;
         Localization = localization;
@@ -937,6 +948,9 @@ public partial class MainViewModel : ViewModelBase
     private void AddFormBodyField() => FormBodyFields.Add(new RequestFieldViewModel());
 
     [RelayCommand]
+    private void AddMultipartFile() => MultipartFileFields.Add(new RequestFileFieldViewModel());
+
+    [RelayCommand]
     private void RemoveQueryParameter(RequestFieldViewModel? field)
     {
         if (field is not null)
@@ -961,6 +975,33 @@ public partial class MainViewModel : ViewModelBase
         {
             FormBodyFields.Remove(field);
         }
+    }
+
+    [RelayCommand]
+    private void RemoveMultipartFile(RequestFileFieldViewModel? field)
+    {
+        if (field is not null)
+        {
+            MultipartFileFields.Remove(field);
+        }
+    }
+
+    [RelayCommand]
+    private async Task ChooseMultipartFileAsync(RequestFileFieldViewModel? field)
+    {
+        if (field is null)
+        {
+            return;
+        }
+
+        var selected = await _requestFilePicker.PickAsync();
+        if (selected is null)
+        {
+            return;
+        }
+
+        field.FileName = selected.Name;
+        field.LocalPath = selected.LocalPath;
     }
 
     /// <summary>
@@ -1014,6 +1055,7 @@ public partial class MainViewModel : ViewModelBase
         RequestBody = string.Empty;
         FormBodyFields.Clear();
         FormBodyFields.Add(new RequestFieldViewModel());
+        MultipartFileFields.Clear();
         ResetAuthenticationDraft();
         ResponseStatus = Localize("StatusReady", "Ready");
         ResponseStatusKind = ResponseStatusKind.Neutral;
@@ -1261,6 +1303,7 @@ public partial class MainViewModel : ViewModelBase
                 ResponsePreviewLimitBytes = checked(
                     (int)ResponsePreviewLimitMegabytes * 1024 * 1024),
             };
+            EnsureMultipartFilesSelected(request);
         }
         catch (ArgumentException exception)
         {
@@ -1703,6 +1746,18 @@ public partial class MainViewModel : ViewModelBase
             });
         }
 
+        MultipartFileFields.Clear();
+        foreach (var file in request.Body?.FileFields ?? [])
+        {
+            MultipartFileFields.Add(new RequestFileFieldViewModel(
+                file.Name,
+                file.FileName,
+                file.LocalPath)
+            {
+                IsEnabled = file.IsEnabled,
+            });
+        }
+
         if (IsFormUrlEncodedBody && FormBodyFields.Count == 0)
         {
             FormBodyFields.Add(new RequestFieldViewModel());
@@ -1878,6 +1933,8 @@ public partial class MainViewModel : ViewModelBase
         Headers = Headers.Select(field => new { field.IsEnabled, field.Name, field.Value }),
         FormBodyFields = FormBodyFields.Select(
             field => new { field.IsEnabled, field.Name, field.Value }),
+        MultipartFileFields = MultipartFileFields.Select(
+            field => new { field.IsEnabled, field.Name, field.FileName, HasLocalFile = field.LocalPath is not null }),
     });
 
     private void ShowWorkspaceError(string title, Exception exception)
@@ -1957,6 +2014,11 @@ public partial class MainViewModel : ViewModelBase
             return "Form URL Encoded";
         }
 
+        if (contentType?.Contains("multipart/form-data", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "Multipart Form Data";
+        }
+
         return contentType is null ? "None" : "Text";
     }
 
@@ -1975,8 +2037,48 @@ public partial class MainViewModel : ViewModelBase
                     field.IsEnabled))
                 .ToArray(),
         },
+        "Multipart Form Data" => new ApiRequestBody(string.Empty, "multipart/form-data")
+        {
+            FormFields = FormBodyFields
+                .Where(field => !string.IsNullOrWhiteSpace(field.Name))
+                .Select(field => new RequestField(
+                    field.Name.Trim(),
+                    field.Value,
+                    field.IsEnabled))
+                .ToArray(),
+            FileFields = MultipartFileFields
+                .Where(field =>
+                    !string.IsNullOrWhiteSpace(field.Name) &&
+                    !string.IsNullOrWhiteSpace(field.FileName))
+                .Select(field => new RequestFileField(
+                    field.Name.Trim(),
+                    field.FileName,
+                    field.IsEnabled)
+                {
+                    LocalPath = field.LocalPath,
+                })
+                .ToArray(),
+        },
         _ => null,
     };
+
+    private void EnsureMultipartFilesSelected(ApiRequest request)
+    {
+        if (request.Body?.ContentType != "multipart/form-data")
+        {
+            return;
+        }
+
+        var missing = request.Body.FileFields.FirstOrDefault(file =>
+            file.IsEnabled && string.IsNullOrWhiteSpace(file.LocalPath));
+        if (missing is not null)
+        {
+            throw new ArgumentException(Localize(
+                "ErrorMultipartFileRequired",
+                "Select the local file '{0}' before sending.",
+                missing.FileName));
+        }
+    }
 
     private RequestAuthentication? CreateAuthentication()
     {

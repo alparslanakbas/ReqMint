@@ -55,6 +55,8 @@ public sealed record RequestTabState
 
     public IReadOnlyList<RequestField> FormBodyFields { get; init; } = [];
 
+    public IReadOnlyList<RequestFileField> MultipartFileFields { get; init; } = [];
+
     public string ResponseBody { get; init; } = string.Empty;
 
     public string ResponseStatus { get; init; } = string.Empty;

@@ -61,6 +61,7 @@ public partial class App : Application
                 new CollectionRunner(_requestExecutor, templateResolver),
                 workspaceStore,
                 new AvaloniaWorkspaceFolderPicker(mainWindow),
+                new AvaloniaRequestFilePicker(mainWindow, localization),
                 templateResolver,
                 secretVault,
                 localization,

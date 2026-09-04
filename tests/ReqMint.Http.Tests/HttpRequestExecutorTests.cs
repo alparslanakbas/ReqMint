@@ -189,6 +189,56 @@ public class HttpRequestExecutorTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_StreamsMultipartFieldsAndFiles()
+    {
+        var filePath = Path.GetTempFileName();
+        await File.WriteAllTextAsync(filePath, "mint-file-content");
+        try
+        {
+            string? observedBody = null;
+            string? observedContentType = null;
+            using var executor = new HttpRequestExecutor(new AsyncStubHandler(async (request, cancellationToken) =>
+            {
+                observedBody = await request.Content!.ReadAsStringAsync(cancellationToken);
+                observedContentType = request.Content.Headers.ContentType?.MediaType;
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }));
+            var request = ApiRequest.Create("POST", "https://example.com/upload") with
+            {
+                Body = new ApiRequestBody(string.Empty, "multipart/form-data")
+                {
+                    FormFields =
+                    [
+                        new RequestField("description", "ReqMint upload"),
+                        new RequestField("ignored", "value", IsEnabled: false),
+                    ],
+                    FileFields =
+                    [
+                        new RequestFileField("attachment", "sample.txt")
+                        {
+                            LocalPath = filePath,
+                        },
+                    ],
+                },
+            };
+
+            await executor.ExecuteAsync(request);
+
+            Assert.Equal("multipart/form-data", observedContentType);
+            Assert.Contains("name=description", observedBody, StringComparison.Ordinal);
+            Assert.Contains("ReqMint upload", observedBody, StringComparison.Ordinal);
+            Assert.Contains("name=attachment", observedBody, StringComparison.Ordinal);
+            Assert.Contains("filename=sample.txt", observedBody, StringComparison.Ordinal);
+            Assert.Contains("mint-file-content", observedBody, StringComparison.Ordinal);
+            Assert.DoesNotContain("ignored", observedBody, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(filePath);
+        }
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ThrowsTimeoutExceptionWhenRequestExceedsLimit()
     {
         using var executor = new HttpRequestExecutor(new AsyncStubHandler(async (_, cancellationToken) =>

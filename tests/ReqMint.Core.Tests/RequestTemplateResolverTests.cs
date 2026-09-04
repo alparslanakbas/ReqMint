@@ -57,12 +57,19 @@ public sealed class RequestTemplateResolverTests
     {
         var request = CreateRequest() with
         {
-            Body = new ApiRequestBody(string.Empty, "application/x-www-form-urlencoded")
+            Body = new ApiRequestBody(string.Empty, "multipart/form-data")
             {
                 FormFields =
                 [
                     new RequestField("name", "{{VALUE}}"),
                     new RequestField("ignored", "{{VALUE}}", IsEnabled: false),
+                ],
+                FileFields =
+                [
+                    new RequestFileField("{{FILE_FIELD}}", "sample.txt")
+                    {
+                        LocalPath = "C:/temp/sample.txt",
+                    },
                 ],
             },
         };
@@ -70,7 +77,11 @@ public sealed class RequestTemplateResolverTests
         {
             Id = Guid.NewGuid(),
             Name = "Development",
-            Variables = [new EnvironmentVariable("VALUE", "Mint & Co")],
+            Variables =
+            [
+                new EnvironmentVariable("VALUE", "Mint & Co"),
+                new EnvironmentVariable("FILE_FIELD", "attachment"),
+            ],
         };
 
         var resolved = await new RequestTemplateResolver(new StubSecretVault(null))
@@ -79,6 +90,10 @@ public sealed class RequestTemplateResolverTests
         Assert.Equal(
             new RequestField("name", "Mint & Co"),
             Assert.Single(resolved.Body!.FormFields));
+        var file = Assert.Single(resolved.Body.FileFields);
+        Assert.Equal("attachment", file.Name);
+        Assert.Equal("sample.txt", file.FileName);
+        Assert.Equal("C:/temp/sample.txt", file.LocalPath);
     }
 
     [Fact]

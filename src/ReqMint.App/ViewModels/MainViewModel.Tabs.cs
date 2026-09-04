@@ -254,6 +254,15 @@ public partial class MainViewModel
             FormBodyFields = FormBodyFields
                 .Select(field => new RequestField(field.Name, field.Value, field.IsEnabled))
                 .ToArray(),
+            MultipartFileFields = MultipartFileFields
+                .Select(field => new RequestFileField(
+                    field.Name,
+                    field.FileName,
+                    field.IsEnabled)
+                {
+                    LocalPath = field.LocalPath,
+                })
+                .ToArray(),
             ResponseBody = ResponseBody,
             ResponseStatus = ResponseStatus,
             ResponseTime = ResponseTime,
@@ -338,6 +347,18 @@ public partial class MainViewModel
                     FormBodyFields.Add(new RequestFieldViewModel(field.Name, field.Value)
                     {
                         IsEnabled = field.IsEnabled,
+                    });
+                }
+
+                MultipartFileFields.Clear();
+                foreach (var file in state.MultipartFileFields)
+                {
+                    MultipartFileFields.Add(new RequestFileFieldViewModel(
+                        file.Name,
+                        file.FileName,
+                        file.LocalPath)
+                    {
+                        IsEnabled = file.IsEnabled,
                     });
                 }
 

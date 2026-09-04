@@ -846,39 +846,84 @@
                                          PlaceholderText="{DynamicResource BodyPlaceholder}" />
                                 <Grid Grid.Row="2"
                                       RowDefinitions="*,Auto"
-                                      IsVisible="{Binding IsFormUrlEncodedBody}">
+                                      IsVisible="{Binding IsStructuredFormBody}">
                                     <ScrollViewer Grid.Row="0">
-                                        <ItemsControl ItemsSource="{Binding FormBodyFields}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate x:DataType="vm:RequestFieldViewModel">
-                                                    <Grid ColumnDefinitions="32,220,12,*,8,Auto" Margin="0,0,0,8">
-                                                        <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" />
-                                                        <TextBox Grid.Column="1"
-                                                                 Text="{Binding Name}"
-                                                                 Classes="technical"
-                                                                 PlaceholderText="{DynamicResource BodyFormFieldName}" />
-                                                        <TextBox Grid.Column="3"
-                                                                 Text="{Binding Value}"
-                                                                 Classes="technical"
-                                                                 PlaceholderText="{DynamicResource TextValue}" />
-                                                        <Button Grid.Column="5"
-                                                                Content="×"
-                                                                Width="30"
-                                                                Height="30"
-                                                                Padding="0"
-                                                                Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).RemoveFormBodyFieldCommand}"
-                                                                CommandParameter="{Binding}"
-                                                                AutomationProperties.Name="{DynamicResource TooltipRemoveRow}"
-                                                                ToolTip.Tip="{DynamicResource TooltipRemoveRow}" />
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                                        <StackPanel>
+                                            <ItemsControl ItemsSource="{Binding FormBodyFields}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:RequestFieldViewModel">
+                                                        <Grid ColumnDefinitions="32,220,12,*,8,Auto" Margin="0,0,0,8">
+                                                            <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" />
+                                                            <TextBox Grid.Column="1"
+                                                                     Text="{Binding Name}"
+                                                                     Classes="technical"
+                                                                     PlaceholderText="{DynamicResource BodyFormFieldName}" />
+                                                            <TextBox Grid.Column="3"
+                                                                     Text="{Binding Value}"
+                                                                     Classes="technical"
+                                                                     PlaceholderText="{DynamicResource TextValue}" />
+                                                            <Button Grid.Column="5"
+                                                                    Content="×"
+                                                                    Width="30"
+                                                                    Height="30"
+                                                                    Padding="0"
+                                                                    Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).RemoveFormBodyFieldCommand}"
+                                                                    CommandParameter="{Binding}"
+                                                                    AutomationProperties.Name="{DynamicResource TooltipRemoveRow}"
+                                                                    ToolTip.Tip="{DynamicResource TooltipRemoveRow}" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+
+                                            <StackPanel IsVisible="{Binding IsMultipartFormDataBody}" Margin="0,8,0,0">
+                                                <TextBlock Text="{DynamicResource MultipartFilesTitle}"
+                                                           FontWeight="SemiBold"
+                                                           Margin="0,0,0,8" />
+                                                <ItemsControl ItemsSource="{Binding MultipartFileFields}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:RequestFileFieldViewModel">
+                                                            <Grid ColumnDefinitions="32,220,12,*,8,Auto,8,Auto" Margin="0,0,0,8">
+                                                                <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" />
+                                                                <TextBox Grid.Column="1"
+                                                                         Text="{Binding Name}"
+                                                                         Classes="technical"
+                                                                         PlaceholderText="{DynamicResource BodyFormFieldName}" />
+                                                                <TextBlock Grid.Column="3"
+                                                                           Text="{Binding FileName, FallbackValue='—'}"
+                                                                           Classes="secondary"
+                                                                           VerticalAlignment="Center" />
+                                                                <Button Grid.Column="5"
+                                                                        Content="{DynamicResource TextChooseFile}"
+                                                                        Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).ChooseMultipartFileCommand}"
+                                                                        CommandParameter="{Binding}" />
+                                                                <Button Grid.Column="7"
+                                                                        Content="×"
+                                                                        Width="30"
+                                                                        Height="30"
+                                                                        Padding="0"
+                                                                        Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).RemoveMultipartFileCommand}"
+                                                                        CommandParameter="{Binding}"
+                                                                        AutomationProperties.Name="{DynamicResource TooltipRemoveRow}"
+                                                                        ToolTip.Tip="{DynamicResource TooltipRemoveRow}" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <TextBlock Text="{DynamicResource MultipartFilesHelp}"
+                                                           Classes="secondary"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,0,0,8" />
+                                            </StackPanel>
+                                        </StackPanel>
                                     </ScrollViewer>
-                                    <Button Grid.Row="1"
-                                            HorizontalAlignment="Left"
-                                            Content="{DynamicResource TextAddFormField}"
-                                            Command="{Binding AddFormBodyFieldCommand}" />
+                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+                                        <Button Content="{DynamicResource TextAddFormField}"
+                                                Command="{Binding AddFormBodyFieldCommand}" />
+                                        <Button Content="{DynamicResource TextAddFile}"
+                                                IsVisible="{Binding IsMultipartFormDataBody}"
+                                                Command="{Binding AddMultipartFileCommand}" />
+                                    </StackPanel>
                                 </Grid>
                             </Grid>
                         </TabItem>

@@ -51,6 +51,43 @@ public sealed class WorkspaceJsonStoreTests
     }
 
     [Fact]
+    public async Task SaveAndLoadAsync_PersistsFileMetadataWithoutLocalPath()
+    {
+        using var directory = new TemporaryDirectory();
+        var original = CreateSnapshot();
+        var request = original.Collections[0].Requests[0] with
+        {
+            Body = new ApiRequestBody(string.Empty, "multipart/form-data")
+            {
+                FileFields =
+                [
+                    new RequestFileField("attachment", "sample.txt")
+                    {
+                        LocalPath = "C:/Users/private/sample.txt",
+                    },
+                ],
+            },
+        };
+        var snapshot = original with
+        {
+            Collections = [original.Collections[0] with { Requests = [request] }],
+        };
+        var store = new WorkspaceJsonStore();
+
+        await store.SaveAsync(directory.Path, snapshot, CancellationToken.None);
+        var loaded = await store.LoadAsync(directory.Path, CancellationToken.None);
+        var json = await File.ReadAllTextAsync(
+            Path.Combine(directory.Path, "collections", "sample.json"));
+
+        var file = Assert.Single(loaded.Collections[0].Requests[0].Body!.FileFields);
+        Assert.Equal("attachment", file.Name);
+        Assert.Equal("sample.txt", file.FileName);
+        Assert.Null(file.LocalPath);
+        Assert.DoesNotContain("C:/Users/private", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("localPath", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task LoadAsync_TreatsFieldsWrittenBeforeTheEnabledFlagAsEnabled()
     {
         using var directory = new TemporaryDirectory();
