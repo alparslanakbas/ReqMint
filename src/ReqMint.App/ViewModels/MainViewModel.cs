@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -2230,6 +2231,7 @@ public partial class MainViewModel : ViewModelBase
             return JsonSerializer.Serialize(document.RootElement, new JsonSerializerOptions
             {
                 WriteIndented = true,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             });
         }
         catch (JsonException)

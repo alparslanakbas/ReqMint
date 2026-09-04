@@ -458,6 +458,27 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task JsonResponseFormatting_PreservesReadableUnicodeCharacters()
+    {
+        var executor = new RecordingRequestExecutor
+        {
+            ResponseBody = "{\"text\":\"Türkçe yükleme & ReqMint\"}",
+        };
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            executor: executor);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.Contains("Türkçe yükleme & ReqMint", viewModel.ResponseBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("\\u00", viewModel.ResponseBody, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("\\u0026", viewModel.ResponseBody, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void WindowClosePreference_PersistsAndCanBeReset()
     {
         var settings = new StubAppSettingsService();
@@ -3366,6 +3387,8 @@ public sealed class MainViewModelWorkspaceTests
 
         public bool IsBodyTruncated { get; init; }
 
+        public string ResponseBody { get; init; } = "{}";
+
         public Task<ApiResponse> ExecuteAsync(
             ApiRequest request,
             CancellationToken cancellationToken = default)
@@ -3375,7 +3398,7 @@ public sealed class MainViewModelWorkspaceTests
                 200,
                 "OK",
                 new Dictionary<string, IReadOnlyList<string>>(),
-                "{}",
+                ResponseBody,
                 "application/json",
                 TimeSpan.FromMilliseconds(12),
                 IsBodyTruncated));
