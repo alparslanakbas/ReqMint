@@ -147,6 +147,8 @@
   "ResponseInspectSavedRequest": "Yanıtı incelemek için kayıtlı isteği gönderin.",
   "StatusSending": "Gönderiliyor...",
   "StatusCancelled": "İptal edildi",
+  "RequestCancel": "İptal",
+  "ErrorRequestCancelled": "İstek iptal edildi.",
   "StatusTimedOut": "Zaman aşımına uğradı",
   "StatusConnectionFailed": "Bağlantı kurulamadı",
   "StatusInvalidRequest": "Geçersiz istek",

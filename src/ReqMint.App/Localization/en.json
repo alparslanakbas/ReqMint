@@ -147,6 +147,8 @@
   "ResponseInspectSavedRequest": "Send the saved request to inspect its response.",
   "StatusSending": "Sending...",
   "StatusCancelled": "Cancelled",
+  "RequestCancel": "Cancel",
+  "ErrorRequestCancelled": "The request was cancelled.",
   "StatusTimedOut": "Timed out",
   "StatusConnectionFailed": "Connection failed",
   "StatusInvalidRequest": "Invalid request",

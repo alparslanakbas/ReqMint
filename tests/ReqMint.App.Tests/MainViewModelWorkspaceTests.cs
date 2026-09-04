@@ -527,6 +527,28 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task SendCancelCommand_CancelsAnActiveRequest()
+    {
+        var executor = new BlockingRequestExecutor();
+        var viewModel = CreateViewModel(
+            new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() },
+            CreateWorkspacePath(),
+            executor: executor);
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+
+        var sending = viewModel.SendCommand.ExecuteAsync(null);
+        await executor.Started.Task;
+
+        viewModel.SendCancelCommand.Execute(null);
+        await sending;
+
+        Assert.False(viewModel.IsSending);
+        Assert.Equal("Cancelled", viewModel.ResponseStatus);
+        Assert.Equal("The request was cancelled.", viewModel.ResponseBody);
+    }
+
+    [Fact]
     public async Task JsonResponseFormatting_PreservesReadableUnicodeCharacters()
     {
         var executor = new RecordingRequestExecutor
@@ -3489,6 +3511,21 @@ public sealed class MainViewModelWorkspaceTests
                 "application/json",
                 TimeSpan.FromMilliseconds(12),
                 IsBodyTruncated));
+        }
+    }
+
+    private sealed class BlockingRequestExecutor : IRequestExecutor
+    {
+        public TaskCompletionSource Started { get; } = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task<ApiResponse> ExecuteAsync(
+            ApiRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            Started.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            throw new InvalidOperationException("The blocking request unexpectedly completed.");
         }
     }
 

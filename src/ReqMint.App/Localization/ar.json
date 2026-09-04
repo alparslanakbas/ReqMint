@@ -147,6 +147,8 @@
   "ResponseInspectSavedRequest": "أرسل الطلب المحفوظ لفحص استجابته.",
   "StatusSending": "جارٍ الإرسال...",
   "StatusCancelled": "أُلغي",
+  "RequestCancel": "إلغاء",
+  "ErrorRequestCancelled": "تم إلغاء الطلب.",
   "StatusTimedOut": "انتهت المهلة",
   "StatusConnectionFailed": "فشل الاتصال",
   "StatusInvalidRequest": "طلب غير صالح",

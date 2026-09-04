@@ -656,7 +656,12 @@
                     <Button Grid.Column="6"
                             Classes="primary"
                             Content="{DynamicResource TextSend}"
+                            IsVisible="{Binding !IsSending}"
                             Command="{Binding SendCommand}" />
+                    <Button Grid.Column="6"
+                            Content="{DynamicResource RequestCancel}"
+                            IsVisible="{Binding IsSending}"
+                            Command="{Binding SendCancelCommand}" />
                 </Grid>
 
                 <Border Grid.Row="2"

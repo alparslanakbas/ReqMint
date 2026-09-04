@@ -1375,7 +1375,8 @@ public partial class MainViewModel : ViewModelBase
         catch (OperationCanceledException)
         {
             ResponseStatus = Localize("StatusCancelled", "Cancelled");
-            ResponseBody = "The request was cancelled.";
+            ResponseStatusKind = ResponseStatusKind.Neutral;
+            ResponseBody = Localize("ErrorRequestCancelled", "The request was cancelled.");
             HasResponse = true;
             await RecordHistoryUnlessTutorialAsync(
                 requestDocument,
