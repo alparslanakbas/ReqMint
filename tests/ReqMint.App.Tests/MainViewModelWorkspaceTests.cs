@@ -100,6 +100,42 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task ImportOpenApiDocumentCommand_AppendsAndPersistsOperations()
+    {
+        const string openApi = """
+        {
+          "openapi": "3.1.0",
+          "info": { "title": "Imported OpenAPI", "version": "1.0.0" },
+          "servers": [{ "url": "https://example.com" }],
+          "paths": {
+            "/orders": {
+              "get": {
+                "summary": "List orders",
+                "responses": { "200": { "description": "OK" } }
+              }
+            }
+          }
+        }
+        """;
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var viewModel = CreateViewModel(
+            store,
+            CreateWorkspacePath(),
+            openApiImportService: new StubOpenApiImportService(
+                new OpenApiDocumentSource("openapi.json", openApi)));
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        await viewModel.ImportOpenApiDocumentCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, store.SavedSnapshot!.Collections.Count);
+        var imported = store.SavedSnapshot.Collections[1];
+        Assert.Equal("Imported OpenAPI", imported.Name);
+        Assert.Equal("List orders", Assert.Single(imported.Requests).Name);
+        Assert.Equal("Imported 1 operations into 1 collections", viewModel.WorkspaceStatus);
+        Assert.Equal("Import completed", viewModel.ResponseStatus);
+    }
+
+    [Fact]
     public async Task OpeningSavedRequest_PopulatesTheComposer()
     {
         var snapshot = CreateSnapshot();
@@ -2774,7 +2810,8 @@ public sealed class MainViewModelWorkspaceTests
         StubRequestDeletePrompt? requestDeletePrompt = null,
         StubRequestCookieManager? requestCookieManager = null,
         IRequestFilePicker? requestFilePicker = null,
-        IPostmanCollectionImportService? postmanImportService = null)
+        IPostmanCollectionImportService? postmanImportService = null,
+        IOpenApiImportService? openApiImportService = null)
     {
         vault ??= new RecordingSecretVault();
         executor ??= new NoOpRequestExecutor();
@@ -2787,6 +2824,7 @@ public sealed class MainViewModelWorkspaceTests
             new StubFolderPicker(directory),
             requestFilePicker ?? new StubRequestFilePicker(null),
             postmanImportService ?? new StubPostmanCollectionImportService(null),
+            openApiImportService ?? new StubOpenApiImportService(null),
             templateResolver,
             vault,
             localization: null!,
@@ -2994,6 +3032,13 @@ public sealed class MainViewModelWorkspaceTests
         : IPostmanCollectionImportService
     {
         public Task<PostmanCollectionSource?> PickAsync(
+            CancellationToken cancellationToken = default) => Task.FromResult(source);
+    }
+
+    private sealed class StubOpenApiImportService(OpenApiDocumentSource? source)
+        : IOpenApiImportService
+    {
+        public Task<OpenApiDocumentSource?> PickAsync(
             CancellationToken cancellationToken = default) => Task.FromResult(source);
     }
 

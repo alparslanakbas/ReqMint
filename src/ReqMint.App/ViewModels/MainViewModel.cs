@@ -581,6 +581,7 @@ public partial class MainViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(CreateCollectionCommand))]
     [NotifyCanExecuteChangedFor(nameof(RenameCollectionCommand))]
     [NotifyCanExecuteChangedFor(nameof(ImportPostmanCollectionCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ImportOpenApiDocumentCommand))]
     public partial bool IsSending { get; set; }
 
     [ObservableProperty]
@@ -596,6 +597,7 @@ public partial class MainViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(CreateCollectionCommand))]
     [NotifyCanExecuteChangedFor(nameof(RenameCollectionCommand))]
     [NotifyCanExecuteChangedFor(nameof(ImportPostmanCollectionCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ImportOpenApiDocumentCommand))]
     public partial bool IsWorkspaceBusy { get; set; }
 
     private readonly IRequestExecutor _requestExecutor;
@@ -604,6 +606,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly IWorkspaceFolderPicker _folderPicker;
     private readonly IRequestFilePicker _requestFilePicker;
     private readonly IPostmanCollectionImportService _postmanImportService;
+    private readonly IOpenApiImportService _openApiImportService;
     private readonly RequestTemplateResolver _templateResolver;
     private readonly ISecretVault _secretVault;
     private readonly IUnsavedChangesPrompt _unsavedChangesPrompt;
@@ -648,6 +651,7 @@ public partial class MainViewModel : ViewModelBase
         IWorkspaceFolderPicker folderPicker,
         IRequestFilePicker requestFilePicker,
         IPostmanCollectionImportService postmanImportService,
+        IOpenApiImportService openApiImportService,
         RequestTemplateResolver templateResolver,
         ISecretVault secretVault,
         LocalizationService localization,
@@ -676,6 +680,7 @@ public partial class MainViewModel : ViewModelBase
         _folderPicker = folderPicker;
         _requestFilePicker = requestFilePicker;
         _postmanImportService = postmanImportService;
+        _openApiImportService = openApiImportService;
         _templateResolver = templateResolver;
         _secretVault = secretVault;
         Localization = localization;
@@ -1566,6 +1571,7 @@ public partial class MainViewModel : ViewModelBase
         CreateCollectionCommand.NotifyCanExecuteChanged();
         RenameCollectionCommand.NotifyCanExecuteChanged();
         ImportPostmanCollectionCommand.NotifyCanExecuteChanged();
+        ImportOpenApiDocumentCommand.NotifyCanExecuteChanged();
         UpdateCollectionRunAvailability();
     }
 
@@ -1977,6 +1983,9 @@ public partial class MainViewModel : ViewModelBase
         PostmanImportException => Localize(
             "ErrorInvalidPostmanCollection",
             "The selected file is not a valid Postman Collection v2.1 document."),
+        OpenApiImportException => Localize(
+            "ErrorInvalidOpenApiDocument",
+            "The selected file is not a valid OpenAPI 3.0 or 3.1 document."),
         _ => exception.Message,
     };
 

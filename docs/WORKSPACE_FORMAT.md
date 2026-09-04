@@ -46,6 +46,10 @@ Multipart bodies store text fields plus file-field names and display filenames. 
 
 ReqMint can append Postman Collection v2.1 JSON files to an open workspace. Top-level Postman folders become ReqMint collections and deeper folder names are preserved in request names. URLs, methods, query parameters, headers, raw bodies, URL-encoded forms, multipart forms, and safe variable-based authentication are converted. Scripts and unsupported body/authentication modes are reported rather than silently represented as working features. Literal sensitive values are omitted, and imported upload files must be reselected locally.
 
+## OpenAPI import
+
+ReqMint can append OpenAPI 3.0 and 3.1 definitions in JSON or YAML format to an open workspace. Operations are grouped by their first tag and converted with server URLs, parameters, request-body examples or schemas, multipart uploads, and HTTP Bearer, Basic, or API-key security. Missing examples become environment-variable placeholders. Authentication placeholders must be created as Secret variables. Literal sensitive examples, external references, cookie parameters, and unsupported features are omitted or replaced and reported in the import summary.
+
 ## Request authentication
 
 Requests may optionally configure Bearer Token, Basic Auth, or an API key in a header or query parameter. Authentication secrets must be a single environment-variable reference, never a literal value:
