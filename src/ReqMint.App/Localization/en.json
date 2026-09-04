@@ -149,6 +149,8 @@
   "StatusCancelled": "Cancelled",
   "RequestCancel": "Cancel",
   "ErrorRequestCancelled": "The request was cancelled.",
+  "RequestNoOpenTabs": "No request is open.",
+  "RequestOpenNew": "Open a new request",
   "StatusTimedOut": "Timed out",
   "StatusConnectionFailed": "Connection failed",
   "StatusInvalidRequest": "Invalid request",

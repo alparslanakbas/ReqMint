@@ -36,6 +36,10 @@ public partial class MainViewModel
 
     public bool HasMultipleTabs => Tabs.Count > 1;
 
+    public bool HasOpenTabs => Tabs.Count > 0;
+
+    public bool HasNoOpenTabs => !HasOpenTabs;
+
     private bool _isSwitchingTabs;
 
     protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs args)
@@ -59,6 +63,7 @@ public partial class MainViewModel
         CaptureActiveTab();
         var tab = CreateTab();
         Tabs.Add(tab);
+        NotifyTabCountChanged();
         await ActivateTabAsync(tab, captureCurrent: false);
         ResetRequestDraft();
         RefreshActiveTabHeader();
@@ -121,15 +126,12 @@ public partial class MainViewModel
         }
 
         Tabs.Remove(tab);
-        OnPropertyChanged(nameof(HasMultipleTabs));
+        NotifyTabCountChanged();
 
         if (Tabs.Count == 0)
         {
-            var replacement = CreateTab();
-            Tabs.Add(replacement);
-            await ActivateTabAsync(replacement, captureCurrent: false);
+            ActiveTab = null;
             ResetRequestDraft();
-            RefreshActiveTabHeader();
             return;
         }
 
@@ -213,7 +215,7 @@ public partial class MainViewModel
     {
         var tab = CreateTab();
         Tabs.Add(tab);
-        OnPropertyChanged(nameof(HasMultipleTabs));
+        NotifyTabCountChanged();
         return tab;
     }
 
@@ -436,7 +438,7 @@ public partial class MainViewModel
         {
             Tabs.Clear();
             ActiveTab = null;
-            OnPropertyChanged(nameof(HasMultipleTabs));
+            NotifyTabCountChanged();
             return;
         }
 
@@ -454,7 +456,7 @@ public partial class MainViewModel
             }
         }
 
-        OnPropertyChanged(nameof(HasMultipleTabs));
+        NotifyTabCountChanged();
     }
 
     private void EnsureActiveTab()
@@ -463,7 +465,7 @@ public partial class MainViewModel
         {
             var tab = CreateTab();
             Tabs.Add(tab);
-            OnPropertyChanged(nameof(HasMultipleTabs));
+            NotifyTabCountChanged();
         }
 
         if (ActiveTab is null || !Tabs.Contains(ActiveTab))
@@ -477,5 +479,12 @@ public partial class MainViewModel
         }
 
         RefreshActiveTabHeader();
+    }
+
+    private void NotifyTabCountChanged()
+    {
+        OnPropertyChanged(nameof(HasMultipleTabs));
+        OnPropertyChanged(nameof(HasOpenTabs));
+        OnPropertyChanged(nameof(HasNoOpenTabs));
     }
 }

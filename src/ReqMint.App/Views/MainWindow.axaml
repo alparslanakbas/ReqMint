@@ -636,6 +636,7 @@
 
                         <TextBox Grid.Column="3"
                                  Text="{Binding RequestName}"
+                                 IsVisible="{Binding HasOpenTabs}"
                                  BorderThickness="0"
                                  Background="Transparent"
                                  FontWeight="SemiBold"
@@ -644,7 +645,8 @@
                     </Grid>
                 </Border>
 
-                <Grid Grid.Row="1" Margin="16,14" ColumnDefinitions="108,12,*,12,86,8,104">
+                <Grid Grid.Row="1" Margin="16,14" ColumnDefinitions="108,12,*,12,86,8,104"
+                      IsVisible="{Binding HasOpenTabs}">
                     <ComboBox Grid.Column="0"
                               ItemsSource="{Binding Methods}"
                               SelectedItem="{Binding SelectedMethod}"
@@ -705,7 +707,8 @@
                     </Grid>
                 </Border>
 
-                <Grid Grid.Row="3" RowDefinitions="2*,7,42,3*">
+                <Grid Grid.Row="3" RowDefinitions="2*,7,42,3*"
+                      IsVisible="{Binding HasOpenTabs}">
                     <TabControl Grid.Row="0"
                                 Background="{DynamicResource AppBackgroundBrush}"
                                 SelectedIndex="{Binding RequestEditorTabIndex}">
@@ -1277,6 +1280,21 @@
                         </ScrollViewer>
                     </Border>
                 </Grid>
+
+                <StackPanel Grid.Row="1"
+                            Grid.RowSpan="3"
+                            IsVisible="{Binding HasNoOpenTabs}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="12">
+                    <TextBlock Text="{DynamicResource RequestNoOpenTabs}"
+                               Classes="secondary"
+                               FontSize="16"
+                               HorizontalAlignment="Center" />
+                    <Button Content="{DynamicResource RequestOpenNew}"
+                            Command="{Binding NewTabCommand}"
+                            HorizontalAlignment="Center" />
+                </StackPanel>
 
                 <Border Grid.Row="4" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
                     <Grid Margin="14,0" ColumnDefinitions="Auto,18,Auto,*,Auto">

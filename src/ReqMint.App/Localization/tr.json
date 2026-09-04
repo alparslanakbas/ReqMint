@@ -149,6 +149,8 @@
   "StatusCancelled": "İptal edildi",
   "RequestCancel": "İptal",
   "ErrorRequestCancelled": "İstek iptal edildi.",
+  "RequestNoOpenTabs": "Açık istek yok.",
+  "RequestOpenNew": "Yeni istek aç",
   "StatusTimedOut": "Zaman aşımına uğradı",
   "StatusConnectionFailed": "Bağlantı kurulamadı",
   "StatusInvalidRequest": "Geçersiz istek",

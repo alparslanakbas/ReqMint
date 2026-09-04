@@ -2711,7 +2711,7 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
-    public async Task Tabs_ClosingTheLastOneLeavesAFreshEmptyTab()
+    public async Task Tabs_ClosingTheLastOneLeavesNoOpenEditor()
     {
         var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
         var viewModel = CreateViewModel(store, CreateWorkspacePath());
@@ -2720,10 +2720,15 @@ public sealed class MainViewModelWorkspaceTests
 
         await viewModel.ActiveTab!.CloseCommand.ExecuteAsync(null);
 
-        var tab = Assert.Single(viewModel.Tabs);
-        Assert.Null(tab.RequestId);
-        Assert.Equal("New request", viewModel.RequestName);
-        Assert.Equal(string.Empty, viewModel.Url);
+        Assert.Empty(viewModel.Tabs);
+        Assert.Null(viewModel.ActiveTab);
+        Assert.True(viewModel.HasNoOpenTabs);
+
+        await viewModel.NewTabCommand.ExecuteAsync(null);
+
+        Assert.Single(viewModel.Tabs);
+        Assert.NotNull(viewModel.ActiveTab);
+        Assert.True(viewModel.HasOpenTabs);
     }
 
     [Fact]

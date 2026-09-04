@@ -149,6 +149,8 @@
   "StatusCancelled": "أُلغي",
   "RequestCancel": "إلغاء",
   "ErrorRequestCancelled": "تم إلغاء الطلب.",
+  "RequestNoOpenTabs": "لا يوجد طلب مفتوح.",
+  "RequestOpenNew": "فتح طلب جديد",
   "StatusTimedOut": "انتهت المهلة",
   "StatusConnectionFailed": "فشل الاتصال",
   "StatusInvalidRequest": "طلب غير صالح",
