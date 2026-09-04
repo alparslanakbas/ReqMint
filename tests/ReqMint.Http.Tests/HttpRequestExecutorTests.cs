@@ -159,6 +159,36 @@ public class HttpRequestExecutorTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_EncodesEnabledFormFields()
+    {
+        string? observedBody = null;
+        string? observedContentType = null;
+        using var executor = new HttpRequestExecutor(new AsyncStubHandler(async (request, cancellationToken) =>
+        {
+            observedBody = await request.Content!.ReadAsStringAsync(cancellationToken);
+            observedContentType = request.Content.Headers.ContentType?.MediaType;
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        }));
+        var request = ApiRequest.Create("POST", "https://example.com/forms") with
+        {
+            Body = new ApiRequestBody(string.Empty, "application/x-www-form-urlencoded")
+            {
+                FormFields =
+                [
+                    new RequestField("name", "Mint & Co"),
+                    new RequestField("ignored", "value", IsEnabled: false),
+                    new RequestField("tag", "a/b"),
+                ],
+            },
+        };
+
+        await executor.ExecuteAsync(request);
+
+        Assert.Equal("name=Mint+%26+Co&tag=a%2Fb", observedBody);
+        Assert.Equal("application/x-www-form-urlencoded", observedContentType);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ThrowsTimeoutExceptionWhenRequestExceedsLimit()
     {
         using var executor = new HttpRequestExecutor(new AsyncStubHandler(async (_, cancellationToken) =>

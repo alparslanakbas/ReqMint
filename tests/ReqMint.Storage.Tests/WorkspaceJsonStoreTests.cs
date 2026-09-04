@@ -34,7 +34,9 @@ public sealed class WorkspaceJsonStoreTests
         Assert.Equal(expectedRequest.QueryParameters, actualRequest.QueryParameters);
         Assert.Equal(expectedRequest.Headers, actualRequest.Headers);
         Assert.Equal(expectedRequest.Authentication, actualRequest.Authentication);
-        Assert.Equal(expectedRequest.Body, actualRequest.Body);
+        Assert.Equal(expectedRequest.Body?.Content, actualRequest.Body?.Content);
+        Assert.Equal(expectedRequest.Body?.ContentType, actualRequest.Body?.ContentType);
+        Assert.Equal(expectedRequest.Body?.FormFields, actualRequest.Body?.FormFields);
         Assert.Equal(expectedRequest.TimeoutSeconds, actualRequest.TimeoutSeconds);
         Assert.Equal(expectedRequest.Assertions, actualRequest.Assertions);
         Assert.Equal(snapshot.Environments[0].Id, loaded.Environments[0].Id);

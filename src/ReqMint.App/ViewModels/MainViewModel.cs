@@ -42,6 +42,8 @@ public partial class MainViewModel : ViewModelBase
         new("X-Client", "ReqMint") { IsEnabled = false },
     ];
 
+    public ObservableCollection<RequestFieldViewModel> FormBodyFields { get; } = [];
+
     public ObservableCollection<CollectionItemViewModel> Collections { get; } = [];
 
     public ObservableCollection<RequestHistoryItemViewModel> History { get; } = [];
@@ -158,6 +160,8 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsBodyEnabled))]
+    [NotifyPropertyChangedFor(nameof(IsRawBodyVisible))]
+    [NotifyPropertyChangedFor(nameof(IsFormUrlEncodedBody))]
     public partial string SelectedBodyType { get; set; } = "None";
 
     [ObservableProperty]
@@ -619,6 +623,10 @@ public partial class MainViewModel : ViewModelBase
 
     public bool IsBodyEnabled => SelectedBodyType != "None";
 
+    public bool IsFormUrlEncodedBody => SelectedBodyType == "Form URL Encoded";
+
+    public bool IsRawBodyVisible => IsBodyEnabled && !IsFormUrlEncodedBody;
+
     public MainViewModel(
         IRequestExecutor requestExecutor,
         ICollectionRunner collectionRunner,
@@ -926,6 +934,9 @@ public partial class MainViewModel : ViewModelBase
     private void AddHeader() => Headers.Add(new RequestFieldViewModel());
 
     [RelayCommand]
+    private void AddFormBodyField() => FormBodyFields.Add(new RequestFieldViewModel());
+
+    [RelayCommand]
     private void RemoveQueryParameter(RequestFieldViewModel? field)
     {
         if (field is not null)
@@ -940,6 +951,15 @@ public partial class MainViewModel : ViewModelBase
         if (field is not null)
         {
             Headers.Remove(field);
+        }
+    }
+
+    [RelayCommand]
+    private void RemoveFormBodyField(RequestFieldViewModel? field)
+    {
+        if (field is not null)
+        {
+            FormBodyFields.Remove(field);
         }
     }
 
@@ -992,6 +1012,8 @@ public partial class MainViewModel : ViewModelBase
 
         SelectedBodyType = "None";
         RequestBody = string.Empty;
+        FormBodyFields.Clear();
+        FormBodyFields.Add(new RequestFieldViewModel());
         ResetAuthenticationDraft();
         ResponseStatus = Localize("StatusReady", "Ready");
         ResponseStatusKind = ResponseStatusKind.Neutral;
@@ -1672,6 +1694,19 @@ public partial class MainViewModel : ViewModelBase
 
         SelectedBodyType = GetBodyType(request.Body?.ContentType);
         RequestBody = request.Body?.Content ?? string.Empty;
+        FormBodyFields.Clear();
+        foreach (var field in request.Body?.FormFields ?? [])
+        {
+            FormBodyFields.Add(new RequestFieldViewModel(field.Name, field.Value)
+            {
+                IsEnabled = field.IsEnabled,
+            });
+        }
+
+        if (IsFormUrlEncodedBody && FormBodyFields.Count == 0)
+        {
+            FormBodyFields.Add(new RequestFieldViewModel());
+        }
         IsStatusAssertionEnabled = request.Assertions.Any(
             assertion => assertion.Kind == RequestAssertionKind.StatusCodeEquals);
         AssertionExpectedStatusCode = request.Assertions.FirstOrDefault(
@@ -1841,6 +1876,8 @@ public partial class MainViewModel : ViewModelBase
         AssertionJsonPointer,
         Query = QueryParameters.Select(field => new { field.IsEnabled, field.Name, field.Value }),
         Headers = Headers.Select(field => new { field.IsEnabled, field.Name, field.Value }),
+        FormBodyFields = FormBodyFields.Select(
+            field => new { field.IsEnabled, field.Name, field.Value }),
     });
 
     private void ShowWorkspaceError(string title, Exception exception)
@@ -1928,7 +1965,16 @@ public partial class MainViewModel : ViewModelBase
         "JSON" => new ApiRequestBody(RequestBody, "application/json"),
         "Text" => new ApiRequestBody(RequestBody, "text/plain"),
         "XML" => new ApiRequestBody(RequestBody, "application/xml"),
-        "Form URL Encoded" => new ApiRequestBody(RequestBody, "application/x-www-form-urlencoded"),
+        "Form URL Encoded" => new ApiRequestBody(string.Empty, "application/x-www-form-urlencoded")
+        {
+            FormFields = FormBodyFields
+                .Where(field => !string.IsNullOrWhiteSpace(field.Name))
+                .Select(field => new RequestField(
+                    field.Name.Trim(),
+                    field.Value,
+                    field.IsEnabled))
+                .ToArray(),
+        },
         _ => null,
     };
 

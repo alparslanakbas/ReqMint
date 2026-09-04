@@ -61,7 +61,15 @@ public sealed class RequestTemplateResolver(ISecretVault secretVault)
                 ? null
                 : new ApiRequestBody(
                     RequestTemplate.Resolve(request.Body.Content, values),
-                    RequestTemplate.Resolve(request.Body.ContentType, values)),
+                    RequestTemplate.Resolve(request.Body.ContentType, values))
+                {
+                    FormFields = request.Body.FormFields
+                        .Where(field => field.IsEnabled)
+                        .Select(field => new RequestField(
+                            RequestTemplate.Resolve(field.Name, values),
+                            RequestTemplate.Resolve(field.Value, values)))
+                        .ToArray(),
+                },
             Timeout = TimeSpan.FromSeconds(request.TimeoutSeconds),
         };
     }
@@ -164,6 +172,11 @@ public sealed class RequestTemplateResolver(ISecretVault secretVault)
         {
             yield return request.Body.Content;
             yield return request.Body.ContentType;
+            foreach (var field in request.Body.FormFields.Where(field => field.IsEnabled))
+            {
+                yield return field.Name;
+                yield return field.Value;
+            }
         }
 
         if (request.Authentication is not { } authentication)

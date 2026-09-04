@@ -251,6 +251,9 @@ public partial class MainViewModel
             Headers = Headers
                 .Select(field => new RequestField(field.Name, field.Value, field.IsEnabled))
                 .ToArray(),
+            FormBodyFields = FormBodyFields
+                .Select(field => new RequestField(field.Name, field.Value, field.IsEnabled))
+                .ToArray(),
             ResponseBody = ResponseBody,
             ResponseStatus = ResponseStatus,
             ResponseTime = ResponseTime,
@@ -324,6 +327,15 @@ public partial class MainViewModel
                 foreach (var field in state.Headers)
                 {
                     Headers.Add(new RequestFieldViewModel(field.Name, field.Value)
+                    {
+                        IsEnabled = field.IsEnabled,
+                    });
+                }
+
+                FormBodyFields.Clear();
+                foreach (var field in state.FormBodyFields)
+                {
+                    FormBodyFields.Add(new RequestFieldViewModel(field.Name, field.Value)
                     {
                         IsEnabled = field.IsEnabled,
                     });

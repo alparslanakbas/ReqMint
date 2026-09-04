@@ -99,10 +99,18 @@ public sealed class HttpRequestExecutor : IRequestExecutor, IDisposable
 
         if (request.Body is not null)
         {
-            message.Content = new StringContent(
-                request.Body.Content,
-                Encoding.UTF8,
-                request.Body.ContentType);
+            message.Content = string.Equals(
+                request.Body.ContentType,
+                "application/x-www-form-urlencoded",
+                StringComparison.OrdinalIgnoreCase) && request.Body.FormFields.Count > 0
+                ? new FormUrlEncodedContent(request.Body.FormFields
+                    .Where(field => field.IsEnabled)
+                    .Select(field =>
+                    new KeyValuePair<string, string>(field.Name, field.Value)))
+                : new StringContent(
+                    request.Body.Content,
+                    Encoding.UTF8,
+                    request.Body.ContentType);
         }
 
         foreach (var header in request.Headers)

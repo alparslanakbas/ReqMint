@@ -213,6 +213,11 @@ public sealed class WorkspaceJsonStore : IWorkspaceStore
                     $"Request body in '{request.Name}' must contain content and a content type.");
             }
 
+            if (request.Body is not null)
+            {
+                ValidateRequestFields(request.Body.FormFields, request.Name, "form field");
+            }
+
             var assertionError = RequestAssertionValidator.GetValidationError(request.Assertions);
             if (assertionError is not null)
             {

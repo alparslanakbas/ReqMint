@@ -53,6 +53,35 @@ public sealed class RequestTemplateResolverTests
     }
 
     [Fact]
+    public async Task ResolveAsync_ResolvesEnabledFormFields()
+    {
+        var request = CreateRequest() with
+        {
+            Body = new ApiRequestBody(string.Empty, "application/x-www-form-urlencoded")
+            {
+                FormFields =
+                [
+                    new RequestField("name", "{{VALUE}}"),
+                    new RequestField("ignored", "{{VALUE}}", IsEnabled: false),
+                ],
+            },
+        };
+        var environment = new EnvironmentDocument
+        {
+            Id = Guid.NewGuid(),
+            Name = "Development",
+            Variables = [new EnvironmentVariable("VALUE", "Mint & Co")],
+        };
+
+        var resolved = await new RequestTemplateResolver(new StubSecretVault(null))
+            .ResolveAsync(Guid.NewGuid(), environment, request);
+
+        Assert.Equal(
+            new RequestField("name", "Mint & Co"),
+            Assert.Single(resolved.Body!.FormFields));
+    }
+
+    [Fact]
     public async Task ResolveAsync_CreatesBasicAuthorizationHeader()
     {
         var environment = new EnvironmentDocument

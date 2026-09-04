@@ -38,6 +38,8 @@ Authorization: Bearer {{API_TOKEN}}
 
 Templates remain unchanged in collection files. ReqMint resolves them from the active environment immediately before sending and reports all missing values together.
 
+For `application/x-www-form-urlencoded` bodies, fields are stored as structured name/value entries. ReqMint resolves templates in both names and values, skips disabled entries, and performs URL encoding only when sending.
+
 ## Request authentication
 
 Requests may optionally configure Bearer Token, Basic Auth, or an API key in a header or query parameter. Authentication secrets must be a single environment-variable reference, never a literal value:

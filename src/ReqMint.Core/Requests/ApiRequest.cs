@@ -38,4 +38,13 @@ public sealed record ApiRequest
 
 public sealed record RequestField(string Name, string Value, bool IsEnabled = true);
 
-public sealed record ApiRequestBody(string Content, string ContentType);
+public sealed record ApiRequestBody(string Content, string ContentType)
+{
+    private readonly IReadOnlyList<RequestField> formFields = [];
+
+    public IReadOnlyList<RequestField> FormFields
+    {
+        get => formFields;
+        init => formFields = value ?? [];
+    }
+}

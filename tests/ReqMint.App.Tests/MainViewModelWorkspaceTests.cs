@@ -106,6 +106,33 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task SaveRequestCommand_PersistsFormUrlEncodedFields()
+    {
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var viewModel = CreateViewModel(store, CreateWorkspacePath());
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+        await viewModel.Collections[0].Requests[0].OpenCommand.ExecuteAsync(null);
+        viewModel.SelectedBodyType = "Form URL Encoded";
+        viewModel.FormBodyFields.Clear();
+        viewModel.FormBodyFields.Add(new RequestFieldViewModel("name", "Mint & Co"));
+        viewModel.FormBodyFields.Add(new RequestFieldViewModel("ignored", "value")
+        {
+            IsEnabled = false,
+        });
+
+        await viewModel.SaveRequestCommand.ExecuteAsync(null);
+
+        var body = store.SavedSnapshot!.Collections[0].Requests[0].Body;
+        Assert.NotNull(body);
+        Assert.Equal("application/x-www-form-urlencoded", body.ContentType);
+        Assert.Equal(string.Empty, body.Content);
+        Assert.Collection(
+            body.FormFields,
+            field => Assert.Equal(new RequestField("name", "Mint & Co"), field),
+            field => Assert.Equal(new RequestField("ignored", "value", IsEnabled: false), field));
+    }
+
+    [Fact]
     public async Task SaveRequestCommand_PersistsRunnerAssertions()
     {
         var snapshot = CreateSnapshot();
