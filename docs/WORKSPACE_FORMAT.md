@@ -42,6 +42,10 @@ For `application/x-www-form-urlencoded` bodies, fields are stored as structured 
 
 Multipart bodies store text fields plus file-field names and display filenames. Local file paths are intentionally excluded from workspace JSON, history, and Git; users reselect files after restarting ReqMint. File content is streamed when the request is sent rather than loaded fully into memory.
 
+## Postman collection import
+
+ReqMint can append Postman Collection v2.1 JSON files to an open workspace. Top-level Postman folders become ReqMint collections and deeper folder names are preserved in request names. URLs, methods, query parameters, headers, raw bodies, URL-encoded forms, multipart forms, and safe variable-based authentication are converted. Scripts and unsupported body/authentication modes are reported rather than silently represented as working features. Literal sensitive values are omitted, and imported upload files must be reselected locally.
+
 ## Request authentication
 
 Requests may optionally configure Bearer Token, Basic Auth, or an API key in a header or query parameter. Authentication secrets must be a single environment-variable reference, never a literal value:

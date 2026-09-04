@@ -62,6 +62,7 @@ public partial class App : Application
                 workspaceStore,
                 new AvaloniaWorkspaceFolderPicker(mainWindow),
                 new AvaloniaRequestFilePicker(mainWindow, localization),
+                new AvaloniaPostmanCollectionImportService(mainWindow, localization),
                 templateResolver,
                 secretVault,
                 localization,

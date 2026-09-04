@@ -67,6 +67,39 @@ public sealed class MainViewModelWorkspaceTests
     }
 
     [Fact]
+    public async Task ImportPostmanCollectionCommand_AppendsAndPersistsRequests()
+    {
+        const string postman = """
+        {
+          "info": {
+            "name": "Imported API",
+            "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+          },
+          "item": [{
+            "name": "List orders",
+            "request": { "method": "GET", "url": "https://example.com/orders" }
+          }]
+        }
+        """;
+        var store = new RecordingWorkspaceStore { SnapshotToLoad = CreateSnapshot() };
+        var viewModel = CreateViewModel(
+            store,
+            CreateWorkspacePath(),
+            postmanImportService: new StubPostmanCollectionImportService(
+                new PostmanCollectionSource("collection.json", postman)));
+        await viewModel.OpenWorkspaceCommand.ExecuteAsync(null);
+
+        await viewModel.ImportPostmanCollectionCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, store.SavedSnapshot!.Collections.Count);
+        var imported = store.SavedSnapshot.Collections[1];
+        Assert.Equal("Imported API", imported.Name);
+        Assert.Equal("List orders", Assert.Single(imported.Requests).Name);
+        Assert.Equal("Imported 1 requests into 1 collections", viewModel.WorkspaceStatus);
+        Assert.Equal("Import completed", viewModel.ResponseStatus);
+    }
+
+    [Fact]
     public async Task OpeningSavedRequest_PopulatesTheComposer()
     {
         var snapshot = CreateSnapshot();
@@ -2740,7 +2773,8 @@ public sealed class MainViewModelWorkspaceTests
         IClipboardService? clipboardService = null,
         StubRequestDeletePrompt? requestDeletePrompt = null,
         StubRequestCookieManager? requestCookieManager = null,
-        IRequestFilePicker? requestFilePicker = null)
+        IRequestFilePicker? requestFilePicker = null,
+        IPostmanCollectionImportService? postmanImportService = null)
     {
         vault ??= new RecordingSecretVault();
         executor ??= new NoOpRequestExecutor();
@@ -2752,6 +2786,7 @@ public sealed class MainViewModelWorkspaceTests
             store,
             new StubFolderPicker(directory),
             requestFilePicker ?? new StubRequestFilePicker(null),
+            postmanImportService ?? new StubPostmanCollectionImportService(null),
             templateResolver,
             vault,
             localization: null!,
@@ -2953,6 +2988,13 @@ public sealed class MainViewModelWorkspaceTests
     private sealed class StubRequestFilePicker(PickedRequestFile? selected) : IRequestFilePicker
     {
         public Task<PickedRequestFile?> PickAsync() => Task.FromResult(selected);
+    }
+
+    private sealed class StubPostmanCollectionImportService(PostmanCollectionSource? source)
+        : IPostmanCollectionImportService
+    {
+        public Task<PostmanCollectionSource?> PickAsync(
+            CancellationToken cancellationToken = default) => Task.FromResult(source);
     }
 
     private sealed class StubRequestCookieManager : IRequestCookieManager

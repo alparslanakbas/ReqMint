@@ -189,7 +189,7 @@
                     BorderThickness="0,0,1,0">
                 <Grid>
                     <Grid RowDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding IsCollectionsVisible}">
-                    <Grid Grid.Row="0" Margin="16,16,16,10" ColumnDefinitions="*,Auto,6,Auto">
+                    <Grid Grid.Row="0" Margin="16,16,16,10" ColumnDefinitions="*,Auto,6,Auto,6,Auto">
                         <TextBlock Text="{DynamicResource TextWorkspace}" FontSize="17" FontWeight="SemiBold" />
                         <Button Grid.Column="1"
                                 Content="▣＋"
@@ -200,6 +200,14 @@
                                 AutomationProperties.Name="{DynamicResource TooltipCreateWorkspace}"
                                 ToolTip.Tip="{DynamicResource TooltipCreateWorkspace}" />
                         <Button Grid.Column="3"
+                                Content="⇩"
+                                Width="30"
+                                Height="30"
+                                Padding="0"
+                                Command="{Binding ImportPostmanCollectionCommand}"
+                                AutomationProperties.Name="{DynamicResource TooltipImportPostman}"
+                                ToolTip.Tip="{DynamicResource TooltipImportPostman}" />
+                        <Button Grid.Column="5"
                                 Content="＋"
                                 Width="30"
                                 Height="30"

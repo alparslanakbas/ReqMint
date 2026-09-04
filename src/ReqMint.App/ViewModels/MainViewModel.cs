@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using ReqMint.App.Services;
 using ReqMint.Core.Git;
 using ReqMint.Core.History;
+using ReqMint.Core.Importing;
 using ReqMint.Core.Requests;
 using ReqMint.Core.Runner;
 using ReqMint.Core.Security;
@@ -579,6 +580,7 @@ public partial class MainViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(SaveEnvironmentCommand))]
     [NotifyCanExecuteChangedFor(nameof(CreateCollectionCommand))]
     [NotifyCanExecuteChangedFor(nameof(RenameCollectionCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ImportPostmanCollectionCommand))]
     public partial bool IsSending { get; set; }
 
     [ObservableProperty]
@@ -593,6 +595,7 @@ public partial class MainViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(SaveEnvironmentCommand))]
     [NotifyCanExecuteChangedFor(nameof(CreateCollectionCommand))]
     [NotifyCanExecuteChangedFor(nameof(RenameCollectionCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ImportPostmanCollectionCommand))]
     public partial bool IsWorkspaceBusy { get; set; }
 
     private readonly IRequestExecutor _requestExecutor;
@@ -600,6 +603,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly IWorkspaceStore _workspaceStore;
     private readonly IWorkspaceFolderPicker _folderPicker;
     private readonly IRequestFilePicker _requestFilePicker;
+    private readonly IPostmanCollectionImportService _postmanImportService;
     private readonly RequestTemplateResolver _templateResolver;
     private readonly ISecretVault _secretVault;
     private readonly IUnsavedChangesPrompt _unsavedChangesPrompt;
@@ -643,6 +647,7 @@ public partial class MainViewModel : ViewModelBase
         IWorkspaceStore workspaceStore,
         IWorkspaceFolderPicker folderPicker,
         IRequestFilePicker requestFilePicker,
+        IPostmanCollectionImportService postmanImportService,
         RequestTemplateResolver templateResolver,
         ISecretVault secretVault,
         LocalizationService localization,
@@ -670,6 +675,7 @@ public partial class MainViewModel : ViewModelBase
         _workspaceStore = workspaceStore;
         _folderPicker = folderPicker;
         _requestFilePicker = requestFilePicker;
+        _postmanImportService = postmanImportService;
         _templateResolver = templateResolver;
         _secretVault = secretVault;
         Localization = localization;
@@ -1559,6 +1565,7 @@ public partial class MainViewModel : ViewModelBase
         SaveEnvironmentCommand.NotifyCanExecuteChanged();
         CreateCollectionCommand.NotifyCanExecuteChanged();
         RenameCollectionCommand.NotifyCanExecuteChanged();
+        ImportPostmanCollectionCommand.NotifyCanExecuteChanged();
         UpdateCollectionRunAvailability();
     }
 
@@ -1967,6 +1974,9 @@ public partial class MainViewModel : ViewModelBase
             "ErrorSecretVaultUnavailable",
             "Secure secret storage is not available on this platform yet. "
                 + "ReqMint will not use a plaintext fallback."),
+        PostmanImportException => Localize(
+            "ErrorInvalidPostmanCollection",
+            "The selected file is not a valid Postman Collection v2.1 document."),
         _ => exception.Message,
     };
 
